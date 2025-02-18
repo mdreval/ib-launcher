@@ -3,6 +3,7 @@ import sys
 import warnings
 import json
 import psutil
+import uuid
 from pathlib import Path
 
 # Игнорируем все предупреждения
@@ -412,42 +413,35 @@ class InstallThread(QThread):
         try:
             self.status_update.emit("Проверка модпака...")
             
-            # Проверяем наличие установленных модов
-            mods_dir = os.path.join(self.install_path, "mods")
-            if os.path.exists(mods_dir) and os.listdir(mods_dir):
-                logging.info("Моды уже установлены, пропускаем распаковку")
-                return
+            # Проверяем, запущены ли мы из exe
+            is_bundled = getattr(sys, 'frozen', False)
             
-            # Загружаем модпак из GitHub
-            modpack_path = self.download_modpack()
+            # Если это не exe (разработка), проверяем локальный modpack.zip
+            if not is_bundled:
+                local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
+                if os.path.exists(local_modpack):
+                    logging.info("Найден локальный modpack.zip")
+                    self.status_update.emit("Установка локального модпака...")
+                    
+                    # Распаковываем локальный модпак
+                    mods_dir = os.path.join(self.install_path, "mods")
+                    os.makedirs(mods_dir, exist_ok=True)
+                    
+                    with zipfile.ZipFile(local_modpack, 'r') as zip_ref:
+                        # Получаем список файлов в архиве
+                        for file_info in zip_ref.filelist:
+                            # Проверяем, что это jar файл
+                            if file_info.filename.endswith('.jar'):
+                                # Извлекаем только в папку mods
+                                zip_ref.extract(file_info.filename, mods_dir)
+                                logging.info(f"Установлен мод: {file_info.filename}")
+                    
+                    logging.info("Модпак установлен из assets")
+                    return
             
-            # Распаковываем модпак
-            self.status_update.emit("Установка модпака...")
-            with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
-                total_files = len(zip_ref.namelist())
-                for index, file in enumerate(zip_ref.namelist(), 1):
-                    zip_ref.extract(file, self.install_path)
-                    progress = int(index * 100 / total_files)
-                    self.progress_update.emit(progress, 100, "")
-            
-            # Удаляем временный файл модпака
-            os.remove(modpack_path)
-            logging.info("Модпак успешно установлен")
-            
-        except Exception as e:
-            logging.error(f"Ошибка установки модпака: {str(e)}")
-            raise
-
-    def download_modpack(self):
-        """Загружает модпак из GitHub Releases"""
-        try:
-            install_path = Path(self.install_path.text().strip())
-            
-            # Проверяем место на диске
-            if not self.check_disk_space():
-                return
-            
-            self.status_update.emit("Проверка обновлений модпака...")
+            # В exe версии или если локального модпака нет, качаем с GitHub
+            logging.info("Загрузка модпака с GitHub...")
+            self.status_update.emit("Загрузка модпака с GitHub...")
             
             # URL API GitHub для получения последнего релиза
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -467,98 +461,57 @@ class InstallThread(QThread):
                     break
                 
             if not modpack_asset:
-                raise ValueError("Модпак не найден в релизе. Пожалуйста, сообщите разработчику.")
+                raise ValueError("Модпак не найден в релизе и отсутствует локально")
             
             # Путь для сохранения модпака
-            temp_dir = Path(os.path.expanduser("~")) / ".iblauncher"
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            temp_modpack = temp_dir / "modpack.zip"
+            temp_dir = os.path.join(os.path.expanduser("~"), ".iblauncher")
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_modpack = os.path.join(temp_dir, "modpack.zip")
             
             # Загружаем модпак
-            self.status_update.emit("Загрузка модпака...")
             try:
                 response = requests.get(modpack_asset['browser_download_url'], stream=True, timeout=30)
                 response.raise_for_status()
                 
                 total_size = int(response.headers.get('content-length', 0))
-                
-                # Проверяем, достаточно ли места для модпака
-                if total_size > 0 and total_size / (1024 * 1024 * 1024) > psutil.disk_usage(temp_dir).free:
-                    raise ValueError("Недостаточно места для загрузки модпака")
+                block_size = 8192
                 
                 with open(temp_modpack, 'wb') as f:
-                    downloaded = 0
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            if total_size:
-                                progress = int(downloaded * 100 / total_size)
-                                self.progress_update.emit(progress, 100, "")
-                            
+                    for data in response.iter_content(block_size):
+                        f.write(data)
+                        if total_size:
+                            progress = int(os.path.getsize(temp_modpack) * 100 / total_size)
+                            self.progress_update.emit(progress, 100, "")
+                    
             except requests.exceptions.RequestException as e:
-                if temp_modpack.exists():
-                    temp_modpack.unlink()
+                if os.path.exists(temp_modpack):
+                    os.remove(temp_modpack)
                 raise ValueError(f"Ошибка загрузки модпака: {str(e)}")
-            
-            # Проверяем целостность ZIP файла
-            try:
-                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
-                    zip_ref.testzip()
-            except zipfile.BadZipFile:
-                temp_modpack.unlink()
-                raise ValueError("Загруженный модпак поврежден")
             
             # Распаковываем модпак
             self.status_update.emit("Установка модпака...")
-            mods_dir = install_path / "mods"
-            mods_dir.mkdir(parents=True, exist_ok=True)
+            mods_dir = os.path.join(self.install_path, "mods")
+            os.makedirs(mods_dir, exist_ok=True)
             
-            try:
-                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
-                    zip_ref.extractall(install_path)
-            except Exception as e:
-                raise ValueError(f"Ошибка распаковки модпака: {str(e)}")
-            finally:
-                # Удаляем временный файл
-                if temp_modpack.exists():
-                    temp_modpack.unlink()
-                
+            with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
+                # Получаем список файлов в архиве
+                for file_info in zip_ref.filelist:
+                    # Проверяем, что это jar файл
+                    if file_info.filename.endswith('.jar'):
+                        # Извлекаем только в папку mods
+                        zip_ref.extract(file_info.filename, mods_dir)
+                        logging.info(f"Установлен мод: {file_info.filename}")
+            
+            # Удаляем временный файл
+            os.remove(temp_modpack)
             logging.info("Модпак успешно установлен")
             
         except Exception as e:
             logging.error(f"Ошибка установки модпака: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", str(e))
-
-    def check_disk_space(self, required_space_gb=10):
-        """Проверяет наличие свободного места на диске"""
-        try:
-            install_path = Path(self.install_path.text().strip())
-            
-            # Проверяем существование пути
-            if not install_path.parent.exists():
-                raise ValueError(f"Путь {install_path.parent} не существует")
-            
-            # Проверяем права на запись
-            if not os.access(install_path.parent, os.W_OK):
-                raise ValueError(f"Нет прав на запись в {install_path.parent}")
-            
-            # Получаем информацию о диске
-            disk_usage = psutil.disk_usage(install_path.anchor)
-            free_space_gb = disk_usage.free / (1024 * 1024 * 1024)
-            
-            if free_space_gb < required_space_gb:
-                raise ValueError(f"Недостаточно места на диске. Требуется {required_space_gb} ГБ, доступно {free_space_gb:.1f} ГБ")
-            
-            logging.info(f"Проверка места на диске успешна. Доступно {free_space_gb:.1f} ГБ")
-            return True
-            
-        except Exception as e:
-            logging.error(f"Ошибка проверки места на диске: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", str(e))
-            return False
+            raise
 
     def _launch_game(self):
+        """Запускает игру"""
         try:
             # Проверяем наличие имени пользователя
             if not self.username:
@@ -568,19 +521,16 @@ class InstallThread(QThread):
             # Преобразуем версию Forge в правильный формат
             version_to_launch = self.version
             if "-" in version_to_launch:
-                # Если это версия Forge, добавляем префикс forge
                 version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
 
-            # Ищем путь к Java
+            # Получаем путь к Java
             java_path = None
             possible_paths = [
-                'javaw.exe',  # Проверяем в PATH
-                'java.exe',   # Альтернативный вариант
+                'javaw.exe',
                 r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
-                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
                 os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
             ]
 
@@ -607,64 +557,195 @@ class InstallThread(QThread):
                         break
 
             if not java_path:
-                raise FileNotFoundError("Не удалось найти путь к Java. Убедитесь, что Java 17 установлена и добавлена в PATH")
+                raise FileNotFoundError("Не удалось найти путь к Java")
 
-            # Генерируем опции запуска
+            # Настраиваем параметры запуска
             options = {
                 'username': self.username,
-                'uuid': str(uuid1()),
+                'uuid': str(uuid.uuid4()),
                 'token': '',
                 'jvmArguments': [
                     f'-Xmx{self.memory}G',
-                    '-Dlog4j2.formatMsgNoLookups=true',
-                    '-Dlog4j.configurationFile=',
-                    '-Dlog4j2.disable.jmx=true',
-                    '-Dmojang.useLogDirVariable=true'
+                    '-XX:+UnlockExperimentalVMOptions',
+                    '-XX:+UseG1GC',
+                    '-XX:G1NewSizePercent=20',
+                    '-XX:G1ReservePercent=20',
+                    '-XX:MaxGCPauseMillis=50',
+                    '-XX:G1HeapRegionSize=32M',
+                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
+                    '-Dfml.ignorePatchDiscrepancies=true',
+                    '-Djava.net.preferIPv4Stack=true',
+                    '-Dlog4j2.formatMsgNoLookups=true'
                 ],
+                'launchTarget': 'fmlclient',
                 'executablePath': java_path,
                 'gameDirectory': self.install_path
             }
 
             # Получаем команду запуска
             minecraft_command = minecraft_launcher_lib.command.get_minecraft_command(
-                version_to_launch,  # Используем преобразованную версию
+                version_to_launch,
                 self.install_path,
                 options
             )
 
-            logging.info(f"Команда запуска: {' '.join(minecraft_command)}")
-            self.status_update.emit("Запуск Minecraft...")
+            # Удаляем параметры quickPlay из команды
+            minecraft_command = [arg for arg in minecraft_command if not any(
+                x in arg.lower() for x in ['quickplay', 'lastserver', 'singleplayer']
+            )]
 
-            process = subprocess.Popen(
+            # Запускаем процесс
+            logging.info(f"Команда запуска: {' '.join(minecraft_command)}")
+            subprocess.Popen(
                 minecraft_command,
-                cwd=self.install_path,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
 
-            self.status_update.emit("Minecraft запущен")
+            # Отправляем сигнал для закрытия главного окна
+            QApplication.quit()
 
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
 
-    def _download_file(self, url, destination):
-        self.status_update.emit(f"Скачивание {os.path.basename(destination)}...")
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
+    def find_java(self):
+        """Находит путь к Java"""
+        try:
+            # Ищем путь к Java так же, как и при запуске
+            possible_paths = [
+                'javaw.exe',  # Проверяем в PATH
+                'java.exe',   # Альтернативный вариант
+                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
+            ]
 
-        total_size = int(response.headers.get('content-length', 0))
-        downloaded = 0
-        self.progress_update.emit(0, total_size, "")
+            java_path = None
+            
+            # Сначала проверяем через where
+            try:
+                result = subprocess.run(['where', 'javaw'], 
+                                     capture_output=True, 
+                                     text=True, 
+                                     creationflags=subprocess.CREATE_NO_WINDOW)
+                if result.returncode == 0:
+                    java_paths = result.stdout.strip().split('\n')
+                    if java_paths:
+                        java_path = java_paths[0]
+                        logging.info(f"Java найдена через where: {java_path}")
+            except Exception as e:
+                logging.warning(f"Не удалось найти Java через where: {e}")
 
-        with open(destination, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if self.stop_requested:
-                    raise InterruptedError("Загрузка отменена")
-                f.write(chunk)
-                downloaded += len(chunk)
-                self.progress_update.emit(downloaded, 0, "")
+            # Если where не нашел, проверяем другие пути
+            if not java_path:
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        java_path = path
+                        logging.info(f"Java найдена по пути: {java_path}")
+                        break
+
+            if java_path:
+                # Проверяем версию найденной Java
+                java_exe = java_path.replace('javaw.exe', 'java.exe')
+                result = subprocess.run(
+                    [java_exe, '-version'], 
+                    capture_output=True,  # Используем только capture_output
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                
+                version_output = result.stderr
+                logging.info(f"Java version check output: {version_output}")
+                
+                # Проверяем версию через регулярное выражение
+                import re
+                version_pattern = r'version "([^"]+)"'
+                match = re.search(version_pattern, version_output)
+                
+                if match:
+                    version_string = match.group(1)
+                    logging.info(f"Found Java version: {version_string}")
+                    
+                    # Проверяем версию
+                    if any(str(v) in version_string for v in range(17, 22)):
+                        logging.info("Java version is compatible")
+                        return java_path
+            
+            # Если Java не найдена или версия не подходит
+            logging.warning("Java version is not compatible or not found")
+            response = QMessageBox.critical(
+                self,
+                "Ошибка",
+                "Java не установлена или версия ниже 17!\n\n" +
+                "Сейчас откроется страница загрузки Oracle Java.\n" +
+                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
+                "Для Windows рекомендуется Windows x64 Installer.",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            
+            if response == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            return None
+            
+        except Exception as e:
+            logging.error(f"Ошибка проверки Java: {str(e)}", exc_info=True)
+            response = QMessageBox.critical(
+                self,
+                "Ошибка",
+                "Java не найдена!\n\n" +
+                "Сейчас откроется страница загрузки Oracle Java.\n" +
+                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
+                "Для Windows рекомендуется Windows x64 Installer.",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            
+            if response == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            return None
+
+    def save_settings(self):
+        """Сохраняет настройки"""
+        try:
+            # Загружаем существующий конфиг или создаем новый
+            config = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+            
+            # Сохраняем значения, даже если они пустые
+            username = self.username.text().strip()
+            config['username'] = username
+            
+            minecraft_version = self.version
+            config['minecraft_version'] = minecraft_version
+            
+            if self.version.startswith("1.20.1-forge-"):
+                forge_version = self.version.replace("-forge-", "-")
+                config['forge_version'] = forge_version
+            
+            install_path = self.install_path.text().strip()
+            config['install_path'] = install_path if install_path != DEFAULT_MINECRAFT_DIR else ""
+            
+            memory = self.memory
+            config['memory'] = memory
+            
+            # Всегда сохраняем значение флагов запуска, даже если оно пустое
+            launch_flags = self.launch_flags_input.toPlainText().strip()
+            config['launch_flags'] = launch_flags
+            
+            # Сохраняем конфиг
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f)
+                
+        except Exception as e:
+            logging.error(f"Ошибка сохранения конфига: {str(e)}")
 
 class MainWindow(QMainWindow):
+    # Добавляем сигналы
+    status_update = pyqtSignal(str)
+    progress_update = pyqtSignal(int, int, str)
+    
     def __init__(self):
         super().__init__()
         self.java_checked = False
@@ -737,6 +818,8 @@ class MainWindow(QMainWindow):
         self.forge_version.currentTextChanged.connect(self.check_game_installed)
         self.youtube_button.clicked.connect(self.open_youtube)
         self.telegram_button.clicked.connect(self.open_telegram)
+        self.status_update.connect(self.status_label.setText)
+        self.progress_update.connect(self.update_progress)
 
     def setup_path(self):
         self.install_path.setText(DEFAULT_MINECRAFT_DIR)
@@ -772,12 +855,10 @@ class MainWindow(QMainWindow):
             
             # Сначала проверяем через where
             try:
-                result = subprocess.run(
-                    ['where', 'javaw'], 
-                    capture_output=True, 
-                    text=True, 
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
+                result = subprocess.run(['where', 'javaw'], 
+                                     capture_output=True, 
+                                     text=True, 
+                                     creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
                     if java_paths:
@@ -1075,56 +1156,23 @@ class MainWindow(QMainWindow):
     def check_dependencies(self):
         """Проверяет наличие всех зависимостей"""
         try:
-            install_path = Path(self.install_path.text().strip())
-            mods_dir = install_path / "mods"
+            install_path = self.install_path.text().strip()
+            mods_dir = os.path.join(install_path, "mods")
             
-            # Проверяем GitHub API для получения информации о последнем релизе
-            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-            try:
-                response = requests.get(api_url, timeout=10)
-                response.raise_for_status()
-                release_data = response.json()
+            # Проверяем наличие модов
+            if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
+                logging.info("Моды не найдены")
+                self.status_label.setText("Моды не найдены")
+                return False
                 
-                # Ищем модпак
-                for asset in release_data['assets']:
-                    if asset['name'] == 'modpack.zip':
-                        # Если папка mods существует, проверяем нужно ли обновление
-                        if mods_dir.exists() and mods_dir.is_dir():
-                            # Спрашиваем пользователя об обновлении
-                            reply = QMessageBox.question(
-                                self, 
-                                'Обновление модпака',
-                                'Доступно обновление модпака. Установить?',
-                                QMessageBox.Yes | QMessageBox.No
-                            )
-                            
-                            if reply == QMessageBox.Yes:
-                                # Удаляем старые моды
-                                shutil.rmtree(mods_dir)
-                                # Скачиваем и устанавливаем новый модпак
-                                self.download_modpack()
-                        else:
-                            # Если модов нет, просто скачиваем
-                            self.download_modpack()
-                        return
-                    
-                logging.warning("Модпак не найден в последнем релизе")
-                
-            except Exception as e:
-                logging.error(f"Ошибка проверки обновлений: {str(e)}")
-                # Если нет интернета или другая ошибка, используем существующие моды
-                if not mods_dir.exists() or not any(mods_dir.iterdir()):
-                    QMessageBox.warning(
-                        self,
-                        "Ошибка",
-                        "Не удалось проверить обновления и моды не установлены.\n"
-                        "Проверьте подключение к интернету."
-                    )
-                    
+            logging.info("Моды найдены")
+            return True
+            
         except Exception as e:
             logging.error(f"Ошибка проверки зависимостей: {str(e)}")
             QMessageBox.warning(self, "Ошибка", str(e))
-
+            return False
+            
     def load_forge_cache(self):
         """Загрузка кеша версий Forge"""
         logging.info("Загрузка кеша Forge")
@@ -1212,50 +1260,84 @@ class MainWindow(QMainWindow):
         self.save_config()  # Сохраняем конфиг при изменении значения памяти
 
     def start_installation(self):
-        minecraft_version = self.minecraft_version.currentText()
-        forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
-        
-        # Преобразуем отображаемую версию Forge в реальную
-        if forge_display_version and forge_display_version.startswith("1.20.1-forge-"):
-            forge_version = forge_display_version.replace("-forge-", "-")
-        else:
-            forge_version = forge_display_version
-        
-        username = self.username.text().strip()
-        install_path = self.install_path.text().strip()
+        """Запускает установку"""
+        try:
+            minecraft_version = self.minecraft_version.currentText()
+            forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
+            
+            # Преобразуем отображаемую версию Forge в реальную
+            if forge_display_version and forge_display_version.startswith("1.20.1-forge-"):
+                forge_version = forge_display_version.replace("-forge-", "-")
+            else:
+                forge_version = forge_display_version
+            
+            username = self.username.text().strip()
+            install_path = self.install_path.text().strip()
 
-        if not username:
-            QMessageBox.warning(self, "Ошибка", "Введите имя игрока!")
-            self.username.setFocus()
-            return
+            if not username:
+                QMessageBox.warning(self, "Ошибка", "Введите имя игрока!")
+                self.username.setFocus()
+                return
 
-        if not minecraft_version:
-            QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft!")
-            return
+            if not minecraft_version:
+                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft!")
+                return
 
-        if not os.access(install_path, os.W_OK):
-            QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
-            return
+            if not os.access(install_path, os.W_OK):
+                QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
+                return
 
-        # Сохраняем конфиг перед установкой
-        self.save_config()
+            # Проверяем наличие модов
+            mods_dir = os.path.join(install_path, "mods")
+            if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
+                # Проверяем локальный modpack.zip
+                local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
+                if os.path.exists(local_modpack):
+                    logging.info("Найден локальный modpack.zip")
+                    self.status_label.setText("Установка модпака...")
+                    
+                    # Создаем папку mods если её нет
+                    os.makedirs(mods_dir, exist_ok=True)
+                    
+                    # Распаковываем модпак
+                    with zipfile.ZipFile(local_modpack, 'r') as zip_ref:
+                        # Получаем список файлов в архиве
+                        for file_info in zip_ref.filelist:
+                            # Проверяем, что это jar файл
+                            if file_info.filename.endswith('.jar'):
+                                # Извлекаем только в папку mods
+                                zip_ref.extract(file_info.filename, mods_dir)
+                                logging.info(f"Установлен мод: {file_info.filename}")
+                    
+                    logging.info("Модпак установлен из assets")
+                else:
+                    logging.warning("Модпак не найден в assets")
+                    QMessageBox.warning(self, "Внимание", "Модпак не найден!")
+                    return
 
-        # Если выбран Forge, используем его версию, иначе - версию Minecraft
-        version_to_install = forge_version if forge_version else minecraft_version
-        logging.info(f"Выбрана версия для установки: {version_to_install}")
+            # Если все проверки пройдены, запускаем установку/игру
+            version_to_install = forge_version if forge_version else minecraft_version
+            logging.info(f"Выбрана версия для установки: {version_to_install}")
 
-        self.thread = InstallThread(
-            version_to_install,
-            username,
-            install_path,
-            self.memory_slider.value(),
-            self.launch_flags_input
-        )
-        self.thread.progress_update.connect(self.update_progress)
-        self.thread.status_update.connect(self.status_label.setText)
-        self.thread.toggle_ui.connect(self.toggle_ui_elements)
-        self.thread.error_occurred.connect(self.show_error)
-        self.thread.start()
+            self.thread = InstallThread(
+                version_to_install,
+                username,
+                install_path,
+                self.memory_slider.value(),
+                self.launch_flags_input
+            )
+            
+            # Подключаем сигналы из потока к слотам главного окна
+            self.thread.progress_update.connect(self.update_progress)
+            self.thread.status_update.connect(self.status_label.setText)
+            self.thread.error_occurred.connect(self.show_error)
+            self.thread.toggle_ui.connect(self.toggle_ui_elements)
+            
+            self.thread.start()
+            
+        except Exception as e:
+            logging.error(f"Ошибка запуска установки: {str(e)}")
+            QMessageBox.critical(self, "Ошибка", str(e))
 
     def toggle_ui_elements(self, enabled):
         self.start_button.setEnabled(enabled)
@@ -1264,7 +1346,8 @@ class MainWindow(QMainWindow):
         self.username.setEnabled(enabled)
         self.browse_button.setEnabled(enabled)
 
-    def update_progress(self, current, maximum, _):
+    def update_progress(self, current, maximum, message):
+        """Обновляет прогресс-бар"""
         if maximum > 0:
             self.progress_bar.setMaximum(maximum)
         self.progress_bar.setValue(current)
