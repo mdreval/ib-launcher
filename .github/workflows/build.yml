@@ -33,10 +33,9 @@ jobs:
         python generate_version_info.py
         
     - name: Build Windows exe
-      if: runner.os == 'Windows'
       shell: cmd
       run: |
-        pyinstaller --clean ib-launcher.spec
+        pyinstaller --clean --version-file version_info.txt ib-launcher.spec
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -72,7 +71,6 @@ jobs:
         python generate_mac_info.py
         
     - name: Build macOS app
-      if: runner.os == 'macOS'
       shell: bash
       run: |
         pyinstaller --clean ib-launcher-mac.spec
