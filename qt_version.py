@@ -882,7 +882,7 @@ class MainWindow(QMainWindow):
                     # Проверяем версию
                     if any(str(v) in version_string for v in range(17, 22)):
                         logging.info("Java version is compatible")
-                        return True
+                        return java_path
             
             # Если Java не найдена или версия не подходит
             logging.warning("Java version is not compatible or not found")
@@ -1445,7 +1445,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.0"
+            current_version = "1.0.3.1"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1487,7 +1487,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.0"
+            current_version = "1.0.3.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
