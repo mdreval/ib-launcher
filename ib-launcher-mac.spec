@@ -14,7 +14,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['numpy', '_multiarray_tests'],  # Исключаем numpy
+    excludes=['_multiarray_tests'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -58,8 +58,8 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.4.7',
-        'CFBundleVersion': '1.0.4.7',
+        'CFBundleShortVersionString': '1.0.4.8',
+        'CFBundleVersion': '1.0.4.8',
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
     }
