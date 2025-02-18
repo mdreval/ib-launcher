@@ -58,8 +58,8 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.4.1',
-        'CFBundleVersion': '1.0.4.1',
+        'CFBundleShortVersionString': '1.0.4.2',
+        'CFBundleVersion': '1.0.4.2',
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
     }
