@@ -2,6 +2,8 @@ import os
 import sys
 import warnings
 import json
+import psutil
+from pathlib import Path
 
 # Игнорируем все предупреждения
 warnings.filterwarnings("ignore")
@@ -439,15 +441,23 @@ class InstallThread(QThread):
     def download_modpack(self):
         """Загружает модпак из GitHub Releases"""
         try:
+            install_path = Path(self.install_path.text().strip())
+            
+            # Проверяем место на диске
+            if not self.check_disk_space():
+                return
+            
             self.status_update.emit("Проверка обновлений модпака...")
             
             # URL API GitHub для получения последнего релиза
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
             
-            # Получаем информацию о последнем релизе
-            response = requests.get(api_url)
-            response.raise_for_status()
-            release_data = response.json()
+            try:
+                response = requests.get(api_url, timeout=10)
+                response.raise_for_status()
+                release_data = response.json()
+            except requests.exceptions.RequestException as e:
+                raise ValueError(f"Ошибка получения информации о релизе: {str(e)}")
             
             # Ищем модпак среди assets
             modpack_asset = None
@@ -455,33 +465,98 @@ class InstallThread(QThread):
                 if asset['name'] == 'modpack.zip':
                     modpack_asset = asset
                     break
-            
+                
             if not modpack_asset:
-                raise Exception("Модпак не найден в релизе")
+                raise ValueError("Модпак не найден в релизе. Пожалуйста, сообщите разработчику.")
             
             # Путь для сохранения модпака
-            temp_modpack = os.path.join(CONFIG_DIR, "modpack.zip")
+            temp_dir = Path(os.path.expanduser("~")) / ".iblauncher"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_modpack = temp_dir / "modpack.zip"
             
             # Загружаем модпак
             self.status_update.emit("Загрузка модпака...")
-            response = requests.get(modpack_asset['browser_download_url'], stream=True)
-            response.raise_for_status()
+            try:
+                response = requests.get(modpack_asset['browser_download_url'], stream=True, timeout=30)
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                
+                # Проверяем, достаточно ли места для модпака
+                if total_size > 0 and total_size / (1024 * 1024 * 1024) > psutil.disk_usage(temp_dir).free:
+                    raise ValueError("Недостаточно места для загрузки модпака")
+                
+                with open(temp_modpack, 'wb') as f:
+                    downloaded = 0
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if total_size:
+                                progress = int(downloaded * 100 / total_size)
+                                self.progress_update.emit(progress, 100, "")
+                            
+            except requests.exceptions.RequestException as e:
+                if temp_modpack.exists():
+                    temp_modpack.unlink()
+                raise ValueError(f"Ошибка загрузки модпака: {str(e)}")
             
-            total_size = int(response.headers.get('content-length', 0))
-            block_size = 8192
+            # Проверяем целостность ZIP файла
+            try:
+                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
+                    zip_ref.testzip()
+            except zipfile.BadZipFile:
+                temp_modpack.unlink()
+                raise ValueError("Загруженный модпак поврежден")
             
-            with open(temp_modpack, 'wb') as f:
-                for data in response.iter_content(block_size):
-                    f.write(data)
-                    if total_size:
-                        progress = int(os.path.getsize(temp_modpack) * 100 / total_size)
-                        self.progress_update.emit(progress, 100, "")
+            # Распаковываем модпак
+            self.status_update.emit("Установка модпака...")
+            mods_dir = install_path / "mods"
+            mods_dir.mkdir(parents=True, exist_ok=True)
             
-            return temp_modpack
+            try:
+                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
+                    zip_ref.extractall(install_path)
+            except Exception as e:
+                raise ValueError(f"Ошибка распаковки модпака: {str(e)}")
+            finally:
+                # Удаляем временный файл
+                if temp_modpack.exists():
+                    temp_modpack.unlink()
+                
+            logging.info("Модпак успешно установлен")
             
         except Exception as e:
-            logging.error(f"Ошибка загрузки модпака: {str(e)}")
-            raise
+            logging.error(f"Ошибка установки модпака: {str(e)}")
+            QMessageBox.warning(self, "Ошибка", str(e))
+
+    def check_disk_space(self, required_space_gb=10):
+        """Проверяет наличие свободного места на диске"""
+        try:
+            install_path = Path(self.install_path.text().strip())
+            
+            # Проверяем существование пути
+            if not install_path.parent.exists():
+                raise ValueError(f"Путь {install_path.parent} не существует")
+            
+            # Проверяем права на запись
+            if not os.access(install_path.parent, os.W_OK):
+                raise ValueError(f"Нет прав на запись в {install_path.parent}")
+            
+            # Получаем информацию о диске
+            disk_usage = psutil.disk_usage(install_path.anchor)
+            free_space_gb = disk_usage.free / (1024 * 1024 * 1024)
+            
+            if free_space_gb < required_space_gb:
+                raise ValueError(f"Недостаточно места на диске. Требуется {required_space_gb} ГБ, доступно {free_space_gb:.1f} ГБ")
+            
+            logging.info(f"Проверка места на диске успешна. Доступно {free_space_gb:.1f} ГБ")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Ошибка проверки места на диске: {str(e)}")
+            QMessageBox.warning(self, "Ошибка", str(e))
+            return False
 
     def _launch_game(self):
         try:
@@ -954,11 +1029,11 @@ class MainWindow(QMainWindow):
                     # Проверяем, является ли cached_version списком
                     if isinstance(cached_version, list):
                         for forge_version in cached_version:
-                            forge_display_version = f"{default_version}-forge-{forge_version.split('-')[1]}"
-                            self.forge_version.addItem(forge_display_version)
+                            forge_full_version = f"{default_version}-forge-{forge_version.split('-')[1]}"
+                            self.forge_version.addItem(forge_full_version)
                     else:
-                        forge_display_version = f"{default_version}-forge-{cached_version.split('-')[1]}"
-                        self.forge_version.addItem(forge_display_version)
+                        forge_full_version = f"{default_version}-forge-{cached_version.split('-')[1]}"
+                        self.forge_version.addItem(forge_full_version)
                     self.forge_version.setEnabled(True)
             else:
                 # Если индекс не найден, устанавливаем 1.20.1
@@ -998,8 +1073,24 @@ class MainWindow(QMainWindow):
         return 0
 
     def check_dependencies(self):
-        if not os.path.exists(MODPACK_PATH):
-            QMessageBox.warning(self, "Ошибка", "Модпак не найден в папке assets!")
+        """Проверяет наличие всех зависимостей"""
+        try:
+            # Получаем путь установки из QLineEdit
+            install_path = self.install_path.text().strip()
+            
+            # Проверяем наличие модов
+            mods_dir = os.path.join(install_path, "mods")
+            if os.path.exists(mods_dir) and os.listdir(mods_dir):
+                logging.info("Моды уже установлены, пропускаем проверку модпака")
+                return
+            
+            # Если модов нет, скачиваем модпак
+            self.status_update.emit("Проверка модпака...")
+            self.download_modpack()
+            
+        except Exception as e:
+            logging.error(f"Ошибка проверки зависимостей: {str(e)}")
+            QMessageBox.warning(self, "Ошибка", f"Ошибка проверки зависимостей: {str(e)}")
 
     def load_forge_cache(self):
         """Загрузка кеша версий Forge"""
