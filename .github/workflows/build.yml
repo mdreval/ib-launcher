@@ -28,9 +28,17 @@ jobs:
         pip install pyinstaller==6.3.0
         pip install pywin32
         
-    - name: Build Windows exe
+    - name: Generate version info
       run: |
-        pyinstaller --clean ib-launcher.spec
+        python generate_version_info.py
+        
+    - name: Build Windows exe
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        dir
+        type version_info.txt
+        pyinstaller --clean --version-file=version_info.txt ib-launcher.spec
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -60,11 +68,26 @@ jobs:
         pip install --only-binary :all: PyQt5
         pip install -r requirements.txt
         
-    - name: Build macOS app
+    - name: Generate version info
       run: |
-        pyinstaller --clean ib-launcher-mac.spec
-        mkdir -p dist/IB-Launcher.app/Contents/MacOS
-        mv dist/IB-Launcher/* dist/IB-Launcher.app/Contents/MacOS/
+        python generate_version_info.py
+        python generate_mac_info.py
+        
+    - name: Build macOS app
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        pyinstaller --clean --windowed \
+          --add-data "design.ui:." \
+          --add-data "assets/*:assets/" \
+          --icon "assets/icon.icns" \
+          --name "IB-Launcher" \
+          --osx-bundle-identifier "com.igrobar.launcher" \
+          --target-arch universal2 \
+          qt_version.py
+        
+        # Копируем Info.plist
+        cp Info.plist "dist/IB-Launcher.app/Contents/Info.plist"
         
     - name: Create DMG
       run: |
