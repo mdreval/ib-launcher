@@ -408,7 +408,8 @@ class InstallThread(QThread):
             is_bundled = getattr(sys, 'frozen', False)
             
             # Подготавливаем папку mods
-            mods_dir = os.path.join(self.install_path.text(), "mods")
+            install_path = self.install_path.text() if hasattr(self.install_path, 'text') else self.install_path
+            mods_dir = os.path.join(install_path, "mods")
             os.makedirs(mods_dir, exist_ok=True)
             
             # Путь к файлу с информацией о модпаке
@@ -1455,7 +1456,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.4.2"
+            current_version = "1.0.4.3"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1497,7 +1498,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.4.2"
+            current_version = "1.0.4.3"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
