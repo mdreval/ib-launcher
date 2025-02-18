@@ -758,7 +758,7 @@ QPushButton:hover {
 }</string>
         </property>
         <property name="text">
-         <string>Версия: 1.0.2.9</string>
+         <string>Версия: </string>
         </property>
        </widget>
       </item>
