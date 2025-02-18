@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     tags:
-      - 'v*' # Запускать при пуше тегов, начинающихся с v (например v1.0.0)
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -26,10 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller==6.3.0
+        pip install pywin32
         
     - name: Build Windows exe
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "design.ui;." --add-data "assets/*;assets/" --icon "assets/icon.ico" --version-file "file_version_info.txt" --hidden-import psutil --name "IB-Launcher" qt_version.py
+        pyinstaller --clean ib-launcher.spec
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -60,4 +61,4 @@ jobs:
           windows/IB-Launcher.exe
         draft: false
         prerelease: false
-        generate_release_notes: true 
+        generate_release_notes: true
