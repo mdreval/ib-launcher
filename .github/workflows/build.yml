@@ -38,8 +38,35 @@ jobs:
         name: IB-Launcher-Windows
         path: dist/IB-Launcher.exe
 
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller==6.3.0
+        
+    - name: Build macOS app
+      run: |
+        pyinstaller --clean ib-launcher.spec
+        
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: IB-Launcher-macOS
+        path: dist/IB-Launcher
+
   create-release:
-    needs: [build-windows]
+    needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -54,6 +81,12 @@ jobs:
         name: IB-Launcher-Windows
         path: windows
         
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: IB-Launcher-macOS
+        path: macos
+        
     - name: Create Release
       uses: softprops/action-gh-release@v1
       env:
@@ -61,6 +94,7 @@ jobs:
       with:
         files: |
           windows/IB-Launcher.exe
+          macos/IB-Launcher
         draft: false
         prerelease: false
         generate_release_notes: true

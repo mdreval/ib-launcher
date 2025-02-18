@@ -109,7 +109,7 @@ def copy_default_configs(install_path):
                 logging.info(f"Скопирован файл servers.dat")
             else:
                 logging.warning("Файл servers.dat не найден в assets")
-            
+        
     except Exception as e:
         logging.error(f"Ошибка копирования конфигурации: {str(e)}")
 
@@ -327,7 +327,7 @@ class InstallThread(QThread):
         """Подготавливает окружение для установки"""
         try:
             self.status_update.emit("Подготовка директории...")
-            
+
             # Создаем основные директории
             required_dirs = [
                 self.install_path,
@@ -380,7 +380,7 @@ class InstallThread(QThread):
     def _install_forge(self):
         try:
             logging.info(f"Начало установки Forge. Версия: {self.version}")
-            
+
             # Преобразуем формат версии
             if self.version.startswith("1.20.1-forge-"):
                 self.version = self.version.replace("-forge-", "-")
@@ -459,7 +459,6 @@ class InstallThread(QThread):
                         json.dump(mods_info, f)
                     
                     logging.info("Локальный модпак установлен")
-                    return
                 else:
                     raise ValueError("Модпак не найден в assets")
             
@@ -631,7 +630,7 @@ class InstallThread(QThread):
 
             # Отправляем сигнал для закрытия главного окна
             QApplication.quit()
-
+            
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
@@ -945,7 +944,7 @@ class MainWindow(QMainWindow):
             if response == QMessageBox.Ok:
                 QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
             return False
-            
+
         except Exception as e:
             logging.error(f"Ошибка проверки Java: {str(e)}", exc_info=True)
             response = QMessageBox.critical(
@@ -1505,7 +1504,7 @@ class MainWindow(QMainWindow):
             
             # Для exe версии проверяем GitHub
             # ... существующий код проверки GitHub ...
-            
+
         except Exception as e:
             logging.error(f"Ошибка проверки модов: {str(e)}")
             return False
