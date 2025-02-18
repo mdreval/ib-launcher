@@ -1274,32 +1274,56 @@ class MainWindow(QMainWindow):
                 return
 
             # Проверяем наличие модов
-            mods_dir = os.path.join(install_path, "mods")
+            """ mods_dir = os.path.join(install_path, "mods")
             if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
-                # Проверяем локальный modpack.zip
-                local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
-                if os.path.exists(local_modpack):
-                    logging.info("Найден локальный modpack.zip")
-                    self.status_label.setText("Установка модпака...")
+                # Скачиваем модпак с GitHub
+                self.status_label.setText("Скачивание модпака...")
+                logging.info("Начало скачивания модпака с GitHub")
+                
+                try:
+                    # Получаем последний релиз
+                    api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+                    response = requests.get(api_url, timeout=10)
+                    response.raise_for_status()
+                    latest_release = response.json()
+                    
+                    # Ищем модпак в ассетах релиза
+                    modpack_url = None
+                    for asset in latest_release['assets']:
+                        if asset['name'] == 'modpack.zip':
+                            modpack_url = asset['browser_download_url']
+                            break
+                    
+                    if not modpack_url:
+                        raise Exception("Модпак не найден в последнем релизе")
+                    
+                    # Скачиваем модпак
+                    response = requests.get(modpack_url)
+                    response.raise_for_status()
                     
                     # Создаем папку mods если её нет
                     os.makedirs(mods_dir, exist_ok=True)
                     
-                    # Распаковываем модпак
-                    with zipfile.ZipFile(local_modpack, 'r') as zip_ref:
-                        # Получаем список файлов в архиве
+                    # Сохраняем и распаковываем модпак
+                    temp_zip = os.path.join(mods_dir, "modpack.zip")
+                    with open(temp_zip, "wb") as f:
+                        f.write(response.content)
+                    
+                    # Распаковываем моды
+                    with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
                         for file_info in zip_ref.filelist:
-                            # Проверяем, что это jar файл
                             if file_info.filename.endswith('.jar'):
-                                # Извлекаем только в папку mods
                                 zip_ref.extract(file_info.filename, mods_dir)
                                 logging.info(f"Установлен мод: {file_info.filename}")
                     
-                    logging.info("Модпак установлен из assets")
-                else:
-                    logging.warning("Модпак не найден в assets")
-                    QMessageBox.warning(self, "Внимание", "Модпак не найден!")
-                    return
+                    # Удаляем временный zip
+                    os.remove(temp_zip)
+                    logging.info("Модпак успешно установлен")
+                    
+                except Exception as e:
+                    logging.error(f"Ошибка установки модпака: {str(e)}")
+                    QMessageBox.warning(self, "Ошибка", f"Не удалось установить модпак: {str(e)}")
+                    return """
 
             # Если все проверки пройдены, запускаем установку/игру
             version_to_install = forge_version if forge_version else minecraft_version
@@ -1579,7 +1603,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.5.8"
+            current_version = "1.0.5.9"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1621,7 +1645,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.5.8"
+            current_version = "1.0.5.9"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
