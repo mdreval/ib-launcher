@@ -63,6 +63,8 @@ jobs:
     - name: Build macOS app
       run: |
         pyinstaller --clean ib-launcher-mac.spec
+        mkdir -p dist/IB-Launcher.app/Contents/MacOS
+        mv dist/IB-Launcher/* dist/IB-Launcher.app/Contents/MacOS/
         
     - name: Create DMG
       run: |
@@ -71,11 +73,11 @@ jobs:
           --window-pos 200 120 \
           --window-size 600 400 \
           --icon-size 100 \
-          --icon "IB-Launcher" 175 120 \
-          --hide-extension "IB-Launcher" \
+          --icon "IB-Launcher.app" 175 120 \
+          --hide-extension "IB-Launcher.app" \
           --app-drop-link 425 120 \
           "IB-Launcher.dmg" \
-          "dist/IB-Launcher"
+          "dist/IB-Launcher.app"
         
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
