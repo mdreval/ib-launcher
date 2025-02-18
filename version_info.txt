@@ -1,7 +1,9 @@
+# UTF-8
+#
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 3, 1),
-    prodvers=(1, 0, 3, 1),
+    filevers=(1, 0, 3, 2),
+    prodvers=(1, 0, 3, 2),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -15,12 +17,12 @@ VSVersionInfo(
         u'040904B0',
         [StringStruct(u'CompanyName', u'IgroBar'),
         StringStruct(u'FileDescription', u'IB Launcher'),
-        StringStruct(u'FileVersion', u'1.0.3.1'),
+        StringStruct(u'FileVersion', u'1.0.3.2'),
         StringStruct(u'InternalName', u'IB-Launcher'),
         StringStruct(u'LegalCopyright', u'Copyright (c) 2024 IgroBar'),
         StringStruct(u'OriginalFilename', u'IB-Launcher.exe'),
         StringStruct(u'ProductName', u'IB Launcher'),
-        StringStruct(u'ProductVersion', u'1.0.3.1')])
+        StringStruct(u'ProductVersion', u'1.0.3.2')])
     ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]
