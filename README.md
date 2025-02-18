@@ -1,32 +1,27 @@
-# IB-Launcher
+# IB Launcher
 
 [English version below](#ib-launcher-english)
 
-## Русская версия
+## 🇷🇺 Русский
+Лаунчер для сервера IGROBAR с автоматическим обновлением модов.
 
-### Описание
-IB-Launcher - это кроссплатформенный лаунчер для Minecraft с поддержкой модов, разработанный для упрощения установки и обновления модпаков. Лаунчер поддерживает Windows и macOS.
-
-### Основные возможности
+### Возможности
 - Автоматическая установка Minecraft и Forge
-- Управление модпаками и их обновлениями
-- Автоматическая установка Java
-- Настройка памяти для игры
-- Поддержка нескольких версий Minecraft и Forge
-- Автоматическое обновление
+- Автоматическое обновление модов
+- Автоматическая настройка памяти
+- Поддержка Windows и macOS
+- Умная система обновления модов (проверка актуальности)
+- Поддержка как локальных, так и удаленных модпаков
 
 ### Системные требования
-- Windows 10/11 или macOS 10.15+
-- 4 ГБ оперативной памяти (рекомендуется 8 ГБ)
-- Java 17 или выше (устанавливается автоматически)
-- Подключение к интернету
+- Windows 10/11 или macOS 10.13+
+- Java 17+
+- 8 GB RAM минимум
 
 ### Установка
-1. Скачайте последнюю версию лаунчера:
-   - Для Windows: `IB-Launcher.exe`
-   - Для macOS: `IB-Launcher.dmg`
-2. Запустите установщик
-3. Следуйте инструкциям на экране
+1. Скачайте последнюю версию лаунчера из [релизов](https://github.com/mdreval/ib-launcher/releases)
+2. Запустите скачанный файл
+3. Следуйте инструкциям в лаунчере
 
 ### Использование
 1. Запустите лаунчер
@@ -36,36 +31,33 @@ IB-Launcher - это кроссплатформенный лаунчер для 
 5. Нажмите "Играть"
 
 ### Обратная связь
-- YouTube: [@igrobar](https://www.youtube.com/@igrobar)
-- Telegram: [@igrobar](https://t.me/igrobar)
+- YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
+- Telegram: [@IGROBAR](https://t.me/igrobar)
 
 ---
 
 ## IB-Launcher (English)
 
 ### Description
-IB-Launcher is a cross-platform Minecraft launcher with mod support, designed to simplify modpack installation and updates. The launcher supports Windows and macOS.
+IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod support, designed to simplify modpack installation and updates. The launcher supports Windows and macOS.
 
 ### Key Features
 - Automatic Minecraft and Forge installation
-- Modpack management and updates
-- Automatic Java installation
-- Memory allocation settings
-- Multiple Minecraft and Forge versions support
-- Automatic updates
+- Automatic mod updates
+- Automatic memory configuration
+- Windows and macOS support
+- Smart mod update system (version checking)
+- Support for both local and remote modpacks
 
 ### System Requirements
-- Windows 10/11 or macOS 10.15+
-- 4 GB RAM (8 GB recommended)
-- Java 17 or higher (automatically installed)
-- Internet connection
+- Windows 10/11 or macOS 10.13+
+- Java 17+
+- 8 GB RAM minimum
 
 ### Installation
-1. Download the latest version:
-   - For Windows: `IB-Launcher.exe`
-   - For macOS: `IB-Launcher.dmg`
-2. Run the installer
-3. Follow the on-screen instructions
+1. Download the latest launcher version from [releases](https://github.com/mdreval/ib-launcher/releases)
+2. Run the downloaded file
+3. Follow the launcher instructions
 
 ### Usage
 1. Launch the application
@@ -75,5 +67,5 @@ IB-Launcher is a cross-platform Minecraft launcher with mod support, designed to
 5. Click "Play"
 
 ### Feedback
-- YouTube: [@igrobar](https://www.youtube.com/@igrobar)
-- Telegram: [@igrobar](https://t.me/igrobar)
+- YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
+- Telegram: [@IGROBAR](https://t.me/igrobar)
