@@ -41,6 +41,8 @@ jobs:
     needs: [build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     
     steps:
     - name: Download Windows artifact
@@ -51,6 +53,8 @@ jobs:
         
     - name: Create Release
       uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         files: |
           windows/IB-Launcher.exe
