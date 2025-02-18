@@ -435,52 +435,48 @@ class InstallThread(QThread):
                         current_modpack_info = json.load(f)
                 
                 # Сравниваем с информацией из релиза
-                if (current_modpack_info.get('sha256') == modpack_asset.get('sha256') and
-                    current_modpack_info.get('size') == modpack_asset.get('size') and
+                if (current_modpack_info.get('size') == modpack_asset.get('size') and
                     all(os.path.exists(os.path.join(mods_dir, mod)) 
                         for mod in current_modpack_info.get('mods', []))):
                     logging.info("Модпак актуален, обновление не требуется")
                     return
                 
-                # Скачиваем modpack.zip во временную папку
-                temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
-                os.makedirs(temp_dir, exist_ok=True)
-                temp_modpack = os.path.join(temp_dir, "modpack.zip")
-                
+                # Скачиваем модпак
                 self.status_update.emit("Скачивание модпака...")
                 response = requests.get(modpack_asset['browser_download_url'], stream=True)
                 response.raise_for_status()
+                
+                temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_modpack = os.path.join(temp_dir, "modpack.zip")
                 
                 with open(temp_modpack, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
                 
-                # Удаляем старые моды
-                self.status_update.emit("Удаление старых модов...")
-                for file in os.listdir(mods_dir):
-                    if file.endswith('.jar'):
-                        try:
-                            file_path = os.path.join(mods_dir, file)
-                            os.remove(file_path)
-                            logging.info(f"Удален старый мод: {file}")
-                        except Exception as e:
-                            logging.error(f"Ошибка удаления мода {file}: {str(e)}")
-                
-                # Список установленных модов
+                # Получаем список установленных модов
                 installed_mods = []
                 
-                # Устанавливаем моды из скачанного архива
-                self.status_update.emit("Установка модов...")
+                # Удаляем старые моды
+                if os.path.exists(mods_dir):
+                    for file in os.listdir(mods_dir):
+                        if file.endswith('.jar'):
+                            try:
+                                os.remove(os.path.join(mods_dir, file))
+                                logging.info(f"Удален старый мод: {file}")
+                            except Exception as e:
+                                logging.error(f"Ошибка удаления мода {file}: {str(e)}")
+                
+                # Распаковываем новые моды
                 with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
                     for file_info in zip_ref.filelist:
                         if file_info.filename.endswith('.jar'):
-                            zip_ref.extract(file_info.filename, mods_dir)
+                            zip_ref.extract(file_info, mods_dir)
                             installed_mods.append(file_info.filename)
                             logging.info(f"Установлен мод: {file_info.filename}")
                 
                 # Сохраняем информацию о модпаке
                 modpack_info = {
-                    'sha256': modpack_asset['sha256'],
                     'size': modpack_asset['size'],
                     'updated_at': modpack_asset['updated_at'],
                     'mods': installed_mods
@@ -1438,8 +1434,7 @@ class MainWindow(QMainWindow):
             if not modpack_asset:
                 return False
                 
-            if (current_modpack_info.get('sha256') == modpack_asset.get('sha256') and
-                current_modpack_info.get('size') == modpack_asset.get('size') and
+            if (current_modpack_info.get('size') == modpack_asset.get('size') and
                 all(os.path.exists(os.path.join(mods_dir, mod)) 
                     for mod in current_modpack_info.get('mods', []))):
                 logging.info("Моды актуальны")
@@ -1456,7 +1451,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.4.3"
+            current_version = "1.0.4.4"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1498,7 +1493,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.4.3"
+            current_version = "1.0.4.4"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
