@@ -410,9 +410,12 @@ class InstallThread(QThread):
             mods_dir = os.path.join(self.install_path, "mods")
             os.makedirs(mods_dir, exist_ok=True)
             
+            # Путь к файлу с информацией о модпаке
+            modpack_info_file = os.path.join(mods_dir, "modpack_info.json")
+            
             if is_bundled:
                 # Для exe версии проверяем GitHub
-                self.status_update.emit("Загрузка модпака с GitHub...")
+                self.status_update.emit("Проверка обновлений модпака...")
                 api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
                 response = requests.get(api_url, timeout=10, verify=True)
                 response.raise_for_status()
@@ -422,6 +425,20 @@ class InstallThread(QThread):
                                     if asset['name'] == 'modpack.zip'), None)
                 if not modpack_asset:
                     raise ValueError("Модпак не найден в релизе")
+                
+                # Проверяем информацию о текущем модпаке
+                current_modpack_info = {}
+                if os.path.exists(modpack_info_file):
+                    with open(modpack_info_file, 'r') as f:
+                        current_modpack_info = json.load(f)
+                
+                # Сравниваем с информацией из релиза
+                if (current_modpack_info.get('sha') == modpack_asset['sha'] and
+                    current_modpack_info.get('size') == modpack_asset['size'] and
+                    all(os.path.exists(os.path.join(mods_dir, mod)) 
+                        for mod in current_modpack_info.get('mods', []))):
+                    logging.info("Модпак актуален, обновление не требуется")
+                    return
                 
                 # Скачиваем modpack.zip во временную папку
                 temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
@@ -447,21 +464,28 @@ class InstallThread(QThread):
                         except Exception as e:
                             logging.error(f"Ошибка удаления мода {file}: {str(e)}")
                 
+                # Список установленных модов
+                installed_mods = []
+                
                 # Устанавливаем моды из скачанного архива
                 self.status_update.emit("Установка модов...")
                 with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
                     for file_info in zip_ref.filelist:
                         if file_info.filename.endswith('.jar'):
                             zip_ref.extract(file_info.filename, mods_dir)
+                            installed_mods.append(file_info.filename)
                             logging.info(f"Установлен мод: {file_info.filename}")
                 
-                # Сохраняем информацию о модах
-                mods_info_file = os.path.join(mods_dir, "mods_info.json")
-                with open(mods_info_file, 'w') as f:
-                    json.dump({
-                        'size': modpack_asset['size'],
-                        'updated_at': modpack_asset['updated_at']
-                    }, f)
+                # Сохраняем информацию о модпаке
+                modpack_info = {
+                    'sha': modpack_asset['sha'],
+                    'size': modpack_asset['size'],
+                    'updated_at': modpack_asset['updated_at'],
+                    'mods': installed_mods
+                }
+                
+                with open(modpack_info_file, 'w') as f:
+                    json.dump(modpack_info, f, indent=4)
                 
                 # Удаляем временный файл
                 try:
@@ -471,9 +495,6 @@ class InstallThread(QThread):
                 
                 logging.info("Модпак успешно установлен")
                 self.status_update.emit("Модпак установлен")
-                
-                # Небольшая задержка, чтобы пользователь увидел сообщение
-                time.sleep(1)
                 
             else:
                 # Код для локальной версии остается без изменений
@@ -1540,7 +1561,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.9"
+            current_version = "1.0.4.0"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1582,7 +1603,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.9"
+            current_version = "1.0.4.0"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
