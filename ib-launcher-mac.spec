@@ -6,17 +6,21 @@ a = Analysis(
     ['qt_version.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets')],
-    hiddenimports=[],
+    datas=[
+        ('design.ui', '.'),
+        ('assets/*', 'assets/')
+    ],
+    hiddenimports=['psutil'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['numpy', '_multiarray_tests'],  # Исключаем numpy
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -31,10 +35,10 @@ exe = EXE(
     upx=True,
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/icon.icns'
 )
 
 coll = COLLECT(
@@ -51,6 +55,12 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='IB-Launcher.app',
-    icon=None,
-    bundle_identifier=None,
+    icon='assets/icon.icns',
+    bundle_identifier='com.igrobar.launcher',
+    info_plist={
+        'CFBundleShortVersionString': '1.0.3.4',
+        'CFBundleVersion': '1.0.3.4',
+        'NSHighResolutionCapable': True,
+        'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
+    }
 ) 

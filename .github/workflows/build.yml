@@ -36,9 +36,7 @@ jobs:
       if: runner.os == 'Windows'
       shell: cmd
       run: |
-        dir
-        type version_info.txt
-        pyinstaller --clean --version-file=version_info.txt ib-launcher.spec
+        pyinstaller --clean ib-launcher.spec
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -77,14 +75,7 @@ jobs:
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        pyinstaller --clean --windowed \
-          --add-data "design.ui:." \
-          --add-data "assets/*:assets/" \
-          --icon "assets/icon.icns" \
-          --name "IB-Launcher" \
-          --osx-bundle-identifier "com.igrobar.launcher" \
-          --target-arch universal2 \
-          qt_version.py
+        pyinstaller --clean ib-launcher-mac.spec
         
         # Копируем Info.plist
         cp Info.plist "dist/IB-Launcher.app/Contents/Info.plist"
