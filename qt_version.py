@@ -506,6 +506,18 @@ class InstallThread(QThread):
             os.remove(temp_modpack)
             logging.info("Модпак успешно установлен")
             
+            # После успешной установки сохраняем информацию о модах
+            mods_info = {
+                'size': modpack_asset['size'],
+                'updated_at': modpack_asset['updated_at']
+            }
+            
+            mods_info_file = os.path.join(mods_dir, "mods_info.json")
+            with open(mods_info_file, 'w') as f:
+                json.dump(mods_info, f)
+            
+            logging.info("Информация о модах сохранена")
+            
         except Exception as e:
             logging.error(f"Ошибка установки модпака: {str(e)}")
             raise
@@ -1156,23 +1168,21 @@ class MainWindow(QMainWindow):
     def check_dependencies(self):
         """Проверяет наличие всех зависимостей"""
         try:
-            install_path = self.install_path.text().strip()
-            mods_dir = os.path.join(install_path, "mods")
+            self.status_update.emit("Проверка модов...")
             
-            # Проверяем наличие модов
-            if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
-                logging.info("Моды не найдены")
-                self.status_label.setText("Моды не найдены")
-                return False
-                
-            logging.info("Моды найдены")
-            return True
+            # Проверяем обновления модов
+            if self.check_mods_update():
+                logging.info("Требуется обновление модов")
+                self.status_update.emit("Обновление модов...")
+                self._install_modpack()
+                return
+            
+            logging.info("Моды актуальны")
             
         except Exception as e:
             logging.error(f"Ошибка проверки зависимостей: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", str(e))
-            return False
-            
+            raise
+
     def load_forge_cache(self):
         """Загрузка кеша версий Forge"""
         logging.info("Загрузка кеша Forge")
@@ -1433,6 +1443,64 @@ class MainWindow(QMainWindow):
         url = QUrl("https://t.me/igrobar")  # Замените на вашу ссылку
         QDesktopServices.openUrl(url)
         logging.info("Открыта ссылка на Telegram")
+
+    def check_mods_update(self):
+        """Проверяет обновления модов"""
+        try:
+            self.status_update.emit("Проверка обновлений модов...")
+            
+            # URL API GitHub для получения последнего релиза
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            
+            try:
+                response = requests.get(api_url, timeout=10)
+                response.raise_for_status()
+                release_data = response.json()
+                
+                # Ищем модпак среди assets
+                modpack_asset = None
+                for asset in release_data['assets']:
+                    if asset['name'] == 'modpack.zip':
+                        modpack_asset = asset
+                        break
+                    
+                if not modpack_asset:
+                    logging.warning("Модпак не найден в релизе")
+                    return False
+                    
+                # Получаем размер и дату модпака в релизе
+                remote_size = modpack_asset['size']
+                remote_updated = modpack_asset['updated_at']
+                
+                # Проверяем локальные моды
+                mods_dir = os.path.join(self.install_path, "mods")
+                if not os.path.exists(mods_dir):
+                    return True  # Нужно установить моды
+                    
+                # Создаем файл с информацией о модах
+                mods_info_file = os.path.join(mods_dir, "mods_info.json")
+                
+                # Если файл существует, проверяем информацию
+                if os.path.exists(mods_info_file):
+                    with open(mods_info_file, 'r') as f:
+                        local_info = json.load(f)
+                        
+                    # Сравниваем размер и дату
+                    if (local_info['size'] != remote_size or 
+                        local_info['updated_at'] != remote_updated):
+                        logging.info("Найдено обновление модов")
+                        return True
+                else:
+                    # Если файла нет, нужно обновить моды
+                    return True
+                    
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Ошибка проверки обновлений: {str(e)}")
+                return False
+            
+        except Exception as e:
+            logging.error(f"Ошибка проверки модов: {str(e)}")
+            return False
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
