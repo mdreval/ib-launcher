@@ -58,9 +58,17 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.4.8',
-        'CFBundleVersion': '1.0.4.8',
+        'CFBundleShortVersionString': '1.0.5.2',
+        'CFBundleVersion': '1.0.5.2',
         'NSHighResolutionCapable': True,
-        'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
+        'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar',
+        'LSMinimumSystemVersion': '10.13.0',
+        'NSAppleEventsUsageDescription': 'IB Launcher needs to control Minecraft for launching.',
+        'NSAppleMusicUsageDescription': 'IB Launcher needs access to media for game sounds.',
+        'NSMicrophoneUsageDescription': 'IB Launcher needs microphone access for in-game voice chat.',
+        'NSDocumentsFolderUsageDescription': 'IB Launcher needs access to Documents for saving game files.',
+        'NSDownloadsFolderUsageDescription': 'IB Launcher needs access to Downloads for modpack updates.',
+        'LSApplicationCategoryType': 'public.app-category.games',
+        'LSRequiresNativeExecution': True
     }
 ) 
