@@ -1,3 +1,5 @@
+![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
+
 # IB Launcher
 
 [English version below](#ib-launcher-english)
@@ -65,6 +67,8 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 3. Select Minecraft and Forge versions
 4. Adjust memory allocation
 5. Click "Play"
+
+![title](https://github.com/user-attachments/assets/942ebdc8-7696-456e-a2b9-24a646ff7f36)
 
 ### Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
