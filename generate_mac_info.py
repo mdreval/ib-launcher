@@ -34,7 +34,7 @@ def generate_info_plist():
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
     <key>CFBundleDisplayName</key>
-    <string>IB Launcher</string>
+    <string>IB-Launcher</string>
     <key>CFBundleExecutable</key>
     <string>IB-Launcher</string>
     <key>CFBundleIconFile</key>
@@ -44,7 +44,7 @@ def generate_info_plist():
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>IB Launcher</string>
+    <string>IB-Launcher</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -52,7 +52,7 @@ def generate_info_plist():
     <key>CFBundleVersion</key>
     <string>{version}</string>
     <key>LSMinimumSystemVersion</key>
-    <string>10.15.0</string>
+    <string>10.13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>

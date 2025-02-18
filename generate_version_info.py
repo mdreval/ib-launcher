@@ -28,7 +28,9 @@ def generate_version_info():
     version = get_version()
     version_tuple = tuple(map(int, version.split('.')))
     
-    template = f'''VSVersionInfo(
+    template = f'''# UTF-8
+#
+VSVersionInfo(
   ffi=FixedFileInfo(
     filevers={version_tuple},
     prodvers={version_tuple},
@@ -47,7 +49,7 @@ def generate_version_info():
         StringStruct(u'FileDescription', u'IB Launcher'),
         StringStruct(u'FileVersion', u'{version}'),
         StringStruct(u'InternalName', u'IB-Launcher'),
-        StringStruct(u'LegalCopyright', u'Copyright (c) 2024 IgroBar'),
+        StringStruct(u'LegalCopyright', u'Copyright (c) 2024 Igrobar'),
         StringStruct(u'OriginalFilename', u'IB-Launcher.exe'),
         StringStruct(u'ProductName', u'IB Launcher'),
         StringStruct(u'ProductVersion', u'{version}')])
