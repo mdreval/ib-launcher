@@ -29,7 +29,7 @@ jobs:
         
     - name: Build Windows exe
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "design.ui;." --add-data "assets/*;assets/" --icon "assets/icon.ico" --version-file "file_version_info.txt" --name "IB-Launcher" qt_version.py
+        pyinstaller --noconfirm --onefile --windowed --add-data "design.ui;." --add-data "assets/*;assets/" --icon "assets/icon.ico" --version-file "file_version_info.txt" --hidden-import psutil --name "IB-Launcher" qt_version.py
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
