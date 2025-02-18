@@ -1,0 +1,36 @@
+# Исключаем модпак и виртуальное окружение
+assets/modpack.zip
+.venv/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.egg-info/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Logs
+*.log
+logs/
+*.log.gz
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Кеш и конфиги
+forge_cache.json
+launcher_config.json
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/

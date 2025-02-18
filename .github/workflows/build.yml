@@ -1,0 +1,58 @@
+name: Build IB-Launcher
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*' # Запускать при пуше тегов, начинающихся с v (например v1.0.0)
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Build Windows exe
+      run: |
+        build.bat
+        
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: IB-Launcher-Windows
+        path: dist/IB-Launcher.exe
+
+  create-release:
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: IB-Launcher-Windows
+        path: windows
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          windows/IB-Launcher.exe
+        draft: false
+        prerelease: false
+        generate_release_notes: true 

@@ -1,0 +1,1238 @@
+import os
+import sys
+import warnings
+import json
+
+# Игнорируем все предупреждения
+warnings.filterwarnings("ignore")
+os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.*=false;qt.gui.icc*=false'
+
+import shutil
+import logging
+import zipfile
+import requests
+import subprocess
+import platform
+from uuid import uuid1
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QProcess, QUrl, QTimer
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QMessageBox,
+                            QWidget, QVBoxLayout, QDialog, QVBoxLayout,
+                            QLabel, QProgressBar, QPushButton, QFileDialog,
+                            QHBoxLayout, QSlider, QGroupBox, QComboBox, QLineEdit,
+                            QPlainTextEdit)
+from PyQt5.QtGui import QPixmap, QDesktopServices, QFont, QIcon
+from PyQt5 import uic
+from minecraft_launcher_lib.utils import get_version_list
+from minecraft_launcher_lib.install import install_minecraft_version
+from minecraft_launcher_lib.command import get_minecraft_command
+from random_username.generate import generate_username
+import minecraft_launcher_lib.forge
+import nbtlib
+
+try:
+    import win32gui
+except ImportError:
+    pass
+
+def resource_path(relative_path):
+    """ Получить абсолютный путь к ресурсу, работает как для разработки, так и для PyInstaller """
+    try:
+        # PyInstaller создает временную папку и хранит путь в _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+# Настройка логирования
+LOG_FILE = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config", "launcher.log")
+
+# Конфигурация
+DEFAULT_MINECRAFT_DIR = os.path.join(
+    os.path.expanduser("~"),
+    "AppData", "Roaming", "IBLauncher" if platform.system() == "Windows"
+    else "Library/Application Support/IBLauncher"
+)
+FORGE_VERSIONS = {
+    "1.20.1-forge-47.3.22": {
+        "installer": "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.3.22/forge-1.20.1-47.3.22-installer.jar"
+    }
+}
+
+# Изменим путь к конфигу и кешу
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config")
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
+FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
+
+# Создаем директорию для конфигов и логов
+os.makedirs(CONFIG_DIR, exist_ok=True)
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename=LOG_FILE,
+    filemode='w',
+    encoding='utf-8'
+)
+
+def copy_default_configs(install_path):
+    """Копирует файлы конфигурации из assets при первом запуске"""
+    try:
+        # Создаем директорию если её нет
+        os.makedirs(install_path, exist_ok=True)
+        
+        # Пути к файлам в assets
+        default_options = resource_path(os.path.join("assets", "options.txt"))
+        default_servers = resource_path(os.path.join("assets", "servers.dat"))
+        
+        # Пути назначения
+        dest_options = os.path.join(install_path, "options.txt")
+        dest_servers = os.path.join(install_path, "servers.dat")
+        
+        # Копируем options.txt только если его нет
+        if not os.path.exists(dest_options):
+            if os.path.exists(default_options):
+                # Копируем файл
+                shutil.copy2(default_options, dest_options)
+                logging.info(f"Скопирован файл options.txt")
+            else:
+                logging.warning("Файл options.txt не найден в assets")
+        
+        # Копируем servers.dat только если его нет
+        if not os.path.exists(dest_servers):
+            if os.path.exists(default_servers):
+                shutil.copy2(default_servers, dest_servers)
+                logging.info(f"Скопирован файл servers.dat")
+            else:
+                logging.warning("Файл servers.dat не найден в assets")
+            
+    except Exception as e:
+        logging.error(f"Ошибка копирования конфигурации: {str(e)}")
+
+def clean_quickplay_settings(install_path):
+    """Полная очистка всех настроек быстрого старта"""
+    try:
+        # 1. Очистка options.txt
+        options_file = os.path.join(install_path, "options.txt")
+        if os.path.exists(options_file):
+            try:
+                with open(options_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                with open(options_file, 'w', encoding='utf-8') as f:
+                    for line in lines:
+                        if not any(x in line.lower() for x in ['quickplay', 'lastserver', 'lastworld']):
+                            f.write(line)
+                logging.info("Очищены настройки в options.txt")
+            except Exception as e:
+                logging.error(f"Ошибка при очистке options.txt: {str(e)}")
+
+        # 2. Очистка JSON файлов
+        json_files = [
+            "launcher_profiles.json",
+            "launcher_accounts.json",
+            "usercache.json"
+        ]
+        
+        for file in json_files:
+            file_path = os.path.join(install_path, file)
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        try:
+                            data = json.load(f)
+                            if isinstance(data, dict):
+                                # Рекурсивно удаляем все ключи, содержащие quickPlay
+                                def clean_dict(d):
+                                    if isinstance(d, dict):
+                                        keys_to_remove = [k for k in d.keys() 
+                                                        if any(x in str(k).lower() 
+                                                              for x in ['quickplay', 'lastserver', 'lastworld'])]
+                                        for k in keys_to_remove:
+                                            del d[k]
+                                        for v in d.values():
+                                            if isinstance(v, (dict, list)):
+                                                clean_dict(v)
+                                    elif isinstance(d, list):
+                                        for item in d:
+                                            clean_dict(item)
+                                
+                                clean_dict(data)
+                                with open(file_path, 'w', encoding='utf-8') as f:
+                                    json.dump(data, f, indent=4)
+                                logging.info(f"Очищены настройки в {file}")
+                        except json.JSONDecodeError:
+                            logging.info(f"Файл {file} не является JSON файлом")
+                except Exception as e:
+                    logging.error(f"Ошибка при очистке {file}: {str(e)}")
+
+        # 3. Удаление файлов быстрого старта
+        import glob, re
+        pattern = re.compile(r'quickplay|lastserver|lastworld', re.IGNORECASE)
+        all_files = glob.glob(os.path.join(install_path, "*"))
+        for f in all_files:
+            if pattern.search(os.path.basename(f)):
+                try:
+                    os.remove(f)
+                    logging.info(f"Удален файл: {f}")
+                except Exception as e:
+                    logging.error(f"Ошибка удаления файла {f}: {str(e)}")
+
+    except Exception as e:
+        logging.error(f"Ошибка при очистке настроек быстрого старта: {str(e)}")
+
+class JavaInstaller(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Установка Java")
+        self.setFixedSize(400, 150)
+
+        layout = QVBoxLayout()
+        self.status_label = QLabel("Для работы требуется Java 17+. Установить сейчас?")
+        self.install_button = QPushButton("Установить Java 17")
+        self.cancel_button = QPushButton("Отмена")
+
+        layout.addWidget(self.status_label)
+        layout.addWidget(self.install_button)
+        layout.addWidget(self.cancel_button)
+        self.setLayout(layout)
+
+        self.install_button.clicked.connect(self.start_java_installation)
+        self.cancel_button.clicked.connect(self.reject)
+
+    def start_java_installation(self):
+        try:
+            os_type = platform.system()
+            
+            # Обновленные URL для скачивания Java
+            java_urls = {
+                "Windows": "https://download.oracle.com/java/17/archive/jdk-17.0.10_windows-x64_bin.exe",
+                "Darwin": "https://download.oracle.com/java/17/archive/jdk-17.0.10_macos-aarch64_bin.dmg"
+            }
+            
+            if os_type not in java_urls:
+                raise Exception(f"Неподдерживаемая операционная система: {os_type}")
+            
+            # Добавляем заголовки для скачивания с Oracle
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            # Создаем временную папку для загрузки
+            temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            installer_name = "jdk-17.exe" if os_type == "Windows" else "jdk-17.dmg"
+            installer_path = os.path.join(temp_dir, installer_name)
+            
+            # Скачиваем установщик
+            self.status_label.setText("Загрузка Java...")
+            QApplication.processEvents()
+            
+            response = requests.get(java_urls[os_type], headers=headers, stream=True)
+            response.raise_for_status()
+            
+            with open(installer_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            self.status_label.setText("Запуск установщика...")
+            QApplication.processEvents()
+            
+            # Для Windows
+            if os_type == "Windows":
+                result = subprocess.run(
+                    f'powershell "Start-Process \'{installer_path}\' -ArgumentList \'/s\' -Verb RunAs -Wait"',
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode != 0:
+                    raise Exception(f"Ошибка: {result.stderr}")
+            
+            # Для macOS
+            elif os_type == "Darwin":
+                mount_output = subprocess.check_output(["hdiutil", "attach", installer_path]).decode()
+                mount_point = mount_output.split("\t")[-1].strip()
+                pkg_path = os.path.join(mount_point, "JDK 17.pkg")
+                
+                install_process = subprocess.run(
+                    ["sudo", "installer", "-pkg", pkg_path, "-target", "/"],
+                    input=subprocess.getoutput("whoami").strip() + "\n",
+                    text=True,
+                    capture_output=True
+                )
+                
+                if install_process.returncode != 0:
+                    raise Exception(f"Ошибка: {install_process.stderr}")
+                
+                subprocess.run(["hdiutil", "detach", mount_point], check=True)
+            
+            # Очищаем временные файлы
+            try:
+                os.remove(installer_path)
+            except:
+                pass
+            
+            QMessageBox.information(
+                self,
+                "Успех",
+                "Java успешно установлена! Лаунчер будет перезапущен."
+            )
+            QApplication.exit(1337)
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки Java: {str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка установки: {str(e)}")
+
+class InstallThread(QThread):
+    progress_update = pyqtSignal(int, int, str)
+    status_update = pyqtSignal(str)
+    toggle_ui = pyqtSignal(bool)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, version, username, install_path, memory=4, launch_flags_input=None):
+        super().__init__()
+        self.version = version
+        self.username = username
+        self.install_path = install_path
+        self.memory = memory
+        self.launch_flags_input = launch_flags_input
+        self.stop_requested = False
+
+    def run(self):
+        try:
+            self.toggle_ui.emit(False)
+            self._prepare_environment()
+
+            if "-" in self.version:  # Если это версия Forge (например, "1.20.1-47.2.20")
+                logging.info(f"Запуск установки Forge версии: {self.version}")
+                self._install_forge()
+            else:
+                logging.info(f"Запуск установки Minecraft версии: {self.version}")
+                self._install_minecraft()
+
+            self._install_modpack()
+            self._launch_game()
+        except Exception as e:
+            logging.error(f"Ошибка установки: {str(e)}", exc_info=True)
+            self.error_occurred.emit(f"Ошибка: {str(e)}")
+        finally:
+            self.toggle_ui.emit(True)
+
+    def _prepare_environment(self):
+        """Подготавливает окружение для установки"""
+        try:
+            self.status_update.emit("Подготовка директории...")
+            
+            # Создаем основные директории
+            required_dirs = [
+                self.install_path,
+                os.path.join(self.install_path, "versions"),
+                os.path.join(self.install_path, "libraries"),
+                os.path.join(self.install_path, "mods"),
+                os.path.join(self.install_path, "config"),
+                os.path.join(self.install_path, "schematics")
+            ]
+
+            # Создаем директории в AppData
+            appdata_dirs = [
+                os.path.join(CONFIG_DIR, "logs")
+            ]
+
+            # Создаем все необходимые директории
+            for directory in required_dirs + appdata_dirs:
+                os.makedirs(directory, exist_ok=True)
+                logging.info(f"Создана/проверена директория: {directory}")
+
+            # Копируем файлы конфигурации только при первом запуске
+            copy_default_configs(self.install_path)
+
+        except Exception as e:
+            logging.error(f"Ошибка подготовки окружения: {str(e)}")
+            raise
+
+    def _install_minecraft(self, version=None):
+        """Установка базовой версии Minecraft"""
+        version_to_install = version or self.version
+        self.status_update.emit(f"Установка Minecraft {version_to_install}...")
+        
+        # Добавляем startupinfo для скрытия консоли в Windows
+        startupinfo = None
+        if platform.system() == "Windows":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+
+        install_minecraft_version(
+            versionid=version_to_install,
+            minecraft_directory=self.install_path,
+            callback={
+                'setStatus': lambda text: self.status_update.emit(text),
+                'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
+                'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
+            }
+        )
+
+    def _install_forge(self):
+        try:
+            logging.info(f"Начало установки Forge. Версия: {self.version}")
+            
+            # Преобразуем формат версии
+            if self.version.startswith("1.20.1-forge-"):
+                self.version = self.version.replace("-forge-", "-")
+            
+            # Проверяем установку
+            versions_dir = os.path.join(self.install_path, "versions")
+            installed_version = minecraft_launcher_lib.forge.forge_to_installed_version(self.version)
+            
+            if os.path.exists(os.path.join(versions_dir, installed_version)):
+                logging.info(f"Forge версии {self.version} уже установлен")
+                return
+
+            # Скачиваем и устанавливаем Forge
+            minecraft_launcher_lib.forge.install_forge_version(
+                self.version,
+                self.install_path,
+                callback={
+                    'setStatus': lambda text: self.status_update.emit(text),
+                    'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
+                    'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
+                }
+            )
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки Forge: {str(e)}", exc_info=True)
+            raise
+
+    def _install_modpack(self):
+        """Устанавливает модпак"""
+        try:
+            self.status_update.emit("Проверка модпака...")
+            
+            # Проверяем наличие установленных модов
+            mods_dir = os.path.join(self.install_path, "mods")
+            if os.path.exists(mods_dir) and os.listdir(mods_dir):
+                logging.info("Моды уже установлены, пропускаем распаковку")
+                return
+            
+            # Загружаем модпак из GitHub
+            modpack_path = self.download_modpack()
+            
+            # Распаковываем модпак
+            self.status_update.emit("Установка модпака...")
+            with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
+                total_files = len(zip_ref.namelist())
+                for index, file in enumerate(zip_ref.namelist(), 1):
+                    zip_ref.extract(file, self.install_path)
+                    progress = int(index * 100 / total_files)
+                    self.progress_update.emit(progress, 100, "")
+            
+            # Удаляем временный файл модпака
+            os.remove(modpack_path)
+            logging.info("Модпак успешно установлен")
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки модпака: {str(e)}")
+            raise
+
+    def download_modpack(self):
+        """Загружает модпак из GitHub Releases"""
+        try:
+            self.status_update.emit("Проверка обновлений модпака...")
+            
+            # URL API GitHub для получения последнего релиза
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            
+            # Получаем информацию о последнем релизе
+            response = requests.get(api_url)
+            response.raise_for_status()
+            release_data = response.json()
+            
+            # Ищем модпак среди assets
+            modpack_asset = None
+            for asset in release_data['assets']:
+                if asset['name'] == 'modpack.zip':
+                    modpack_asset = asset
+                    break
+            
+            if not modpack_asset:
+                raise Exception("Модпак не найден в релизе")
+            
+            # Путь для сохранения модпака
+            temp_modpack = os.path.join(CONFIG_DIR, "modpack.zip")
+            
+            # Загружаем модпак
+            self.status_update.emit("Загрузка модпака...")
+            response = requests.get(modpack_asset['browser_download_url'], stream=True)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            block_size = 8192
+            
+            with open(temp_modpack, 'wb') as f:
+                for data in response.iter_content(block_size):
+                    f.write(data)
+                    if total_size:
+                        progress = int(os.path.getsize(temp_modpack) * 100 / total_size)
+                        self.progress_update.emit(progress, 100, "")
+            
+            return temp_modpack
+            
+        except Exception as e:
+            logging.error(f"Ошибка загрузки модпака: {str(e)}")
+            raise
+
+    def _launch_game(self):
+        try:
+            # Проверяем наличие имени пользователя
+            if not self.username:
+                self.error_occurred.emit("Введите имя пользователя")
+                return
+
+            # Преобразуем версию Forge в правильный формат
+            version_to_launch = self.version
+            if "-" in version_to_launch:
+                # Если это версия Forge, добавляем префикс forge
+                version_to_launch = version_to_launch.replace("-", "-forge-", 1)
+            
+            logging.info(f"Запуск версии: {version_to_launch}")
+
+            # Ищем путь к Java
+            java_path = None
+            possible_paths = [
+                'javaw.exe',  # Проверяем в PATH
+                'java.exe',   # Альтернативный вариант
+                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
+            ]
+
+            # Сначала проверяем через where
+            try:
+                result = subprocess.run(['where', 'javaw'], 
+                                     capture_output=True, 
+                                     text=True, 
+                                     creationflags=subprocess.CREATE_NO_WINDOW)
+                if result.returncode == 0:
+                    java_paths = result.stdout.strip().split('\n')
+                    if java_paths:
+                        java_path = java_paths[0]
+                        logging.info(f"Java найдена через where: {java_path}")
+            except Exception as e:
+                logging.warning(f"Не удалось найти Java через where: {e}")
+
+            # Если where не нашел, проверяем другие пути
+            if not java_path:
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        java_path = path
+                        logging.info(f"Java найдена по пути: {java_path}")
+                        break
+
+            if not java_path:
+                raise FileNotFoundError("Не удалось найти путь к Java. Убедитесь, что Java 17 установлена и добавлена в PATH")
+
+            # Генерируем опции запуска
+            options = {
+                'username': self.username,
+                'uuid': str(uuid1()),
+                'token': '',
+                'jvmArguments': [
+                    f'-Xmx{self.memory}G',
+                    '-Dlog4j2.formatMsgNoLookups=true',
+                    '-Dlog4j.configurationFile=',
+                    '-Dlog4j2.disable.jmx=true',
+                    '-Dmojang.useLogDirVariable=true'
+                ],
+                'executablePath': java_path,
+                'gameDirectory': self.install_path
+            }
+
+            # Получаем команду запуска
+            minecraft_command = minecraft_launcher_lib.command.get_minecraft_command(
+                version_to_launch,  # Используем преобразованную версию
+                self.install_path,
+                options
+            )
+
+            logging.info(f"Команда запуска: {' '.join(minecraft_command)}")
+            self.status_update.emit("Запуск Minecraft...")
+
+            process = subprocess.Popen(
+                minecraft_command,
+                cwd=self.install_path,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+
+            self.status_update.emit("Minecraft запущен")
+
+        except Exception as e:
+            logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
+            self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
+
+    def _download_file(self, url, destination):
+        self.status_update.emit(f"Скачивание {os.path.basename(destination)}...")
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        self.progress_update.emit(0, total_size, "")
+
+        with open(destination, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if self.stop_requested:
+                    raise InterruptedError("Загрузка отменена")
+                f.write(chunk)
+                downloaded += len(chunk)
+                self.progress_update.emit(downloaded, 0, "")
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.java_checked = False
+        self.forge_cache = self.load_forge_cache()
+        
+        # Загружаем UI
+        uic.loadUi(resource_path("design.ui"), self)
+        
+        # Устанавливаем иконку для окна и панели задач с учетом платформы
+        if platform.system() == "Windows":
+            # Устанавливаем иконку до создания окна
+            import ctypes
+            myappid = 'igrobar.iblauncher.1.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            
+            # Загружаем иконку
+            icon_path = resource_path(os.path.join("assets", "icon.ico"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+                # Устанавливаем иконку для приложения
+                import win32gui
+                try:
+                    win32gui.LoadImage(
+                        0, icon_path, win32gui.IMAGE_ICON,
+                        0, 0, win32gui.LR_LOADFROMFILE
+                    )
+                except Exception as e:
+                    logging.error(f"Ошибка загрузки иконки: {str(e)}")
+        
+        elif platform.system() == "Darwin":  # macOS
+            icon_path = resource_path(os.path.join("assets", "icon.icns"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+            
+        else:  # Linux и другие
+            icon_path = resource_path(os.path.join("assets", "icon.png"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+        
+        # Находим все необходимые виджеты
+        self.username = self.findChild(QLineEdit, "username_input")
+        self.minecraft_version = self.findChild(QComboBox, "minecraft_version")
+        self.forge_version = self.findChild(QComboBox, "forge_version")
+        self.install_path = self.findChild(QLineEdit, "install_path")
+        self.browse_button = self.findChild(QPushButton, "browse_button")
+        self.memory_slider = self.findChild(QSlider, "memory_slider")
+        self.memory_label = self.findChild(QLabel, "memory_label")
+        self.launch_flags_input = self.findChild(QPlainTextEdit, "launch_flags_input")
+        self.youtube_button = self.findChild(QPushButton, "youtube_button")
+        self.telegram_button = self.findChild(QPushButton, "telegram_button")
+        self.start_button = self.findChild(QPushButton, "start_button")
+        
+        self.setup_path()
+        self.check_java()
+        self.check_dependencies()
+        
+        # Загружаем конфигурацию и версии
+        self.load_config()
+        self.load_versions()
+
+        # Подключаем сигналы
+        self.browse_button.clicked.connect(self.select_install_path)
+        self.start_button.clicked.connect(self.start_installation)
+        self.minecraft_version.currentIndexChanged.connect(self.on_minecraft_version_changed)
+        self.forge_version.currentIndexChanged.connect(self.on_forge_version_changed)
+        self.username.textChanged.connect(self.save_config)
+        self.memory_slider.valueChanged.connect(self.on_memory_changed)
+        self.launch_flags_input.textChanged.connect(self.save_config)
+        self.install_path.textChanged.connect(self.check_game_installed)
+        self.forge_version.currentTextChanged.connect(self.check_game_installed)
+        self.youtube_button.clicked.connect(self.open_youtube)
+        self.telegram_button.clicked.connect(self.open_telegram)
+
+    def setup_path(self):
+        self.install_path.setText(DEFAULT_MINECRAFT_DIR)
+        os.makedirs(DEFAULT_MINECRAFT_DIR, exist_ok=True)
+        self.check_game_installed()
+
+    def select_install_path(self):
+        path = QFileDialog.getExistingDirectory(
+            self,
+            "Выберите папку для установки",
+            DEFAULT_MINECRAFT_DIR,
+            QFileDialog.ShowDirsOnly
+        )
+        if path:
+            self.install_path.setText(path)
+            os.makedirs(path, exist_ok=True)
+            self.check_game_installed()
+
+    def check_java(self):
+        """Проверяет наличие Java"""
+        try:
+            # Ищем путь к Java так же, как и при запуске
+            possible_paths = [
+                'javaw.exe',  # Проверяем в PATH
+                'java.exe',   # Альтернативный вариант
+                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
+            ]
+
+            java_path = None
+            
+            # Сначала проверяем через where
+            try:
+                result = subprocess.run(
+                    ['where', 'javaw'], 
+                    capture_output=True, 
+                    text=True, 
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                if result.returncode == 0:
+                    java_paths = result.stdout.strip().split('\n')
+                    if java_paths:
+                        java_path = java_paths[0]
+                        logging.info(f"Java найдена через where: {java_path}")
+            except Exception as e:
+                logging.warning(f"Не удалось найти Java через where: {e}")
+
+            # Если where не нашел, проверяем другие пути
+            if not java_path:
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        java_path = path
+                        logging.info(f"Java найдена по пути: {java_path}")
+                        break
+
+            if java_path:
+                # Проверяем версию найденной Java
+                java_exe = java_path.replace('javaw.exe', 'java.exe')
+                result = subprocess.run(
+                    [java_exe, '-version'], 
+                    capture_output=True,  # Используем только capture_output
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                
+                version_output = result.stderr
+                logging.info(f"Java version check output: {version_output}")
+                
+                # Проверяем версию через регулярное выражение
+                import re
+                version_pattern = r'version "([^"]+)"'
+                match = re.search(version_pattern, version_output)
+                
+                if match:
+                    version_string = match.group(1)
+                    logging.info(f"Found Java version: {version_string}")
+                    
+                    # Проверяем версию
+                    if any(str(v) in version_string for v in range(17, 22)):
+                        logging.info("Java version is compatible")
+                        return True
+            
+            # Если Java не найдена или версия не подходит
+            logging.warning("Java version is not compatible or not found")
+            response = QMessageBox.critical(
+                self,
+                "Ошибка",
+                "Java не установлена или версия ниже 17!\n\n" +
+                "Сейчас откроется страница загрузки Oracle Java.\n" +
+                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
+                "Для Windows рекомендуется Windows x64 Installer.",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            
+            if response == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            return False
+            
+        except Exception as e:
+            logging.error(f"Ошибка проверки Java: {str(e)}", exc_info=True)
+            response = QMessageBox.critical(
+                self,
+                "Ошибка",
+                "Java не найдена!\n\n" +
+                "Сейчас откроется страница загрузки Oracle Java.\n" +
+                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
+                "Для Windows рекомендуется Windows x64 Installer.",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            
+            if response == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            return False
+
+    def load_config(self):
+        try:
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+                    
+                    # Загружаем никнейм
+                    if 'username' in config:
+                        self.username.setText(config['username'])
+                    
+                    # Загружаем последние выбранные версии
+                    self.saved_minecraft_version = config.get('minecraft_version', '1.20.1')
+                    self.saved_forge_version = config.get('forge_version', '1.20.1-forge-47.3.22')
+                    
+                    # Загружаем путь установки
+                    install_path = config.get('install_path', '')
+                    if install_path:
+                        self.install_path.setText(install_path)
+                    else:
+                        self.install_path.setText(DEFAULT_MINECRAFT_DIR)
+                    
+                    # Загружаем настройки памяти
+                    memory = config.get('memory', None)
+                    if memory is not None:
+                        self.memory_slider.setValue(int(memory))
+                        self.memory_label.setText(f"{memory} ГБ")
+                    
+                    # Загружаем флаги запуска
+                    if 'launch_flags' in config:
+                        self.launch_flags_input.setPlainText(config['launch_flags'])
+            else:
+                # При первом запуске устанавливаем версии по умолчанию
+                self.saved_minecraft_version = '1.20.1'
+                self.saved_forge_version = '1.20.1-forge-47.3.22'
+
+        except Exception as e:
+            logging.error(f"Ошибка загрузки конфига: {str(e)}")
+            # При ошибке также устанавливаем версии по умолчанию
+            self.saved_minecraft_version = '1.20.1'
+            self.saved_forge_version = '1.20.1-forge-47.3.22'
+
+    def save_config(self):
+        """Сохраняет настройки, включая пустые значения"""
+        try:
+            # Загружаем существующий конфиг или создаем новый
+            config = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+            
+            # Сохраняем значения, даже если они пустые
+            username = self.username.text().strip()
+            config['username'] = username
+            
+            minecraft_version = self.minecraft_version.currentText()
+            config['minecraft_version'] = minecraft_version
+            
+            if self.forge_version.isEnabled():
+                forge_version = self.forge_version.currentText()
+                config['forge_version'] = forge_version
+            
+            install_path = self.install_path.text().strip()
+            config['install_path'] = install_path if install_path != DEFAULT_MINECRAFT_DIR else ""
+            
+            memory = self.memory_slider.value()
+            config['memory'] = memory
+            
+            # Всегда сохраняем значение флагов запуска, даже если оно пустое
+            launch_flags = self.launch_flags_input.toPlainText().strip()
+            config['launch_flags'] = launch_flags
+            
+            # Сохраняем конфиг
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f)
+                
+        except Exception as e:
+            logging.error(f"Ошибка сохранения конфига: {str(e)}")
+
+    def check_internet_connection(self):
+        """Проверка подключения к интернету"""
+        try:
+            # Пробуем подключиться к надежному сервису
+            requests.get("https://www.google.com", timeout=3)
+            return True
+        except requests.RequestException:
+            return False
+
+    def load_versions(self):
+        logging.info("Начало загрузки версий")
+        self.minecraft_version.clear()
+        self.forge_version.clear()
+
+        try:
+            has_internet = self.check_internet_connection()
+            if not has_internet:
+                logging.warning("Нет подключения к интернету")
+                QMessageBox.warning(
+                    self,
+                    "Нет подключения",
+                    "Вы без доступа в интернет, будет запускаться только установленная версия."
+                )
+                
+                # Загружаем сохраненные версии из кеша
+                if os.path.exists(CONFIG_FILE):
+                    with open(CONFIG_FILE, 'r') as f:
+                        config = json.load(f)
+                        saved_version = config.get('minecraft_version')
+                        if saved_version:
+                            self.minecraft_version.addItem(saved_version)
+                            self.minecraft_version.setCurrentText(saved_version)
+                            
+                            # Загружаем соответствующую версию Forge из кеша
+                            if saved_version in self.forge_cache:
+                                cached_version = self.forge_cache[saved_version]
+                                if isinstance(cached_version, list):
+                                    for forge_version in cached_version:
+                                        self.forge_version.addItem(forge_version)
+                                else:
+                                    self.forge_version.addItem(cached_version)
+                                self.forge_version.setEnabled(True)
+                return
+
+            # Остальной код загрузки версий (существующий)
+            versions = []
+            for v in get_version_list():
+                version_id = v['id']
+                if (v['type'] == 'release' and 
+                    version_id != '1.20.5' and
+                    self._compare_versions(version_id, '1.20.1') >= 0):
+                    versions.append(version_id)
+
+            logging.info(f"Получены версии Minecraft: {versions}")
+
+            # Сортируем версии в порядке убывания, но 1.20.1 всегда первая
+            if '1.20.1' in versions:
+                versions.remove('1.20.1')
+                versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
+                versions.insert(0, '1.20.1')
+                logging.info("Версия 1.20.1 перемещена в начало списка")
+            else:
+                versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
+
+            # Добавляем версии по одной
+            for version in versions:
+                self.minecraft_version.addItem(version)
+
+            # Устанавливаем сохраненную или дефолтную версию
+            default_version = getattr(self, 'saved_minecraft_version', None) or '1.20.1'
+            logging.info(f"Выбрана версия по умолчанию: {default_version}")
+
+            default_index = self.minecraft_version.findText(default_version)
+            logging.info(f"Индекс версии по умолчанию: {default_index}")
+
+            if default_index >= 0:
+                self.minecraft_version.setCurrentIndex(default_index)
+                logging.info("Установлена версия Minecraft по умолчанию")
+
+                # Загружаем версию Forge для 1.20.1
+                if default_version == "1.20.1":
+                    logging.info("Загрузка версии Forge для 1.20.1")
+                    forge_version = "1.20.1-47.3.22"
+                    forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
+                    self.forge_version.addItem(forge_display_version)
+                    self.forge_version.setEnabled(True)
+                    logging.info(f"Добавлена версия Forge: {forge_display_version}")
+
+                    if "1.20.1" not in self.forge_cache:
+                        logging.info("Сохранение версии Forge в кеш")
+                        self.save_forge_cache("1.20.1", forge_version)
+                # Для других версий проверяем кеш
+                elif default_version in self.forge_cache:
+                    logging.info(f"Загрузка версии Forge из кеша для {default_version}")
+                    cached_version = self.forge_cache[default_version]
+                    # Проверяем, является ли cached_version списком
+                    if isinstance(cached_version, list):
+                        for forge_version in cached_version:
+                            forge_display_version = f"{default_version}-forge-{forge_version.split('-')[1]}"
+                            self.forge_version.addItem(forge_display_version)
+                    else:
+                        forge_display_version = f"{default_version}-forge-{cached_version.split('-')[1]}"
+                        self.forge_version.addItem(forge_display_version)
+                    self.forge_version.setEnabled(True)
+            else:
+                # Если индекс не найден, устанавливаем 1.20.1
+                logging.info("Индекс не найден, устанавливаем версию 1.20.1")
+                default_index = self.minecraft_version.findText('1.20.1')
+                if default_index >= 0:
+                    self.minecraft_version.setCurrentIndex(default_index)
+                    forge_version = "1.20.1-47.3.22"
+                    forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
+                    self.forge_version.addItem(forge_display_version)
+                    self.forge_version.setEnabled(True)
+                    logging.info("Установлена версия 1.20.1 и Forge")
+
+        except Exception as e:
+            logging.error(f"Ошибка загрузки версий: {str(e)}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Ошибка",
+                "Ошибка загрузки версий Minecraft. Проверьте подключение к интернету."
+            )
+
+    def _compare_versions(self, version1, version2):
+        """Сравнивает две версии. Возвращает:
+        1 если version1 > version2
+        0 если version1 == version2
+        -1 если version1 < version2"""
+        v1_parts = [int(x) for x in version1.split('.')]
+        v2_parts = [int(x) for x in version2.split('.')]
+        
+        for i in range(max(len(v1_parts), len(v2_parts))):
+            v1 = v1_parts[i] if i < len(v1_parts) else 0
+            v2 = v2_parts[i] if i < len(v2_parts) else 0
+            if v1 > v2:
+                return 1
+            elif v1 < v2:
+                return -1
+        return 0
+
+    def check_dependencies(self):
+        if not os.path.exists(MODPACK_PATH):
+            QMessageBox.warning(self, "Ошибка", "Модпак не найден в папке assets!")
+
+    def load_forge_cache(self):
+        """Загрузка кеша версий Forge"""
+        logging.info("Загрузка кеша Forge")
+        try:
+            if os.path.exists(FORGE_CACHE_FILE):
+                with open(FORGE_CACHE_FILE, 'r') as f:
+                    cache = json.load(f)
+                    logging.info(f"Загружен кеш Forge: {cache}")
+                    return cache
+            logging.info("Файл кеша не найден")
+        except Exception as e:
+            logging.error(f"Ошибка загрузки кеша Forge: {str(e)}", exc_info=True)
+        return {}
+
+    def save_forge_cache(self, minecraft_version, forge_version):
+        """Сохранение версии Forge в кеш"""
+        logging.info(f"Сохранение в кеш: {minecraft_version} -> {forge_version}")
+        try:
+            cache = self.forge_cache
+            cache[minecraft_version] = forge_version
+            with open(FORGE_CACHE_FILE, 'w') as f:
+                json.dump(cache, f)
+            logging.info(f"Кеш успешно сохранен: {cache}")
+        except Exception as e:
+            logging.error(f"Ошибка сохранения кеша Forge: {str(e)}", exc_info=True)
+
+    def on_minecraft_version_changed(self, index):
+        selected_version = self.minecraft_version.currentText()
+        self.forge_version.clear()
+        self.forge_version.setEnabled(True)
+
+        added_versions = set()
+
+        # Специальная обработка для 1.20.1 - добавляем нашу версию Forge первой
+        if selected_version == "1.20.1":
+            forge_version = "1.20.1-47.3.22"
+            forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
+            self.forge_version.addItem(forge_display_version)
+            added_versions.add(forge_display_version)
+            self.add_to_forge_cache("1.20.1", forge_version)
+            self.forge_version.setEnabled(True)
+
+        # Затем добавляем все кешированные версии для этой версии Minecraft
+        cached_versions = []
+        if selected_version in self.forge_cache:
+            cached_versions = self.forge_cache[selected_version]
+            if not isinstance(cached_versions, list):
+                cached_versions = [cached_versions]
+            for version in cached_versions:
+                forge_full_version = f"{selected_version}-forge-{version.split('-')[1]}"
+                if forge_full_version not in added_versions:
+                    added_versions.add(forge_full_version)
+                    self.forge_version.addItem(forge_full_version)
+
+        # Для версий кроме 1.20.1 ищем новые версии в сети
+        if selected_version != "1.20.1":
+            forge_version = minecraft_launcher_lib.forge.find_forge_version(selected_version)
+            if forge_version:
+                forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
+                if forge_full_version not in added_versions:
+                    added_versions.add(forge_full_version)
+                    self.forge_version.addItem(forge_full_version)
+                    self.add_to_forge_cache(selected_version, forge_version)
+                self.forge_version.setEnabled(True)
+
+        self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
+        self.check_game_installed()
+        
+        # Если это версия 1.20.1, устанавливаем первую версию Forge как выбранную
+        if selected_version == "1.20.1" and self.forge_version.count() > 0:
+            self.forge_version.setCurrentIndex(0)
+        
+        # Сохраняем выбранную версию
+        self.save_config()
+
+    def on_forge_version_changed(self, index):
+        if index >= 0:
+            forge_version = self.forge_version.currentText()
+            self.status_label.setText(f"Выбрана версия Forge: {forge_version}")
+            # Сохраняем выбранную версию Forge
+            self.save_config()
+
+    def on_memory_changed(self, value):
+        self.memory_label.setText(f"{value} ГБ")
+        self.save_config()  # Сохраняем конфиг при изменении значения памяти
+
+    def start_installation(self):
+        minecraft_version = self.minecraft_version.currentText()
+        forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
+        
+        # Преобразуем отображаемую версию Forge в реальную
+        if forge_display_version and forge_display_version.startswith("1.20.1-forge-"):
+            forge_version = forge_display_version.replace("-forge-", "-")
+        else:
+            forge_version = forge_display_version
+        
+        username = self.username.text().strip()
+        install_path = self.install_path.text().strip()
+
+        if not username:
+            QMessageBox.warning(self, "Ошибка", "Введите имя игрока!")
+            self.username.setFocus()
+            return
+
+        if not minecraft_version:
+            QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft!")
+            return
+
+        if not os.access(install_path, os.W_OK):
+            QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
+            return
+
+        # Сохраняем конфиг перед установкой
+        self.save_config()
+
+        # Если выбран Forge, используем его версию, иначе - версию Minecraft
+        version_to_install = forge_version if forge_version else minecraft_version
+        logging.info(f"Выбрана версия для установки: {version_to_install}")
+
+        self.thread = InstallThread(
+            version_to_install,
+            username,
+            install_path,
+            self.memory_slider.value(),
+            self.launch_flags_input
+        )
+        self.thread.progress_update.connect(self.update_progress)
+        self.thread.status_update.connect(self.status_label.setText)
+        self.thread.toggle_ui.connect(self.toggle_ui_elements)
+        self.thread.error_occurred.connect(self.show_error)
+        self.thread.start()
+
+    def toggle_ui_elements(self, enabled):
+        self.start_button.setEnabled(enabled)
+        self.minecraft_version.setEnabled(enabled)
+        self.forge_version.setEnabled(enabled)
+        self.username.setEnabled(enabled)
+        self.browse_button.setEnabled(enabled)
+
+    def update_progress(self, current, maximum, _):
+        if maximum > 0:
+            self.progress_bar.setMaximum(maximum)
+        self.progress_bar.setValue(current)
+
+    def show_error(self, message):
+        QMessageBox.critical(self, "Ошибка", message)
+        self.toggle_ui_elements(True)
+
+    def check_game_installed(self):
+        """Проверяет наличие игры и обновляет текст кнопки"""
+        install_path = self.install_path.text().strip()
+        display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else self.minecraft_version.currentText()
+        
+        logging.info(f"=== Начало проверки установки игры ===")
+        logging.info(f"Путь установки: {install_path}")
+        logging.info(f"Отображаемая версия: {display_version}")
+        
+        # Для проверки используем отображаемую версию как есть, так как папки именно так и называются
+        actual_version = display_version
+        logging.info(f"Версия для проверки: {actual_version}")
+        
+        # Проверяем наличие конкретной версии в папке versions
+        versions_path = os.path.join(install_path, "versions")
+        version_folder = os.path.join(versions_path, actual_version)
+        
+        logging.info(f"Проверяемая папка: {version_folder}")
+        logging.info(f"Папка существует: {os.path.exists(version_folder)}")
+        
+        if os.path.exists(version_folder):
+            files = os.listdir(version_folder)
+            logging.info(f"Содержимое папки: {files}")
+        
+        is_installed = os.path.exists(version_folder) and os.listdir(version_folder)
+        logging.info(f"Результат проверки установки: {is_installed}")
+        
+        if is_installed:
+            logging.info("Меняем текст кнопки на 'Играть'")
+            self.start_button.setText("Играть")
+            if not self.start_button.text() == "Играть":
+                logging.error("Не удалось изменить текст кнопки на 'Играть'")
+            logging.info(f"Версия {actual_version} найдена в {version_folder}")
+        else:
+            logging.info("Меняем текст кнопки на 'Установить'")
+            self.start_button.setText("Установить")
+            if not self.start_button.text() == "Установить":
+                logging.error("Не удалось изменить текст кнопки на 'Установить'")
+            logging.info(f"Версия {actual_version} не найдена в {version_folder}")
+        
+        logging.info(f"Текущий текст кнопки: {self.start_button.text()}")
+        logging.info("=== Конец проверки установки игры ===")
+
+    def add_to_forge_cache(self, minecraft_version, forge_version):
+        try:
+            if os.path.exists(FORGE_CACHE_FILE):
+                with open(FORGE_CACHE_FILE, 'r') as f:
+                    cache = json.load(f)
+            else:
+                cache = {}
+
+            if minecraft_version not in cache:
+                cache[minecraft_version] = [forge_version]
+            elif isinstance(cache[minecraft_version], list):
+                if forge_version not in cache[minecraft_version]:
+                    cache[minecraft_version].append(forge_version)
+            else:
+                # Если раньше было строкой, преобразуем в список
+                old_version = cache[minecraft_version]
+                cache[minecraft_version] = [old_version, forge_version]
+
+            with open(FORGE_CACHE_FILE, 'w') as f:
+                json.dump(cache, f)
+        except Exception as e:
+            logging.error(f"Ошибка сохранения кеша Forge: {str(e)}")
+
+    def open_youtube(self):
+        """Открывает YouTube канал"""
+        url = QUrl("https://www.youtube.com/@igrobar")  # Замените на вашу ссылку
+        QDesktopServices.openUrl(url)
+        logging.info("Открыта ссылка на YouTube")
+
+    def open_telegram(self):
+        """Открывает Telegram канал"""
+        url = QUrl("https://t.me/igrobar")  # Замените на вашу ссылку
+        QDesktopServices.openUrl(url)
+        logging.info("Открыта ссылка на Telegram")
+
+if __name__ == "__main__":
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    while True:
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        exit_code = app.exec_()
+        if exit_code != 1337:
+            break
