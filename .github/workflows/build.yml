@@ -54,16 +54,34 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller==6.3.0
+        pip install PyQt5
+        
+    - name: Install system dependencies
+      run: |
+        brew install create-dmg
         
     - name: Build macOS app
       run: |
         pyinstaller --clean ib-launcher-mac.spec
         
+    - name: Create DMG
+      run: |
+        create-dmg \
+          --volname "IB-Launcher" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "IB-Launcher" 175 120 \
+          --hide-extension "IB-Launcher" \
+          --app-drop-link 425 120 \
+          "IB-Launcher.dmg" \
+          "dist/IB-Launcher"
+        
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
         name: IB-Launcher-macOS
-        path: dist/IB-Launcher
+        path: IB-Launcher.dmg
 
   create-release:
     needs: [build-windows, build-macos]
@@ -94,7 +112,7 @@ jobs:
       with:
         files: |
           windows/IB-Launcher.exe
-          macos/IB-Launcher
+          macos/IB-Launcher.dmg
         draft: false
         prerelease: false
         generate_release_notes: true
