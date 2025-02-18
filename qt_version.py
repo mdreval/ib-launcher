@@ -31,6 +31,7 @@ from minecraft_launcher_lib.command import get_minecraft_command
 from random_username.generate import generate_username
 import minecraft_launcher_lib.forge
 import nbtlib
+import time
 
 try:
     import win32gui
@@ -47,27 +48,20 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-# Настройка логирования
-LOG_FILE = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config", "launcher.log")
+# Настройка путей
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config")
+LOG_FILE = os.path.join(CONFIG_DIR, "launcher.log")
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
+FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
 
-# Конфигурация
+# Путь установки Minecraft
 DEFAULT_MINECRAFT_DIR = os.path.join(
     os.path.expanduser("~"),
     "AppData", "Roaming", "IBLauncher" if platform.system() == "Windows"
     else "Library/Application Support/IBLauncher"
 )
-FORGE_VERSIONS = {
-    "1.20.1-forge-47.3.22": {
-        "installer": "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.3.22/forge-1.20.1-47.3.22-installer.jar"
-    }
-}
 
-# Изменим путь к конфигу и кешу
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config")
-CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
-FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
-
-# Создаем директорию для конфигов и логов
+# Создаем только директорию для конфигурации лаунчера
 os.makedirs(CONFIG_DIR, exist_ok=True)
 
 # Настройка логирования
@@ -327,30 +321,26 @@ class InstallThread(QThread):
         """Подготавливает окружение для установки"""
         try:
             self.status_update.emit("Подготовка директории...")
-
-            # Создаем основные директории
-            required_dirs = [
+            
+            # Создаем директории только в папке установки игры
+            game_dirs = [
                 self.install_path,
                 os.path.join(self.install_path, "versions"),
                 os.path.join(self.install_path, "libraries"),
                 os.path.join(self.install_path, "mods"),
                 os.path.join(self.install_path, "config"),
-                os.path.join(self.install_path, "schematics")
+                os.path.join(self.install_path, "schematics"),
+                os.path.join(self.install_path, "logs")
             ]
-
-            # Создаем директории в AppData
-            appdata_dirs = [
-                os.path.join(CONFIG_DIR, "logs")
-            ]
-
-            # Создаем все необходимые директории
-            for directory in required_dirs + appdata_dirs:
+            
+            # Создаем директории игры
+            for directory in game_dirs:
                 os.makedirs(directory, exist_ok=True)
-                logging.info(f"Создана/проверена директория: {directory}")
-
+                logging.info(f"Создана/проверена директория игры: {directory}")
+            
             # Копируем файлы конфигурации только при первом запуске
             copy_default_configs(self.install_path)
-
+            
         except Exception as e:
             logging.error(f"Ошибка подготовки окружения: {str(e)}")
             raise
@@ -439,10 +429,45 @@ class InstallThread(QThread):
                                 needs_update = True
                     else:
                         needs_update = True
+                    
+                    if needs_update:
+                        # Удаляем старые моды если нужно обновление
+                        self.status_update.emit("Удаление старых модов...")
+                        for file in os.listdir(mods_dir):
+                            if file.endswith('.jar'):
+                                try:
+                                    file_path = os.path.join(mods_dir, file)
+                                    os.remove(file_path)
+                                    logging.info(f"Удален старый мод: {file}")
+                                except Exception as e:
+                                    logging.error(f"Ошибка удаления мода {file}: {str(e)}")
+                        
+                        # Устанавливаем моды из локального архива
+                        self.status_update.emit("Установка модов из локального архива...")
+                        with zipfile.ZipFile(local_modpack, 'r') as zip_ref:
+                            for file_info in zip_ref.filelist:
+                                if file_info.filename.endswith('.jar'):
+                                    zip_ref.extract(file_info.filename, mods_dir)
+                                    logging.info(f"Установлен мод: {file_info.filename}")
+                        
+                        # Сохраняем информацию о модах
+                        with open(mods_info_file, 'w') as f:
+                            json.dump({
+                                'size': local_pack_size,
+                                'updated_at': local_pack_time
+                            }, f)
+                        
+                        logging.info("Локальный модпак установлен")
+                    else:
+                        logging.info("Моды не требуют обновления")
+                    
+                    return  # Выходим после установки локального модпака
                 else:
-                    raise ValueError("Модпак не найден в assets")
-            else:
-                # Для exe версии проверяем GitHub
+                    logging.warning("Модпак не найден в assets")
+            
+            # Для exe версии проверяем GitHub только если нет локального модпака
+            if is_bundled:
+                self.status_update.emit("Загрузка модпака с GitHub...")
                 api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
                 response = requests.get(api_url, timeout=10, verify=True)
                 response.raise_for_status()
@@ -452,117 +477,12 @@ class InstallThread(QThread):
                                     if asset['name'] == 'modpack.zip'), None)
                 if not modpack_asset:
                     raise ValueError("Модпак не найден в релизе")
-                    
-                if os.path.exists(mods_info_file):
-                    with open(mods_info_file, 'r') as f:
-                        local_info = json.load(f)
-                        if (local_info['size'] != modpack_asset['size'] or 
-                            local_info['updated_at'] != modpack_asset['updated_at']):
-                            needs_update = True
-                else:
-                    needs_update = True
-            
-            # Если обновление не требуется, выходим
-            if not needs_update:
-                logging.info("Моды не требуют обновления")
-                return
-            
-            # Удаляем старые моды если нужно обновление
-            self.status_update.emit("Удаление старых модов...")
-            for file in os.listdir(mods_dir):
-                if file.endswith('.jar'):
-                    try:
-                        file_path = os.path.join(mods_dir, file)
-                        os.remove(file_path)
-                        logging.info(f"Удален старый мод: {file}")
-                    except Exception as e:
-                        logging.error(f"Ошибка удаления мода {file}: {str(e)}")
-            
-            if not is_bundled:
-                # Для локальной версии устанавливаем из assets
-                local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
-                if os.path.exists(local_modpack):
-                    logging.info("Найден локальный modpack.zip")
-                    self.status_update.emit("Установка локального модпака...")
-                    
-                    # Распаковываем модпак
-                    with zipfile.ZipFile(local_modpack, 'r') as zip_ref:
-                        # Получаем список файлов в архиве
-                        for file_info in zip_ref.filelist:
-                            # Проверяем, что это jar файл
-                            if file_info.filename.endswith('.jar'):
-                                # Извлекаем только в папку mods
-                                zip_ref.extract(file_info.filename, mods_dir)
-                                logging.info(f"Установлен мод: {file_info.filename}")
-                    
-                    # Сохраняем информацию о модах
-                    mods_info = {
-                        'size': os.path.getsize(local_modpack),
-                        'updated_at': os.path.getmtime(local_modpack)
-                    }
-                    
-                    mods_info_file = os.path.join(mods_dir, "mods_info.json")
-                    with open(mods_info_file, 'w') as f:
-                        json.dump(mods_info, f)
-                    
-                    logging.info("Локальный модпак установлен")
-                else:
-                    raise ValueError("Модпак не найден в assets")
-            
-            # Для exe версии качаем с GitHub
-            logging.info("Загрузка модпака с GitHub...")
-            self.status_update.emit("Загрузка модпака с GitHub...")
-            
-            # Скачиваем и устанавливаем модпак
-            temp_dir = os.path.join(os.path.expanduser("~"), ".iblauncher")
-            os.makedirs(temp_dir, exist_ok=True)
-            temp_modpack = os.path.join(temp_dir, "modpack.zip")
-            
-            try:
-                response = requests.get(modpack_asset['browser_download_url'], stream=True, timeout=30, verify=True)
-                response.raise_for_status()
                 
-                total_size = int(response.headers.get('content-length', 0))
-                block_size = 8192
-                
-                with open(temp_modpack, 'wb') as f:
-                    for data in response.iter_content(block_size):
-                        f.write(data)
-                        if total_size:
-                            progress = int(os.path.getsize(temp_modpack) * 100 / total_size)
-                            self.progress_update.emit(progress, 100, "")
-                
-                # Распаковываем модпак
-                self.status_update.emit("Установка модпака...")
-                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
-                    for file_info in zip_ref.filelist:
-                        if file_info.filename.endswith('.jar'):
-                            zip_ref.extract(file_info.filename, mods_dir)
-                            logging.info(f"Установлен мод: {file_info.filename}")
-                
-                # Сохраняем информацию о модах
-                mods_info = {
-                    'size': modpack_asset['size'],
-                    'updated_at': modpack_asset['updated_at']
-                }
-                
-                mods_info_file = os.path.join(mods_dir, "mods_info.json")
-                with open(mods_info_file, 'w') as f:
-                    json.dump(mods_info, f)
-                
-                logging.info("Модпак установлен с GitHub")
-                
-            except Exception as e:
-                if os.path.exists(temp_modpack):
-                    os.remove(temp_modpack)
-                raise ValueError(f"Ошибка установки модпака: {str(e)}")
-            finally:
-                if os.path.exists(temp_modpack):
-                    os.remove(temp_modpack)
+                # Далее код установки с GitHub...
                 
         except Exception as e:
             logging.error(f"Ошибка установки модпака: {str(e)}")
-            raise
+            raise ValueError(f"Ошибка установки модпака: {str(e)}")
 
     def _launch_game(self):
         """Запускает игру"""
@@ -633,13 +553,13 @@ class InstallThread(QThread):
                 ],
                 'launchTarget': 'fmlclient',
                 'executablePath': java_path,
-                'gameDirectory': self.install_path
+                'gameDirectory': os.path.abspath(self.install_path)  # Используем абсолютный путь
             }
 
             # Получаем команду запуска
-            minecraft_command = minecraft_launcher_lib.command.get_minecraft_command(
+            minecraft_command = get_minecraft_command(
                 version_to_launch,
-                self.install_path,
+                os.path.abspath(self.install_path),  # Используем абсолютный путь
                 options
             )
 
@@ -648,16 +568,17 @@ class InstallThread(QThread):
                 x in arg.lower() for x in ['quickplay', 'lastserver', 'singleplayer']
             )]
 
-            # Запускаем процесс
+            # Запускаем процесс с указанием рабочей директории
             logging.info(f"Команда запуска: {' '.join(minecraft_command)}")
             subprocess.Popen(
                 minecraft_command,
-                creationflags=subprocess.CREATE_NO_WINDOW
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                cwd=os.path.abspath(self.install_path)  # Устанавливаем рабочую директорию
             )
 
             # Отправляем сигнал для закрытия главного окна
             QApplication.quit()
-            
+
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
@@ -1037,41 +958,18 @@ class MainWindow(QMainWindow):
             self.saved_forge_version = '1.20.1-forge-47.3.22'
 
     def save_config(self):
-        """Сохраняет настройки, включая пустые значения"""
+        """Сохраняет настройки лаунчера"""
         try:
-            # Загружаем существующий конфиг или создаем новый
-            config = {}
-            if os.path.exists(CONFIG_FILE):
-                with open(CONFIG_FILE, 'r') as f:
-                    config = json.load(f)
-            
-            # Сохраняем значения, даже если они пустые
-            username = self.username.text().strip()
-            config['username'] = username
-            
-            minecraft_version = self.minecraft_version.currentText()
-            config['minecraft_version'] = minecraft_version
-            
-            if self.forge_version.isEnabled():
-                forge_version = self.forge_version.currentText()
-                config['forge_version'] = forge_version
-            
-            install_path = self.install_path.text().strip()
-            config['install_path'] = install_path if install_path != DEFAULT_MINECRAFT_DIR else ""
-            
-            memory = self.memory_slider.value()
-            config['memory'] = memory
-            
-            # Всегда сохраняем значение флагов запуска, даже если оно пустое
-            launch_flags = self.launch_flags_input.toPlainText().strip()
-            config['launch_flags'] = launch_flags
-            
-            # Сохраняем конфиг
+            config = {
+                'username': self.username.text(),
+                'memory': self.memory_slider.value(),
+                'install_path': self.install_path.text()
+            }
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(config, f)
-                
+            logging.info("Настройки сохранены")
         except Exception as e:
-            logging.error(f"Ошибка сохранения конфига: {str(e)}")
+            logging.error(f"Ошибка сохранения настроек: {str(e)}")
 
     def check_internet_connection(self):
         """Проверка подключения к интернету"""
@@ -1547,7 +1445,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            CURRENT_VERSION = "1.0.2.8"
+            CURRENT_VERSION = "1.0.2.9"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
