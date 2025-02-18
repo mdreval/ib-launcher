@@ -35,7 +35,7 @@ jobs:
       - name: Build Windows exe
         shell: cmd
         run: |
-          pyinstaller --clean ib-launcher.spec
+          pyinstaller --clean IB-Launcher.spec
           
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
