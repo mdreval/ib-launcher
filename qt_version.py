@@ -33,6 +33,7 @@ import minecraft_launcher_lib.forge
 import nbtlib
 import time
 import traceback
+import datetime
 
 try:
     import win32gui
@@ -404,9 +405,6 @@ class InstallThread(QThread):
         try:
             self.status_update.emit("Проверка модпака...")
             
-            # Проверяем, запущены ли мы из exe
-            is_bundled = getattr(sys, 'frozen', False)
-            
             # Подготавливаем папку mods
             install_path = self.install_path.text() if hasattr(self.install_path, 'text') else self.install_path
             mods_dir = os.path.join(install_path, "mods")
@@ -415,7 +413,27 @@ class InstallThread(QThread):
             # Путь к файлу с информацией о модпаке
             modpack_info_file = os.path.join(mods_dir, "modpack_info.json")
             
-            if is_bundled:
+            # Проверяем текущую информацию о модпаке
+            current_modpack_info = {}
+            if os.path.exists(modpack_info_file):
+                with open(modpack_info_file, 'r') as f:
+                    current_modpack_info = json.load(f)
+            
+            # Сначала проверяем локальный модпак
+            local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
+            
+            if os.path.exists(local_modpack):
+                logging.info("Найден локальный модпак")
+                modpack_path = local_modpack
+               
+                # Проверяем актуальность локального модпака
+                local_size = os.path.getsize(local_modpack)
+                if (current_modpack_info.get('size') == local_size and
+                    all(os.path.exists(os.path.join(mods_dir, mod)) 
+                        for mod in current_modpack_info.get('mods', []))):
+                    logging.info("Моды актуальны")
+                    return
+            else:
                 # Для exe версии проверяем GitHub
                 self.status_update.emit("Проверка обновлений модпака...")
                 api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -428,17 +446,11 @@ class InstallThread(QThread):
                 if not modpack_asset:
                     raise ValueError("Модпак не найден в релизе")
                 
-                # Проверяем информацию о текущем модпаке
-                current_modpack_info = {}
-                if os.path.exists(modpack_info_file):
-                    with open(modpack_info_file, 'r') as f:
-                        current_modpack_info = json.load(f)
-                
-                # Сравниваем с информацией из релиза
+                # Проверяем актуальность модов из GitHub
                 if (current_modpack_info.get('size') == modpack_asset.get('size') and
                     all(os.path.exists(os.path.join(mods_dir, mod)) 
                         for mod in current_modpack_info.get('mods', []))):
-                    logging.info("Модпак актуален, обновление не требуется")
+                    logging.info("Моды актуальны")
                     return
                 
                 # Скачиваем модпак
@@ -454,49 +466,48 @@ class InstallThread(QThread):
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
                 
-                # Получаем список установленных модов
-                installed_mods = []
-                
-                # Удаляем старые моды
-                if os.path.exists(mods_dir):
-                    for file in os.listdir(mods_dir):
-                        if file.endswith('.jar'):
-                            try:
-                                os.remove(os.path.join(mods_dir, file))
-                                logging.info(f"Удален старый мод: {file}")
-                            except Exception as e:
-                                logging.error(f"Ошибка удаления мода {file}: {str(e)}")
-                
-                # Распаковываем новые моды
-                with zipfile.ZipFile(temp_modpack, 'r') as zip_ref:
-                    for file_info in zip_ref.filelist:
-                        if file_info.filename.endswith('.jar'):
-                            zip_ref.extract(file_info, mods_dir)
-                            installed_mods.append(file_info.filename)
-                            logging.info(f"Установлен мод: {file_info.filename}")
-                
-                # Сохраняем информацию о модпаке
-                modpack_info = {
-                    'size': modpack_asset['size'],
-                    'updated_at': modpack_asset['updated_at'],
-                    'mods': installed_mods
-                }
-                
-                with open(modpack_info_file, 'w') as f:
-                    json.dump(modpack_info, f, indent=4)
-                
-                # Удаляем временный файл
+                modpack_path = temp_modpack
+            
+            # Получаем список установленных модов
+            installed_mods = []
+            
+            # Удаляем старые моды
+            if os.path.exists(mods_dir):
+                for file in os.listdir(mods_dir):
+                    if file.endswith('.jar'):
+                        try:
+                            os.remove(os.path.join(mods_dir, file))
+                            logging.info(f"Удален старый мод: {file}")
+                        except Exception as e:
+                            logging.error(f"Ошибка удаления мода {file}: {str(e)}")
+            
+            # Распаковываем новые моды
+            with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
+                for file_info in zip_ref.filelist:
+                    if file_info.filename.endswith('.jar'):
+                        zip_ref.extract(file_info.filename, mods_dir)
+                        installed_mods.append(file_info.filename)
+                        logging.info(f"Установлен мод: {file_info.filename}")
+            
+            # Сохраняем информацию о модпаке
+            modpack_info = {
+                'size': os.path.getsize(modpack_path),
+                'updated_at': datetime.datetime.now().isoformat(),
+                'mods': installed_mods
+            }
+            
+            with open(modpack_info_file, 'w') as f:
+                json.dump(modpack_info, f, indent=4)
+            
+            # Удаляем временный файл если он был создан
+            if modpack_path != local_modpack:
                 try:
-                    os.remove(temp_modpack)
+                    os.remove(modpack_path)
                 except Exception as e:
                     logging.error(f"Ошибка удаления временного файла: {str(e)}")
-                
-                logging.info("Модпак успешно установлен")
-                self.status_update.emit("Модпак установлен")
-                
-            else:
-                # Код для локальной версии остается без изменений
-                ...
+            
+            logging.info("Модпак успешно установлен")
+            self.status_update.emit("Модпак установлен")
             
         except Exception as e:
             logging.error(f"Ошибка установки модпака: {str(e)}")
@@ -1139,7 +1150,7 @@ class MainWindow(QMainWindow):
             if self.check_mods_update():
                 logging.info("Требуется обновление модов")
                 self.status_update.emit("Обновление модов...")
-                self._install_modpack()
+                self.install_modpack()
                 return
             
             logging.info("Моды актуальны")
@@ -1412,12 +1423,14 @@ class MainWindow(QMainWindow):
     def check_mods_update(self):
         """Проверяет обновления модов"""
         try:
-            mods_dir = os.path.join(self.install_path.text(), "mods")
+            install_path = self.install_path.text() if hasattr(self.install_path, 'text') else self.install_path
+            mods_dir = os.path.join(install_path, "mods")
             logging.info("Начало проверки обновлений модов")
             
             # Проверяем информацию о текущем модпаке
             modpack_info_file = os.path.join(mods_dir, "modpack_info.json")
             if not os.path.exists(modpack_info_file):
+                logging.info("Файл информации о модпаке не найден")
                 return False
                 
             with open(modpack_info_file, 'r') as f:
@@ -1432,26 +1445,141 @@ class MainWindow(QMainWindow):
             modpack_asset = next((asset for asset in release_data['assets'] 
                                 if asset['name'] == 'modpack.zip'), None)
             if not modpack_asset:
+                logging.info("Модпак не найден в релизе")
                 return False
                 
+            # Проверяем размер и наличие всех модов
             if (current_modpack_info.get('size') == modpack_asset.get('size') and
                 all(os.path.exists(os.path.join(mods_dir, mod)) 
                     for mod in current_modpack_info.get('mods', []))):
                 logging.info("Моды актуальны")
                 return True
                 
+            logging.info("Требуется обновление модов")
             return False
             
         except Exception as e:
             logging.error(f"Ошибка проверки модов: {str(e)}")
-            traceback.print_exc()
             return False
+
+    def install_modpack(self):
+        """Устанавливает модпак"""
+        try:
+            self.status_update.emit("Проверка модпака...")
+            
+            # Подготавливаем папку mods
+            install_path = self.install_path.text() if hasattr(self.install_path, 'text') else self.install_path
+            mods_dir = os.path.join(install_path, "mods")
+            os.makedirs(mods_dir, exist_ok=True)
+            
+            # Путь к файлу с информацией о модпаке
+            modpack_info_file = os.path.join(mods_dir, "modpack_info.json")
+            
+            # Проверяем текущую информацию о модпаке
+            current_modpack_info = {}
+            if os.path.exists(modpack_info_file):
+                with open(modpack_info_file, 'r') as f:
+                    current_modpack_info = json.load(f)
+            
+            # Сначала проверяем локальный модпак
+            local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
+            
+            if os.path.exists(local_modpack):
+                logging.info("Найден локальный модпак")
+                modpack_path = local_modpack
+               
+                # Проверяем актуальность локального модпака
+                local_size = os.path.getsize(local_modpack)
+                if (current_modpack_info.get('size') == local_size and
+                    all(os.path.exists(os.path.join(mods_dir, mod)) 
+                        for mod in current_modpack_info.get('mods', []))):
+                    logging.info("Моды актуальны")
+                    return
+            else:
+                # Для exe версии проверяем GitHub
+                self.status_update.emit("Проверка обновлений модпака...")
+                api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+                response = requests.get(api_url, timeout=10)
+                response.raise_for_status()
+                release_data = response.json()
+                
+                modpack_asset = next((asset for asset in release_data['assets'] 
+                                    if asset['name'] == 'modpack.zip'), None)
+                if not modpack_asset:
+                    raise ValueError("Модпак не найден в релизе")
+                
+                # Проверяем актуальность модов из GitHub
+                if (current_modpack_info.get('size') == modpack_asset.get('size') and
+                    all(os.path.exists(os.path.join(mods_dir, mod)) 
+                        for mod in current_modpack_info.get('mods', []))):
+                    logging.info("Моды актуальны")
+                    return
+                
+                # Скачиваем модпак
+                self.status_update.emit("Скачивание модпака...")
+                response = requests.get(modpack_asset['browser_download_url'], stream=True)
+                response.raise_for_status()
+                
+                temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_modpack = os.path.join(temp_dir, "modpack.zip")
+                
+                with open(temp_modpack, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                modpack_path = temp_modpack
+            
+            # Получаем список установленных модов
+            installed_mods = []
+            
+            # Удаляем старые моды
+            if os.path.exists(mods_dir):
+                for file in os.listdir(mods_dir):
+                    if file.endswith('.jar'):
+                        try:
+                            os.remove(os.path.join(mods_dir, file))
+                            logging.info(f"Удален старый мод: {file}")
+                        except Exception as e:
+                            logging.error(f"Ошибка удаления мода {file}: {str(e)}")
+            
+            # Распаковываем новые моды
+            with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
+                for file_info in zip_ref.filelist:
+                    if file_info.filename.endswith('.jar'):
+                        zip_ref.extract(file_info.filename, mods_dir)
+                        installed_mods.append(file_info.filename)
+                        logging.info(f"Установлен мод: {file_info.filename}")
+            
+            # Сохраняем информацию о модпаке
+            modpack_info = {
+                'size': os.path.getsize(modpack_path),
+                'updated_at': datetime.datetime.now().isoformat(),
+                'mods': installed_mods
+            }
+            
+            with open(modpack_info_file, 'w') as f:
+                json.dump(modpack_info, f, indent=4)
+            
+            # Удаляем временный файл если он был создан
+            if modpack_path != local_modpack:
+                try:
+                    os.remove(modpack_path)
+                except Exception as e:
+                    logging.error(f"Ошибка удаления временного файла: {str(e)}")
+            
+            logging.info("Модпак успешно установлен")
+            self.status_update.emit("Модпак установлен")
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки модпака: {str(e)}")
+            raise ValueError(f"Ошибка установки модпака: {str(e)}")
 
     def check_launcher_update(self):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.4.4"
+            current_version = "1.0.4.5"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
