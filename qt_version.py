@@ -420,7 +420,54 @@ class InstallThread(QThread):
             mods_dir = os.path.join(self.install_path, "mods")
             os.makedirs(mods_dir, exist_ok=True)
             
-            # Удаляем все старые .jar файлы
+            # Проверяем нужно ли обновление
+            needs_update = False
+            mods_info_file = os.path.join(mods_dir, "mods_info.json")
+            
+            if not is_bundled:
+                # Для локальной версии проверяем modpack.zip в assets
+                local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
+                if os.path.exists(local_modpack):
+                    local_pack_size = os.path.getsize(local_modpack)
+                    local_pack_time = os.path.getmtime(local_modpack)
+                    
+                    if os.path.exists(mods_info_file):
+                        with open(mods_info_file, 'r') as f:
+                            local_info = json.load(f)
+                            if (local_info['size'] != local_pack_size or 
+                                local_info['updated_at'] != local_pack_time):
+                                needs_update = True
+                    else:
+                        needs_update = True
+                else:
+                    raise ValueError("Модпак не найден в assets")
+            else:
+                # Для exe версии проверяем GitHub
+                api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+                response = requests.get(api_url, timeout=10, verify=True)
+                response.raise_for_status()
+                release_data = response.json()
+                
+                modpack_asset = next((asset for asset in release_data['assets'] 
+                                    if asset['name'] == 'modpack.zip'), None)
+                if not modpack_asset:
+                    raise ValueError("Модпак не найден в релизе")
+                    
+                if os.path.exists(mods_info_file):
+                    with open(mods_info_file, 'r') as f:
+                        local_info = json.load(f)
+                        if (local_info['size'] != modpack_asset['size'] or 
+                            local_info['updated_at'] != modpack_asset['updated_at']):
+                            needs_update = True
+                else:
+                    needs_update = True
+            
+            # Если обновление не требуется, выходим
+            if not needs_update:
+                logging.info("Моды не требуют обновления")
+                return
+            
+            # Удаляем старые моды если нужно обновление
             self.status_update.emit("Удаление старых модов...")
             for file in os.listdir(mods_dir):
                 if file.endswith('.jar'):
@@ -465,26 +512,6 @@ class InstallThread(QThread):
             # Для exe версии качаем с GitHub
             logging.info("Загрузка модпака с GitHub...")
             self.status_update.emit("Загрузка модпака с GitHub...")
-            
-            # URL API GitHub для получения последнего релиза
-            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-            
-            try:
-                response = requests.get(api_url, timeout=10, verify=True)
-                response.raise_for_status()
-                release_data = response.json()
-            except requests.exceptions.RequestException as e:
-                raise ValueError(f"Ошибка получения информации о релизе: {str(e)}")
-            
-            # Ищем модпак среди assets
-            modpack_asset = None
-            for asset in release_data['assets']:
-                if asset['name'] == 'modpack.zip':
-                    modpack_asset = asset
-                    break
-            
-            if not modpack_asset:
-                raise ValueError("Модпак не найден в релизе")
             
             # Скачиваем и устанавливаем модпак
             temp_dir = os.path.join(os.path.expanduser("~"), ".iblauncher")
@@ -847,6 +874,13 @@ class MainWindow(QMainWindow):
         self.telegram_button.clicked.connect(self.open_telegram)
         self.status_update.connect(self.status_label.setText)
         self.progress_update.connect(self.update_progress)
+
+        # Проверяем обновления при запуске
+        QTimer.singleShot(1000, self.check_launcher_update)  # Проверяем через секунду после запуска
+
+        # Обновляем версию в интерфейсе
+        self.version_label = self.findChild(QLabel, "version_label")
+        self.update_version_label()
 
     def setup_path(self):
         self.install_path.setText(DEFAULT_MINECRAFT_DIR)
@@ -1508,6 +1542,61 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.error(f"Ошибка проверки модов: {str(e)}")
             return False
+
+    def check_launcher_update(self):
+        """Проверяет наличие обновлений лаунчера"""
+        try:
+            # Текущая версия лаунчера
+            CURRENT_VERSION = "1.0.2.8"
+            
+            # Проверяем GitHub API
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            response = requests.get(api_url, timeout=10, verify=True)
+            response.raise_for_status()
+            latest_release = response.json()
+            
+            # Получаем версию последнего релиза (убираем 'v' из начала)
+            latest_version = latest_release['tag_name'].lstrip('v')
+            
+            # Проверяем только обновления лаунчера
+            launcher_updated = False
+            for asset in latest_release['assets']:
+                if platform.system() == "Windows" and asset['name'] == "IB-Launcher.exe":
+                    launcher_updated = True
+                elif platform.system() == "Darwin" and asset['name'] == "IB-Launcher.dmg":
+                    launcher_updated = True
+            
+            if launcher_updated and latest_version > CURRENT_VERSION:
+                # Показываем диалог обновления
+                update_dialog = QMessageBox()
+                update_dialog.setWindowTitle("Доступно обновление")
+                update_dialog.setText(f"Доступна новая версия лаунчера: {latest_version}\n\nТекущая версия: {CURRENT_VERSION}")
+                update_dialog.setInformativeText("Хотите обновить лаунчер?")
+                update_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                update_dialog.setDefaultButton(QMessageBox.Yes)
+                
+                if update_dialog.exec_() == QMessageBox.Yes:
+                    # Открываем страницу релиза в браузере
+                    QDesktopServices.openUrl(QUrl(latest_release['html_url']))
+                    
+                    # Закрываем лаунчер
+                    QApplication.quit()
+                
+        except Exception as e:
+            logging.error(f"Ошибка проверки обновлений: {str(e)}")
+
+    def update_version_label(self):
+        """Обновляет отображение версии из GitHub"""
+        try:
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            response = requests.get(api_url, timeout=10, verify=True)
+            response.raise_for_status()
+            latest_release = response.json()
+            version = latest_release['tag_name'].lstrip('v')
+            self.version_label.setText(f"Версия: {version}")
+        except Exception as e:
+            logging.error(f"Ошибка получения версии: {str(e)}")
+            self.version_label.setText("Версия: Неизвестно")
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
