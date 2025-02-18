@@ -232,7 +232,7 @@ class JavaInstaller(QDialog):
             self.status_label.setText("Загрузка Java...")
             QApplication.processEvents()
             
-            response = requests.get(java_urls[os_type], headers=headers, stream=True)
+            response = requests.get(java_urls[os_type], headers=headers, stream=True, verify=True)
             response.raise_for_status()
             
             with open(installer_path, 'wb') as f:
@@ -470,7 +470,7 @@ class InstallThread(QThread):
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
             
             try:
-                response = requests.get(api_url, timeout=10)
+                response = requests.get(api_url, timeout=10, verify=True)
                 response.raise_for_status()
                 release_data = response.json()
             except requests.exceptions.RequestException as e:
@@ -492,7 +492,7 @@ class InstallThread(QThread):
             temp_modpack = os.path.join(temp_dir, "modpack.zip")
             
             try:
-                response = requests.get(modpack_asset['browser_download_url'], stream=True, timeout=30)
+                response = requests.get(modpack_asset['browser_download_url'], stream=True, timeout=30, verify=True)
                 response.raise_for_status()
                 
                 total_size = int(response.headers.get('content-length', 0))
