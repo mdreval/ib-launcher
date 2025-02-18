@@ -1398,45 +1398,118 @@ class MainWindow(QMainWindow):
             
             # Проверяем, запущены ли мы из exe
             is_bundled = getattr(sys, 'frozen', False)
+            mods_dir = os.path.join(self.install_path, "mods")
+            
+            def get_mods_list(zip_path):
+                """Получает список модов из zip архива"""
+                mods = {}
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    for file_info in zip_ref.filelist:
+                        if file_info.filename.endswith('.jar'):
+                            mods[file_info.filename] = file_info.file_size
+                return mods
+            
+            def get_local_mods():
+                """Получает список установленных модов"""
+                mods = {}
+                if os.path.exists(mods_dir):
+                    for file in os.listdir(mods_dir):
+                        if file.endswith('.jar'):
+                            file_path = os.path.join(mods_dir, file)
+                            mods[file] = os.path.getsize(file_path)
+                return mods
             
             if not is_bundled:
                 # Для локальной версии проверяем modpack.zip в assets
                 local_modpack = resource_path(os.path.join("assets", "modpack.zip"))
                 if os.path.exists(local_modpack):
-                    # Получаем размер и дату локального модпака
-                    local_pack_size = os.path.getsize(local_modpack)
-                    local_pack_time = os.path.getmtime(local_modpack)
+                    # Получаем списки модов
+                    modpack_mods = get_mods_list(local_modpack)
+                    local_mods = get_local_mods()
                     
-                    # Проверяем локальные моды
-                    mods_dir = os.path.join(self.install_path, "mods")
-                    if not os.path.exists(mods_dir):
-                        return True  # Нужно установить моды
-                        
-                    # Проверяем файл с информацией о модах
-                    mods_info_file = os.path.join(mods_dir, "mods_info.json")
+                    # Сравниваем моды
+                    needs_update = False
                     
-                    if os.path.exists(mods_info_file):
-                        with open(mods_info_file, 'r') as f:
-                            local_info = json.load(f)
-                            
-                        # Сравниваем размер и дату
-                        if (local_info['size'] != local_pack_size or 
-                            local_info['updated_at'] != local_pack_time):
-                            logging.info("Найдено обновление модов в assets")
-                            return True
-                    else:
-                        # Если файла нет, нужно обновить моды
+                    # Проверяем наличие всех модов из архива
+                    for mod_name, mod_size in modpack_mods.items():
+                        if mod_name not in local_mods or local_mods[mod_name] != mod_size:
+                            logging.info(f"Мод {mod_name} требует обновления")
+                            needs_update = True
+                            break
+                    
+                    # Проверяем лишние моды в папке
+                    for mod_name in local_mods:
+                        if mod_name not in modpack_mods:
+                            logging.info(f"Найден лишний мод: {mod_name}")
+                            needs_update = True
+                            break
+                    
+                    if needs_update:
+                        logging.info("Найдены различия в модах")
                         return True
                         
-                    logging.info("Локальные моды не требуют обновления")
+                    logging.info("Моды не требуют обновления")
                     return False
                 else:
                     logging.warning("Модпак не найден в assets")
                     return False
-            
-            # Для exe версии проверяем GitHub
-            # ... существующий код проверки GitHub ...
-
+            else:
+                # Для exe версии проверяем GitHub
+                api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+                response = requests.get(api_url, timeout=10, verify=True)
+                response.raise_for_status()
+                latest_release = response.json()
+                
+                # Ищем modpack.zip в ассетах релиза
+                modpack_asset = None
+                for asset in latest_release['assets']:
+                    if asset['name'] == 'modpack.zip':
+                        modpack_asset = asset
+                        break
+                
+                if modpack_asset:
+                    # Скачиваем modpack.zip во временную папку
+                    temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
+                    os.makedirs(temp_dir, exist_ok=True)
+                    temp_modpack = os.path.join(temp_dir, "modpack.zip")
+                    
+                    response = requests.get(modpack_asset['browser_download_url'], stream=True)
+                    response.raise_for_status()
+                    
+                    with open(temp_modpack, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    # Получаем списки модов
+                    modpack_mods = get_mods_list(temp_modpack)
+                    local_mods = get_local_mods()
+                    
+                    # Удаляем временный файл
+                    os.remove(temp_modpack)
+                    
+                    # Сравниваем моды
+                    needs_update = False
+                    
+                    # Проверяем наличие всех модов из архива
+                    for mod_name, mod_size in modpack_mods.items():
+                        if mod_name not in local_mods or local_mods[mod_name] != mod_size:
+                            logging.info(f"Мод {mod_name} требует обновления")
+                            needs_update = True
+                            break
+                    
+                    # Проверяем лишние моды в папке
+                    for mod_name in local_mods:
+                        if mod_name not in modpack_mods:
+                            logging.info(f"Найден лишний мод: {mod_name}")
+                            needs_update = True
+                            break
+                    
+                    logging.info(f"Нужно обновление модов: {needs_update}")
+                    return needs_update
+                
+                logging.warning("Модпак не найден в релизе")
+                return False
+                
         except Exception as e:
             logging.error(f"Ошибка проверки модов: {str(e)}")
             return False
@@ -1445,7 +1518,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.1"
+            current_version = "1.0.3.2"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1487,7 +1560,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.3.1"
+            current_version = "1.0.3.2"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
