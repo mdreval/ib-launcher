@@ -14,7 +14,7 @@ dist/
 
 # PyInstaller
 *.manifest
-*.spec
+manifest.xml
 
 # Logs
 *.log
@@ -34,3 +34,7 @@ launcher_config.json
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Временные файлы
+---------*
+git
