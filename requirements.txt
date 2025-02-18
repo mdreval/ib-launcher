@@ -2,3 +2,4 @@ PyQt5==5.15.9
 minecraft-launcher-lib==5.2.0
 requests==2.31.0
 random-username==1.0.2
+nbtlib==2.0.4
