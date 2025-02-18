@@ -1075,22 +1075,55 @@ class MainWindow(QMainWindow):
     def check_dependencies(self):
         """Проверяет наличие всех зависимостей"""
         try:
-            # Получаем путь установки из QLineEdit
-            install_path = self.install_path.text().strip()
+            install_path = Path(self.install_path.text().strip())
+            mods_dir = install_path / "mods"
             
-            # Проверяем наличие модов
-            mods_dir = os.path.join(install_path, "mods")
-            if os.path.exists(mods_dir) and os.listdir(mods_dir):
-                logging.info("Моды уже установлены, пропускаем проверку модпака")
-                return
-            
-            # Если модов нет, скачиваем модпак
-            self.status_update.emit("Проверка модпака...")
-            self.download_modpack()
-            
+            # Проверяем GitHub API для получения информации о последнем релизе
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            try:
+                response = requests.get(api_url, timeout=10)
+                response.raise_for_status()
+                release_data = response.json()
+                
+                # Ищем модпак
+                for asset in release_data['assets']:
+                    if asset['name'] == 'modpack.zip':
+                        # Если папка mods существует, проверяем нужно ли обновление
+                        if mods_dir.exists() and mods_dir.is_dir():
+                            # Спрашиваем пользователя об обновлении
+                            reply = QMessageBox.question(
+                                self, 
+                                'Обновление модпака',
+                                'Доступно обновление модпака. Установить?',
+                                QMessageBox.Yes | QMessageBox.No
+                            )
+                            
+                            if reply == QMessageBox.Yes:
+                                # Удаляем старые моды
+                                shutil.rmtree(mods_dir)
+                                # Скачиваем и устанавливаем новый модпак
+                                self.download_modpack()
+                        else:
+                            # Если модов нет, просто скачиваем
+                            self.download_modpack()
+                        return
+                    
+                logging.warning("Модпак не найден в последнем релизе")
+                
+            except Exception as e:
+                logging.error(f"Ошибка проверки обновлений: {str(e)}")
+                # Если нет интернета или другая ошибка, используем существующие моды
+                if not mods_dir.exists() or not any(mods_dir.iterdir()):
+                    QMessageBox.warning(
+                        self,
+                        "Ошибка",
+                        "Не удалось проверить обновления и моды не установлены.\n"
+                        "Проверьте подключение к интернету."
+                    )
+                    
         except Exception as e:
             logging.error(f"Ошибка проверки зависимостей: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", f"Ошибка проверки зависимостей: {str(e)}")
+            QMessageBox.warning(self, "Ошибка", str(e))
 
     def load_forge_cache(self):
         """Загрузка кеша версий Forge"""
