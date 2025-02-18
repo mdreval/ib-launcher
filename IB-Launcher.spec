@@ -9,7 +9,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('design.ui', '.'),
-        ('assets/*', 'assets/')
+        ('assets/*', 'assets/'),
     ],
     hiddenimports=['psutil', 'win32gui', 'win32api', 'win32con'],
     hookspath=[],
@@ -84,8 +84,8 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.5.8',
-            'CFBundleVersion': '1.0.5.8',
+            'CFBundleShortVersionString': '1.0.5.9',
+            'CFBundleVersion': '1.0.5.9',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
         }
