@@ -55,6 +55,8 @@ def generate_info_plist():
     <string>10.15.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright (c) 2024 Igrobar</string>
 </dict>
 </plist>'''
     
