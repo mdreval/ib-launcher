@@ -78,6 +78,9 @@ jobs:
           # Копируем Info.plist
           cp Info.plist "dist/IB-Launcher.app/Contents/Info.plist"
           
+          # Снимаем атрибут карантина
+          xattr -cr "dist/IB-Launcher.app"
+          
       - name: Create DMG
         run: |
           create-dmg \
@@ -90,6 +93,9 @@ jobs:
             --app-drop-link 425 120 \
             "IB-Launcher.dmg" \
             "dist/IB-Launcher.app"
+          
+          # Снимаем атрибут карантина с DMG
+          xattr -cr "IB-Launcher.dmg"
           
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
