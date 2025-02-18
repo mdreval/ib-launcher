@@ -57,7 +57,7 @@ jobs:
         
     - name: Build macOS app
       run: |
-        pyinstaller --clean ib-launcher.spec
+        pyinstaller --clean ib-launcher-mac.spec
         
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
