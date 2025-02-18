@@ -1445,7 +1445,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            CURRENT_VERSION = "1.0.2.9"
+            current_version = "1.0.3.0"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1464,11 +1464,11 @@ class MainWindow(QMainWindow):
                 elif platform.system() == "Darwin" and asset['name'] == "IB-Launcher.dmg":
                     launcher_updated = True
             
-            if launcher_updated and latest_version > CURRENT_VERSION:
+            if launcher_updated and latest_version > current_version:
                 # Показываем диалог обновления
                 update_dialog = QMessageBox()
                 update_dialog.setWindowTitle("Доступно обновление")
-                update_dialog.setText(f"Доступна новая версия лаунчера: {latest_version}\n\nТекущая версия: {CURRENT_VERSION}")
+                update_dialog.setText(f"Доступна новая версия лаунчера: {latest_version}\n\nТекущая версия: {current_version}")
                 update_dialog.setInformativeText("Хотите обновить лаунчер?")
                 update_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                 update_dialog.setDefaultButton(QMessageBox.Yes)
@@ -1484,17 +1484,32 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка проверки обновлений: {str(e)}")
 
     def update_version_label(self):
-        """Обновляет отображение версии из GitHub"""
+        """Обновляет отображение версии"""
         try:
+            # Текущая версия лаунчера
+            current_version = "1.0.3.0"
+            
+            # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
             response = requests.get(api_url, timeout=10, verify=True)
             response.raise_for_status()
             latest_release = response.json()
-            version = latest_release['tag_name'].lstrip('v')
-            self.version_label.setText(f"Версия: {version}")
+            latest_version = latest_release['tag_name'].lstrip('v')
+            
+            # Сравниваем версии
+            if latest_version > current_version:
+                # Если доступна новая версия, показываем обе
+                self.version_label.setText(f"Версия: {current_version} (Доступно обновление: {latest_version})")
+                self.version_label.setStyleSheet("QLabel { color: #ff6b6b; }")  # Красный цвет для уведомления
+            else:
+                # Если версия актуальная
+                self.version_label.setText(f"Версия: {current_version}")
+                self.version_label.setStyleSheet("QLabel { color: #666666; }")  # Возвращаем обычный цвет
+            
         except Exception as e:
             logging.error(f"Ошибка получения версии: {str(e)}")
-            self.version_label.setText("Версия: Неизвестно")
+            # При ошибке показываем только текущую версию
+            self.version_label.setText(f"Версия: {current_version}")
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
