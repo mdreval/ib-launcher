@@ -46,7 +46,7 @@ if platform.system() == 'Windows':
         codesign_identity=None,
         entitlements_file=None,
         icon='assets/icon.ico',
-        version_file='version_info.txt'
+        version='version_info.txt'
     )
 else:  # macOS
     exe = EXE(
