@@ -1,6 +1,8 @@
 # GUI и основные компоненты
 PyQt5>=5.15.9
-pywin32==306
+
+# Windows-специфичные зависимости
+pywin32==306; platform_system == "Windows"
 
 # Minecraft и моды
 minecraft-launcher-lib==5.2.0
