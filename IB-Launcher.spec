@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import platform
 
 block_cipher = None
 
@@ -23,26 +24,69 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='IB-Launcher',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon='assets/icon.ico',
-    version='file_version_info.txt'
-)
+if platform.system() == 'Windows':
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name='IB-Launcher',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon='assets/icon.ico',
+        version_file='version_info.txt'
+    )
+else:  # macOS
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name='IB-Launcher',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        console=False,
+        disable_windowed_traceback=False,
+        target_arch='universal2',
+        codesign_identity=None,
+        entitlements_file=None,
+        icon='assets/icon.icns'
+    )
+
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name='IB-Launcher'
+    )
+
+    app = BUNDLE(
+        coll,
+        name='IB-Launcher.app',
+        icon='assets/icon.icns',
+        bundle_identifier='com.igrobar.launcher',
+        info_plist={
+            'CFBundleShortVersionString': '1.0.3.4',
+            'CFBundleVersion': '1.0.3.4',
+            'NSHighResolutionCapable': True,
+            'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
+        }
+    )
