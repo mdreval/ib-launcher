@@ -61,7 +61,6 @@ jobs:
       with:
         files: |
           windows/IB-Launcher.exe
-          assets/modpack.zip
         draft: false
         prerelease: false
         generate_release_notes: true
