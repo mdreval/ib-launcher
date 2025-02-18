@@ -38,3 +38,7 @@ $RECYCLE.BIN/
 # Временные файлы
 ---------*
 git
+
+# Java
+assets/jdk-17.0.10_macos-aarch64_bin.dmg
+assets/jdk-17.0.10_windows-x64_bin.exe
