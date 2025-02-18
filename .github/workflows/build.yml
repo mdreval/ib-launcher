@@ -14,88 +14,88 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller==6.3.0
-        pip install pywin32
-        
-    - name: Generate version info
-      run: |
-        python generate_version_info.py
-        
-    - name: Build Windows exe
-      shell: cmd
-      run: |
-        pyinstaller --clean --version-file version_info.txt ib-launcher.spec
-        
-    - name: Upload Windows artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: IB-Launcher-Windows
-        path: dist/IB-Launcher.exe
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==6.3.0
+          pip install pywin32
+          
+      - name: Generate version info
+        run: |
+          python generate_version_info.py
+          
+      - name: Build Windows exe
+        shell: cmd
+        run: |
+          pyinstaller --clean ib-launcher.spec
+          
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IB-Launcher-Windows
+          path: dist/IB-Launcher.exe
 
   build-macos:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        
-    - name: Install system dependencies
-      run: |
-        brew install create-dmg
-        
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller==6.3.0
-        pip install --only-binary :all: PyQt5
-        pip install -r requirements.txt
-        
-    - name: Generate version info
-      run: |
-        python generate_version_info.py
-        python generate_mac_info.py
-        
-    - name: Build macOS app
-      shell: bash
-      run: |
-        pyinstaller --clean ib-launcher-mac.spec
-        
-        # Копируем Info.plist
-        cp Info.plist "dist/IB-Launcher.app/Contents/Info.plist"
-        
-    - name: Create DMG
-      run: |
-        create-dmg \
-          --volname "IB-Launcher" \
-          --window-pos 200 120 \
-          --window-size 600 400 \
-          --icon-size 100 \
-          --icon "IB-Launcher.app" 175 120 \
-          --hide-extension "IB-Launcher.app" \
-          --app-drop-link 425 120 \
-          "IB-Launcher.dmg" \
-          "dist/IB-Launcher.app"
-        
-    - name: Upload macOS artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: IB-Launcher-macOS
-        path: IB-Launcher.dmg
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install system dependencies
+        run: |
+          brew install create-dmg
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller==6.3.0
+          pip install --only-binary :all: PyQt5
+          pip install -r requirements.txt
+          
+      - name: Generate version info
+        run: |
+          python generate_version_info.py
+          python generate_mac_info.py
+          
+      - name: Build macOS app
+        shell: bash
+        run: |
+          pyinstaller --clean ib-launcher-mac.spec
+          
+          # Копируем Info.plist
+          cp Info.plist "dist/IB-Launcher.app/Contents/Info.plist"
+          
+      - name: Create DMG
+        run: |
+          create-dmg \
+            --volname "IB-Launcher" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "IB-Launcher.app" 175 120 \
+            --hide-extension "IB-Launcher.app" \
+            --app-drop-link 425 120 \
+            "IB-Launcher.dmg" \
+            "dist/IB-Launcher.app"
+          
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IB-Launcher-macOS
+          path: IB-Launcher.dmg
 
   create-release:
     needs: [build-windows, build-macos]
@@ -105,28 +105,28 @@ jobs:
       contents: write
     
     steps:
-    - uses: actions/checkout@v4
-      
-    - name: Download Windows artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: IB-Launcher-Windows
-        path: windows
+      - uses: actions/checkout@v4
         
-    - name: Download macOS artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: IB-Launcher-macOS
-        path: macos
-        
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: |
-          windows/IB-Launcher.exe
-          macos/IB-Launcher.dmg
-        draft: false
-        prerelease: false
-        generate_release_notes: true
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: IB-Launcher-Windows
+          path: windows
+          
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: IB-Launcher-macOS
+          path: macos
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            windows/IB-Launcher.exe
+            macos/IB-Launcher.dmg
+          draft: false
+          prerelease: false
+          generate_release_notes: true
