@@ -629,10 +629,15 @@ class InstallThread(QThread):
             
             # Сначала проверяем через where
             try:
-                result = subprocess.run(['where', 'javaw'], 
-                                     capture_output=True, 
-                                     text=True, 
-                                     creationflags=subprocess.CREATE_NO_WINDOW)
+                if platform.system()=="Darwin":
+                    result = subprocess.run(['which', 'java'], 
+                                        capture_output=True, 
+                                        text=True)
+                else:
+                    result = subprocess.run(['where', 'javaw'], 
+                                        capture_output=True, 
+                                        text=True, 
+                                        creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
                     if java_paths:
@@ -1603,7 +1608,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.5.9"
+            current_version = "1.0.6.0"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1645,7 +1650,7 @@ class MainWindow(QMainWindow):
         """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.5.9"
+            current_version = "1.0.6.0"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
