@@ -609,7 +609,7 @@ class InstallThread(QThread):
             logging.info(f"Команда запуска: {' '.join(minecraft_command)}")
             subprocess.Popen(
                 minecraft_command,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                #creationflags=subprocess.CREATE_NO_WINDOW,
                 cwd=os.path.abspath(self.install_path)  # Устанавливаем рабочую директорию
             )
 
@@ -1625,7 +1625,7 @@ class MainWindow(QMainWindow):
     def check_launcher_update(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.1"
+            current_version = "1.0.6.3"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1666,7 +1666,7 @@ class MainWindow(QMainWindow):
     def update_version_label(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.1"
+            current_version = "1.0.6.3"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
