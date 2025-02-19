@@ -1692,7 +1692,7 @@ class MainWindow(QMainWindow):
     def check_launcher_update(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.6"
+            current_version = "1.0.6.7"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1733,7 +1733,7 @@ class MainWindow(QMainWindow):
     def update_version_label(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.6"
+            current_version = "1.0.6.7"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
