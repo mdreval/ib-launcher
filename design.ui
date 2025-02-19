@@ -147,7 +147,7 @@
     min-height: 23px;
 }
 QLineEdit:focus {
-    border-color: #8B0000;
+    border-color: #2E8B57;
 }</string>
              </property>
              <property name="placeholderText">
@@ -211,7 +211,7 @@ QComboBox::down-arrow {
     height: 12px;
 }
 QComboBox:hover {
-    border-color: #8B0000;
+    border-color: #2E8B57;
 }</string>
              </property>
             </widget>
@@ -255,7 +255,7 @@ QComboBox::down-arrow {
     height: 12px;
 }
 QComboBox:hover {
-    border-color: #8B0000;
+    border-color: #2E8B57;
 }</string>
              </property>
             </widget>
@@ -422,18 +422,22 @@ QPushButton:disabled {
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="QListWidget" name="mods_list"/>
+         <widget class="QListWidget" name="mods_list">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>200</height>
+           </size>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::ExtendedSelection</enum>
+          </property>
+         </widget>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="QPushButton" name="add_mod_button">
-            <property name="font">
-             <font>
-              <family>MS Shell Dlg 2</family>
-              <pointsize>8</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>Добавить моды</string>
             </property>
@@ -441,14 +445,15 @@ QPushButton:disabled {
           </item>
           <item>
            <widget class="QPushButton" name="remove_mod_button">
-            <property name="font">
-             <font>
-              <family>MS Shell Dlg 2</family>
-              <pointsize>8</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>Удалить выбранные</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="check_updates_button">
+            <property name="text">
+             <string>Отключить обновление модов</string>
             </property>
            </widget>
           </item>

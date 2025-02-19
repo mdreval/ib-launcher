@@ -46,7 +46,7 @@ if platform.system() == 'Windows':
         codesign_identity=None,
         entitlements_file=None,
         icon='assets/icon.ico',
-        version='version_info.txt'
+        version='1.0.6.6'
     )
 else:  # macOS
     exe = EXE(
@@ -84,8 +84,8 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.6.5',
-            'CFBundleVersion': '1.0.6.5',
+            'CFBundleShortVersionString': '1.0.6.6',
+            'CFBundleVersion': '1.0.6.6',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
         }
