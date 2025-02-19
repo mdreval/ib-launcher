@@ -22,7 +22,7 @@ def get_version():
         except Exception as e:
             print(f"Ошибка чтения версии из файла: {e}")
         
-        return "1.0.5.9"  # Версия по умолчанию
+        return "1.0.6.0"  # Версия по умолчанию
 
 def generate_info_plist():
     version = get_version()
