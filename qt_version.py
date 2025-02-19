@@ -539,12 +539,20 @@ class InstallThread(QThread):
 
             # Сначала проверяем через where
             try:
-                result = subprocess.run(['where', 'javaw'], 
-                                     capture_output=True, 
-                                     text=True, 
-                                     creationflags=subprocess.CREATE_NO_WINDOW)
+                system = platform.system()
+                logging.info(f"System: {system}")
+                if system=="Darwin":
+                    result = subprocess.run(['which', 'java'], 
+                                        capture_output=True, 
+                                        text=True)
+                else:
+                    result = subprocess.run(['where', 'javaw'], 
+                                        capture_output=True, 
+                                        text=True, 
+                                        creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
+                    logging.info(f"java_paths: {java_paths}")
                     if java_paths:
                         java_path = java_paths[0]
                         logging.info(f"Java найдена через where: {java_path}")
@@ -874,10 +882,17 @@ class MainWindow(QMainWindow):
             
             # Сначала проверяем через where
             try:
-                result = subprocess.run(['where', 'javaw'], 
-                                     capture_output=True, 
-                                     text=True, 
-                                     creationflags=subprocess.CREATE_NO_WINDOW)
+                system = platform.system()
+                logging.info(f"System: {system}")
+                if system=="Darwin":
+                    result = subprocess.run(['which', 'java'], 
+                                        capture_output=True, 
+                                        text=True)
+                else:
+                    result = subprocess.run(['where', 'javaw'], 
+                                        capture_output=True, 
+                                        text=True, 
+                                        creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
                     if java_paths:
