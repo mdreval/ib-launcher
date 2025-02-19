@@ -532,6 +532,7 @@ class InstallThread(QThread):
             java_path = None
             possible_paths = [
                 'javaw.exe',
+                r'\usr\bin\java',
                 r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
                 os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
@@ -627,6 +628,7 @@ class InstallThread(QThread):
             possible_paths = [
                 'javaw.exe',  # Проверяем в PATH
                 'java.exe',   # Альтернативный вариант
+                r'\usr\bin\java',
                 r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
                 r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
@@ -671,8 +673,8 @@ class InstallThread(QThread):
                 result = subprocess.run(
                     [java_exe, '-version'], 
                     capture_output=True,  # Используем только capture_output
-                    text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
+                    #creationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True                    
                 )
                 
                 version_output = result.stderr
@@ -872,6 +874,7 @@ class MainWindow(QMainWindow):
             possible_paths = [
                 'javaw.exe',  # Проверяем в PATH
                 'java.exe',   # Альтернативный вариант
+                r'\usr\bin\java',
                 r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
                 r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
@@ -915,8 +918,8 @@ class MainWindow(QMainWindow):
                 result = subprocess.run(
                     [java_exe, '-version'], 
                     capture_output=True,  # Используем только capture_output
-                    text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
+                    #reationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True
                 )
                 
                 version_output = result.stderr
@@ -1625,7 +1628,7 @@ class MainWindow(QMainWindow):
     def check_launcher_update(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.3"
+            current_version = "1.0.6.4"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1666,7 +1669,7 @@ class MainWindow(QMainWindow):
     def update_version_label(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.3"
+            current_version = "1.0.6.4"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
