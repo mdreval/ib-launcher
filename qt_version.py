@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMessageBox,
                             QWidget, QVBoxLayout, QDialog, QVBoxLayout,
                             QLabel, QProgressBar, QPushButton, QFileDialog,
                             QHBoxLayout, QSlider, QGroupBox, QComboBox, QLineEdit,
-                            QPlainTextEdit)
+                            QPlainTextEdit, QListWidget)
 from PyQt5.QtGui import QPixmap, QDesktopServices, QFont, QIcon
 from PyQt5 import uic
 from minecraft_launcher_lib.utils import get_version_list
@@ -290,7 +290,7 @@ class InstallThread(QThread):
     toggle_ui = pyqtSignal(bool)
     error_occurred = pyqtSignal(str)
 
-    def __init__(self, version, username, install_path, memory=4, launch_flags_input=None):
+    def __init__(self, version, username, install_path, memory=4, launch_flags_input=None, mods_update_switch=True):
         super().__init__()
         self.version = version
         self.username = username
@@ -298,6 +298,7 @@ class InstallThread(QThread):
         self.memory = memory
         self.launch_flags_input = launch_flags_input
         self.stop_requested = False
+        self.mods_update_switch=mods_update_switch
 
     def run(self):
         try:
@@ -402,6 +403,8 @@ class InstallThread(QThread):
 
     def _install_modpack(self):
         """Устанавливает модпак"""
+        if not self.mods_update_switch:
+            return
         try:
             self.status_update.emit("Проверка модпака...")
             
@@ -453,18 +456,27 @@ class InstallThread(QThread):
                     logging.info("Моды актуальны")
                     return
                 
-                # Скачиваем модпак
+                # Скачиваем модпак с отображением прогресса
                 self.status_update.emit("Скачивание модпака...")
                 response = requests.get(modpack_asset['browser_download_url'], stream=True)
                 response.raise_for_status()
+                
+                # Получаем размер файла
+                total_size = int(response.headers.get('content-length', 0))
+                self.progress_update.emit(0, total_size, "")
                 
                 temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
                 os.makedirs(temp_dir, exist_ok=True)
                 temp_modpack = os.path.join(temp_dir, "modpack.zip")
                 
+                # Скачиваем с отображением прогресса
+                downloaded_size = 0
                 with open(temp_modpack, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            self.progress_update.emit(downloaded_size, total_size, "")
                 
                 modpack_path = temp_modpack
             
@@ -481,12 +493,20 @@ class InstallThread(QThread):
                         except Exception as e:
                             logging.error(f"Ошибка удаления мода {file}: {str(e)}")
             
-            # Распаковываем новые моды
+            # Распаковываем новые моды с отображением прогресса
             with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
+                # Получаем общее количество файлов для распаковки
+                total_files = len([f for f in zip_ref.filelist if f.filename.endswith('.jar')])
+                self.progress_update.emit(0, total_files, "")
+                
+                # Распаковываем файлы с обновлением прогресса
+                extracted_files = 0
                 for file_info in zip_ref.filelist:
                     if file_info.filename.endswith('.jar'):
                         zip_ref.extract(file_info.filename, mods_dir)
                         installed_mods.append(file_info.filename)
+                        extracted_files += 1
+                        self.progress_update.emit(extracted_files, total_files, "")
                         logging.info(f"Установлен мод: {file_info.filename}")
             
             # Сохраняем информацию о модпаке
@@ -768,8 +788,10 @@ class MainWindow(QMainWindow):
     status_update = pyqtSignal(str)
     progress_update = pyqtSignal(int, int, str)
     
+    
     def __init__(self):
         super().__init__()
+        self.mods_update_switch= True
         self.java_checked = False
         self.forge_cache = self.load_forge_cache()
         
@@ -819,6 +841,16 @@ class MainWindow(QMainWindow):
         self.youtube_button = self.findChild(QPushButton, "youtube_button")
         self.telegram_button = self.findChild(QPushButton, "telegram_button")
         self.start_button = self.findChild(QPushButton, "start_button")
+        self.mods_list = self.findChild(QListWidget, "mods_list")
+        self.add_mod_button = self.findChild(QPushButton, "add_mod_button")
+        self.remove_mod_button = self.findChild(QPushButton, "remove_mod_button")
+        self.check_updates_button = self.findChild(QPushButton, "check_updates_button")
+        
+        # Подключаем сигналы для модов
+        self.add_mod_button.clicked.connect(self.add_mods)
+        self.remove_mod_button.clicked.connect(self.remove_selected_mods)
+        self.check_updates_button.clicked.connect(self.toggle_auto_updates)
+        self.tabWidget.currentChanged.connect(self.on_tab_changed)
         
         self.setup_path()
         self.check_java()
@@ -849,6 +881,8 @@ class MainWindow(QMainWindow):
         # Обновляем версию в интерфейсе
         self.version_label = self.findChild(QLabel, "version_label")
         self.update_version_label()
+        #self.update_mods_list()
+        self.tabWidget.setCurrentIndex(0)
 
     def setup_path(self):
         self.install_path.setText(DEFAULT_MINECRAFT_DIR)
@@ -985,6 +1019,8 @@ class MainWindow(QMainWindow):
                     self.saved_minecraft_version = config.get('minecraft_version', '1.20.1')
                     self.saved_forge_version = config.get('forge_version', '1.20.1-forge-47.3.22')
                     
+                    
+
                     # Загружаем путь установки
                     install_path = config.get('install_path', '')
                     if install_path:
@@ -1001,6 +1037,16 @@ class MainWindow(QMainWindow):
                     # Загружаем флаги запуска
                     if 'launch_flags' in config:
                         self.launch_flags_input.setPlainText(config['launch_flags'])
+                        
+                    # Загружаем настройку автообновления
+                    if config.get('auto_update_mods', True):
+                        self.check_updates_button.setText("Отключить обновление модов")
+                        self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
+                        self.mods_update_switch= True
+                    else:
+                        self.check_updates_button.setText("Включить обновление модов")
+                        self.check_updates_button.setStyleSheet("background-color: red; color:white; font-weight:bold;");
+                        self.mods_update_switch= False
             else:
                 # При первом запуске устанавливаем версии по умолчанию
                 self.saved_minecraft_version = '1.20.1'
@@ -1360,7 +1406,8 @@ class MainWindow(QMainWindow):
                 username,
                 install_path,
                 self.memory_slider.value(),
-                self.launch_flags_input
+                self.launch_flags_input,
+                self.mods_update_switch
             )
             
             # Подключаем сигналы из потока к слотам главного окна
@@ -1565,18 +1612,27 @@ class MainWindow(QMainWindow):
                     logging.info("Моды актуальны")
                     return
                 
-                # Скачиваем модпак
+                # Скачиваем модпак с отображением прогресса
                 self.status_update.emit("Скачивание модпака...")
                 response = requests.get(modpack_asset['browser_download_url'], stream=True)
                 response.raise_for_status()
+                
+                # Получаем размер файла
+                total_size = int(response.headers.get('content-length', 0))
+                self.progress_update.emit(0, total_size, "")
                 
                 temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
                 os.makedirs(temp_dir, exist_ok=True)
                 temp_modpack = os.path.join(temp_dir, "modpack.zip")
                 
+                # Скачиваем с отображением прогресса
+                downloaded_size = 0
                 with open(temp_modpack, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            self.progress_update.emit(downloaded_size, total_size, "")
                 
                 modpack_path = temp_modpack
             
@@ -1593,12 +1649,20 @@ class MainWindow(QMainWindow):
                         except Exception as e:
                             logging.error(f"Ошибка удаления мода {file}: {str(e)}")
             
-            # Распаковываем новые моды
+            # Распаковываем новые моды с отображением прогресса
             with zipfile.ZipFile(modpack_path, 'r') as zip_ref:
+                # Получаем общее количество файлов для распаковки
+                total_files = len([f for f in zip_ref.filelist if f.filename.endswith('.jar')])
+                self.progress_update.emit(0, total_files, "")
+                
+                # Распаковываем файлы с обновлением прогресса
+                extracted_files = 0
                 for file_info in zip_ref.filelist:
                     if file_info.filename.endswith('.jar'):
                         zip_ref.extract(file_info.filename, mods_dir)
                         installed_mods.append(file_info.filename)
+                        extracted_files += 1
+                        self.progress_update.emit(extracted_files, total_files, "")
                         logging.info(f"Установлен мод: {file_info.filename}")
             
             # Сохраняем информацию о модпаке
@@ -1628,7 +1692,7 @@ class MainWindow(QMainWindow):
     def check_launcher_update(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.5"
+            current_version = "1.0.6.6"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1669,7 +1733,7 @@ class MainWindow(QMainWindow):
     def update_version_label(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.5"
+            current_version = "1.0.6.6"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1692,6 +1756,134 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка получения версии: {str(e)}")
             # При ошибке показываем только текущую версию
             self.version_label.setText(f"Версия: {current_version}")
+
+    def on_tab_changed(self, index):
+        """Обработчик смены вкладки"""
+        if index == 1:  # Индекс вкладки модов
+            self.update_mods_list()
+    
+    def update_mods_list(self):
+        """Обновляет список модов"""
+        try:
+            self.mods_list.clear()
+            install_path = self.install_path.text().strip()
+            mods_dir = os.path.join(install_path, "mods")
+            
+            if not os.path.exists(mods_dir):
+                return
+                
+            for file in os.listdir(mods_dir):
+                if file.endswith('.jar'):
+                    # Убираем расширение .jar и форматируем имя
+                    mod_name = file[:-4]
+                    mod_name = mod_name.replace('-', ' ').replace('_', ' ').title()
+                    self.mods_list.addItem(mod_name)
+                    
+            # Обновляем статус
+            self.status_label.setText(f"Найдено модов: {self.mods_list.count()}")
+            
+        except Exception as e:
+            logging.error(f"Ошибка обновления списка модов: {str(e)}")
+            self.status_label.setText("Ошибка загрузки модов")
+    
+    def add_mods(self):
+        """Добавляет новые моды"""
+        try:
+            files, _ = QFileDialog.getOpenFileNames(
+                self,
+                "Выберите моды",
+                "",
+                "Minecraft Mods (*.jar)"
+            )
+            
+            if not files:
+                return
+                
+            install_path = self.install_path.text().strip()
+            mods_dir = os.path.join(install_path, "mods")
+            os.makedirs(mods_dir, exist_ok=True)
+            
+            for file in files:
+                try:
+                    shutil.copy2(file, os.path.join(mods_dir, os.path.basename(file)))
+                    logging.info(f"Добавлен мод: {file}")
+                except Exception as e:
+                    logging.error(f"Ошибка копирования мода {file}: {str(e)}")
+            
+            self.update_mods_list()
+            
+        except Exception as e:
+            logging.error(f"Ошибка добавления модов: {str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось добавить моды: {str(e)}")
+    
+    def remove_selected_mods(self):
+        """Удаляет выбранные моды"""
+        try:
+            selected_items = self.mods_list.selectedItems()
+            if not selected_items:
+                return
+                
+            response = QMessageBox.question(
+                self,
+                "Подтверждение",
+                f"Удалить выбранные моды ({len(selected_items)})?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if response == QMessageBox.No:
+                return
+                
+            install_path = self.install_path.text().strip()
+            mods_dir = os.path.join(install_path, "mods")
+            
+            for item in selected_items:
+                mod_name = item.text().lower().replace(' ', '-') + '.jar'
+                mod_path = os.path.join(mods_dir, mod_name)
+                try:
+                    if os.path.exists(mod_path):
+                        os.remove(mod_path)
+                        logging.info(f"Удален мод: {mod_name}")
+                except Exception as e:
+                    logging.error(f"Ошибка удаления мода {mod_name}: {str(e)}")
+            
+            self.update_mods_list()
+            
+        except Exception as e:
+            logging.error(f"Ошибка удаления модов: {str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось удалить моды: {str(e)}")
+    
+    def toggle_auto_updates(self):
+        """Включает/выключает автообновление модов"""
+        try:
+            if self.check_updates_button.text() == "Отключить обновление модов":
+                self.check_updates_button.setText("Включить обновление модов")
+                # Сохраняем настройку
+                config = {}
+                if os.path.exists(CONFIG_FILE):
+                    with open(CONFIG_FILE, 'r') as f:
+                        config = json.load(f)
+                config['auto_update_mods'] = False
+                with open(CONFIG_FILE, 'w') as f:
+                    json.dump(config, f)
+                self.mods_update_switch= False
+                self.check_updates_button.setStyleSheet("background-color: red; color:white; font-weight:bold;");
+
+            else:
+                self.check_updates_button.setText("Отключить обновление модов")
+                # Сохраняем настройку
+                config = {}
+                if os.path.exists(CONFIG_FILE):
+                    with open(CONFIG_FILE, 'r') as f:
+                        config = json.load(f)
+                config['auto_update_mods'] = True
+                with open(CONFIG_FILE, 'w') as f:
+                    json.dump(config, f)
+                self.mods_update_switch= True
+                self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
+        except Exception as e:
+            logging.error(f"Ошибка переключения автообновления: {str(e)}")
+            self.mods_update_switch= True
+            self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
