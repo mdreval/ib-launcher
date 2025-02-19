@@ -629,7 +629,9 @@ class InstallThread(QThread):
             
             # Сначала проверяем через where
             try:
-                if platform.system()=="Darwin":
+                system = platform.system()
+                logging.info(f"System: {system}")
+                if system=="Darwin":
                     result = subprocess.run(['which', 'java'], 
                                         capture_output=True, 
                                         text=True)
@@ -640,6 +642,7 @@ class InstallThread(QThread):
                                         creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
+                    logging.info(f"java_path: {java_paths}")
                     if java_paths:
                         java_path = java_paths[0]
                         logging.info(f"Java найдена через where: {java_path}")
@@ -1605,10 +1608,9 @@ class MainWindow(QMainWindow):
             raise ValueError(f"Ошибка установки модпака: {str(e)}")
 
     def check_launcher_update(self):
-        """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.0"
+            current_version = "1.0.6.1"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1647,10 +1649,9 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка проверки обновлений: {str(e)}")
 
     def update_version_label(self):
-        """Обновляет отображение версии"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.6.0"
+            current_version = "1.0.6.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
