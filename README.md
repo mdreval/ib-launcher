@@ -10,6 +10,8 @@
 
 ### Возможности
 - Автоматическая установка Minecraft и Forge
+- Поддержка серверов PaperMC начиная с версии 1.18
+- Поддержка различных версий Minecraft и Forge
 - Автоматическое обновление модов
 - Автоматическая настройка памяти
 - Поддержка Windows и macOS
@@ -31,9 +33,16 @@
 ### Использование
 1. Запустите лаунчер
 2. Введите имя игрока
-3. Настройте путь установки (при необходимости)
-4. Настройте количество выделяемой памяти
-5. Нажмите "Играть"
+3. Выберите версию Minecraft из списка (включая версии PaperMC)
+4. Для версий Minecraft выберите версию Forge, либо пункт "Не устанавливать"
+5. Настройте путь установки (при необходимости)
+6. Настройте количество выделяемой памяти
+7. Нажмите "Играть"
+
+#### Особенности установки разных версий
+- **Для обычных версий Minecraft**: Создается папка вида "IB_X.Y.Z"
+- **Для версий PaperMC**: Создается папка вида "IB_Paper_X.Y.Z" и устанавливается серверная версия Minecraft
+- **Для Forge**: При выборе Forge игра устанавливается с модами (только для версии Forge 47.3.22)
 
 ### Обратная связь
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
@@ -48,6 +57,8 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 
 ### Key Features
 - Automatic Minecraft and Forge installation
+- Support for PaperMC servers starting from version 1.18
+- Support for various Minecraft and Forge versions
 - Automatic mod updates
 - Automatic memory configuration
 - Windows and macOS support
@@ -69,9 +80,16 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 ### Usage
 1. Launch the application
 2. Enter player name
-3. Configure installation path (if needed)
-4. Adjust memory allocation
-5. Click "Play"
+3. Choose a Minecraft version from the list (including PaperMC versions)
+4. For Minecraft versions, select a Forge version or the "Do not install" option
+5. Configure installation path (if needed)
+6. Adjust memory allocation
+7. Click "Play"
+
+#### Version-specific installation notes
+- **For regular Minecraft versions**: Creates a folder like "IB_X.Y.Z"
+- **For PaperMC versions**: Creates a folder like "IB_Paper_X.Y.Z" and installs the server version of Minecraft
+- **For Forge**: When selecting Forge, the game is installed with mods (only for Forge version 47.3.22)
 
 ### Feedback
 ![title](https://github.com/user-attachments/assets/942ebdc8-7696-456e-a2b9-24a646ff7f36)

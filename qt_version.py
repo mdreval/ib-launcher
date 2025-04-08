@@ -35,6 +35,28 @@ import time
 import traceback
 import datetime
 
+def get_paper_versions():
+    """Получает список доступных версий PaperMC"""
+    try:
+        paper_api_url = "https://api.papermc.io/v2/projects/paper"
+        response = requests.get(paper_api_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Получаем доступные версии Paper, начиная с 1.18
+        paper_versions = []
+        for version in data.get('versions', []):
+            # Проверяем, что версия начинается с цифры и это 1.18 или выше
+            if version[0].isdigit() and version.startswith('1.'):
+                parts = version.split('.')
+                if len(parts) >= 2 and int(parts[0]) == 1 and int(parts[1]) >= 18:
+                    paper_versions.append(f"Paper {version}")
+        
+        return paper_versions
+    except Exception as e:
+        logging.error(f"Ошибка получения версий PaperMC: {str(e)}")
+        return []
+
 try:
     import win32gui
 except ImportError:
@@ -305,14 +327,23 @@ class InstallThread(QThread):
             self.toggle_ui.emit(False)
             self._prepare_environment()
 
-            if "-" in self.version:  # Если это версия Forge (например, "1.20.1-47.2.20")
+            # Проверяем, является ли выбранная версия Paper
+            if self.version.startswith("paper_"):
+                # Извлекаем чистую версию из строки "paper_X.Y.Z"
+                paper_version = self.version.replace("paper_", "")
+                logging.info(f"Запуск установки PaperMC версии: {paper_version}")
+                self._install_paper(paper_version)
+            elif "-" in self.version:  # Если это версия Forge (например, "1.20.1-47.2.20")
                 logging.info(f"Запуск установки Forge версии: {self.version}")
                 self._install_forge()
             else:
                 logging.info(f"Запуск установки Minecraft версии: {self.version}")
                 self._install_minecraft()
-
-            self._install_modpack()
+            
+            # Устанавливаем модпак только для определенных версий, где включен флаг mods_update_switch
+            if self.mods_update_switch:
+                self._install_modpack()
+                
             self._launch_game()
         except Exception as e:
             logging.error(f"Ошибка установки: {str(e)}", exc_info=True)
@@ -323,19 +354,19 @@ class InstallThread(QThread):
     def _prepare_environment(self):
         """Подготавливает окружение для установки"""
         try:
-            self.status_update.emit("Подготовка директории...")
-            
+        self.status_update.emit("Подготовка директории...")
+
             # Создаем директории только в папке установки игры
             game_dirs = [
-                self.install_path,
-                os.path.join(self.install_path, "versions"),
-                os.path.join(self.install_path, "libraries"),
-                os.path.join(self.install_path, "mods"),
+            self.install_path,
+            os.path.join(self.install_path, "versions"),
+            os.path.join(self.install_path, "libraries"),
+            os.path.join(self.install_path, "mods"),
                 os.path.join(self.install_path, "config"),
                 os.path.join(self.install_path, "schematics"),
                 os.path.join(self.install_path, "logs")
-            ]
-            
+        ]
+
             # Создаем директории игры
             for directory in game_dirs:
                 os.makedirs(directory, exist_ok=True)
@@ -344,31 +375,92 @@ class InstallThread(QThread):
             # Копируем файлы конфигурации только при первом запуске
             copy_default_configs(self.install_path)
             
-        except Exception as e:
+            except Exception as e:
             logging.error(f"Ошибка подготовки окружения: {str(e)}")
             raise
 
     def _install_minecraft(self, version=None):
-        """Установка базовой версии Minecraft"""
+        """Устанавливает основную версию Minecraft"""
         version_to_install = version or self.version
-        self.status_update.emit(f"Установка Minecraft {version_to_install}...")
-        
-        # Добавляем startupinfo для скрытия консоли в Windows
-        startupinfo = None
-        if platform.system() == "Windows":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = subprocess.SW_HIDE
-
-        install_minecraft_version(
-            versionid=version_to_install,
-            minecraft_directory=self.install_path,
-            callback={
-                'setStatus': lambda text: self.status_update.emit(text),
-                'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
-                'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
-            }
-        )
+        try:
+            self.status_update.emit(f"Установка Minecraft {version_to_install}...")
+            
+            # Вызываем функцию установки из minecraft_launcher_lib
+            install_minecraft_version(
+                versionid=version_to_install,
+                minecraft_directory=self.install_path,
+                callback={
+                    'setStatus': lambda text: self.status_update.emit(text),
+                    'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
+                    'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
+                }
+            )
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки Minecraft: {str(e)}", exc_info=True)
+            raise
+    
+    def _install_paper(self, paper_version):
+        """Устанавливает PaperMC"""
+        try:
+            self.status_update.emit(f"Установка Paper {paper_version}...")
+            
+            # Сначала устанавливаем ванильную версию Minecraft
+            self._install_minecraft(paper_version)
+            
+            # Затем скачиваем последнюю сборку Paper для выбранной версии
+            paper_api_url = f"https://api.papermc.io/v2/projects/paper/versions/{paper_version}/builds"
+            self.status_update.emit(f"Получение информации о сборках Paper {paper_version}...")
+            
+            response = requests.get(paper_api_url, timeout=10)
+            response.raise_for_status()
+            builds_data = response.json()
+            
+            # Получаем последнюю сборку
+            latest_build = builds_data.get('builds', [])[-1]
+            build_number = latest_build.get('build')
+            build_downloads = latest_build.get('downloads', {})
+            application_jar = build_downloads.get('application', {})
+            jar_name = application_jar.get('name')
+            
+            if not jar_name:
+                raise ValueError(f"Не удалось найти JAR-файл для Paper {paper_version}")
+            
+            # URL для скачивания JAR-файла
+            jar_url = f"https://api.papermc.io/v2/projects/paper/versions/{paper_version}/builds/{build_number}/downloads/{jar_name}"
+            
+            # Путь для сохранения JAR-файла
+            paper_jar_path = os.path.join(self.install_path, "paper", f"paper-{paper_version}-{build_number}.jar")
+            os.makedirs(os.path.dirname(paper_jar_path), exist_ok=True)
+            
+            # Скачиваем JAR-файл
+            self.status_update.emit(f"Скачивание Paper {paper_version} (сборка {build_number})...")
+            response = requests.get(jar_url)
+            response.raise_for_status()
+            
+            with open(paper_jar_path, 'wb') as f:
+                f.write(response.content)
+                
+            self.status_update.emit(f"Paper {paper_version} успешно установлен!")
+            
+            # Создаем файл запуска для Paper
+            start_script_path = os.path.join(self.install_path, "start_paper.bat" if platform.system() == "Windows" else "start_paper.sh")
+            
+            if platform.system() == "Windows":
+                script_content = f'@echo off\njava -Xmx{self.memory}G -jar {paper_jar_path} nogui\npause'
+            else:
+                script_content = f'#!/bin/bash\njava -Xmx{self.memory}G -jar "{paper_jar_path}" nogui'
+                
+            with open(start_script_path, 'w') as f:
+                f.write(script_content)
+                
+            # Делаем скрипт запуска исполняемым на Unix-системах
+            if platform.system() != "Windows":
+                os.chmod(start_script_path, 0o755)
+                
+        except Exception as e:
+            logging.error(f"Ошибка установки Paper: {str(e)}", exc_info=True)
+            raise
 
     def _install_forge(self):
         try:
@@ -435,7 +527,7 @@ class InstallThread(QThread):
                     all(os.path.exists(os.path.join(mods_dir, mod)) 
                         for mod in current_modpack_info.get('mods', []))):
                     logging.info("Моды актуальны")
-                    return
+            return
             else:
                 # Для exe версии проверяем GitHub
                 self.status_update.emit("Проверка обновлений модпака...")
@@ -526,7 +618,7 @@ class InstallThread(QThread):
                 except Exception as e:
                     logging.error(f"Ошибка удаления временного файла: {str(e)}")
             
-            logging.info("Модпак успешно установлен")
+                logging.info("Модпак успешно установлен")
             self.status_update.emit("Модпак установлен")
             
         except Exception as e:
@@ -536,11 +628,20 @@ class InstallThread(QThread):
     def _launch_game(self):
         """Запускает игру"""
         try:
-            # Проверяем наличие имени пользователя
-            if not self.username:
-                self.error_occurred.emit("Введите имя пользователя")
+            # Находим Java
+            java_path = self.find_java()
+            if not java_path:
+                self.error_occurred.emit("Не удалось найти Java. Установите Java 17 или выше.")
                 return
-
+                
+            clean_quickplay_settings(self.install_path)
+            
+            # Проверяем, является ли это установка Paper
+            if self.version.startswith("paper_"):
+                # Запуск сервера Paper
+                self._launch_paper_server(java_path)
+                return
+                
             # Преобразуем версию Forge в правильный формат
             version_to_launch = self.version
             if "-" in version_to_launch:
@@ -569,46 +670,73 @@ class InstallThread(QThread):
                 else:
                     result = subprocess.run(['where', 'javaw'], 
                                         capture_output=True, 
-                                        text=True, 
-                                        creationflags=subprocess.CREATE_NO_WINDOW)
+                                        text=True)
                 if result.returncode == 0:
-                    java_paths = result.stdout.strip().split('\n')
-                    logging.info(f"java_paths: {java_paths}")
-                    if java_paths:
-                        java_path = java_paths[0]
-                        logging.info(f"Java найдена через where: {java_path}")
+                    java_path = result.stdout.strip().split('\n')[0]
+                    logging.info(f"Найден путь к Java: {java_path}")
             except Exception as e:
-                logging.warning(f"Не удалось найти Java через where: {e}")
-
-            # Если where не нашел, проверяем другие пути
+                logging.error(f"Ошибка при поиске Java через where: {str(e)}")
+             
+            # Если не нашли через where, проверяем предопределенные пути
             if not java_path:
                 for path in possible_paths:
                     if os.path.exists(path):
                         java_path = path
-                        logging.info(f"Java найдена по пути: {java_path}")
+                        logging.info(f"Найден путь к Java в стандартных местах: {java_path}")
                         break
-
+            
+            # Если Java не найдена, возвращаем ошибку
             if not java_path:
-                raise FileNotFoundError("Не удалось найти путь к Java")
-
-            # Настраиваем параметры запуска
+                self.error_occurred.emit("Не удалось найти Java. Установите Java 17 или выше.")
+                return
+            
+            # Создаем список дополнительных JVM аргументов
+            jvm_arguments = [
+                f'-Xmx{self.memory}G', # Максимальный размер памяти
+                f'-Xms1G',             # Минимальный размер памяти
+                '-XX:+UseG1GC',        # Использовать G1 сборщик мусора
+                '-XX:+ParallelRefProcEnabled',
+                '-XX:MaxGCPauseMillis=200',
+                '-XX:+UnlockExperimentalVMOptions',
+                '-XX:+DisableExplicitGC',
+                '-XX:+AlwaysPreTouch',
+                '-XX:G1NewSizePercent=30',
+                '-XX:G1MaxNewSizePercent=40',
+                '-XX:G1HeapRegionSize=32M',
+                '-XX:G1ReservePercent=20',
+                '-XX:G1HeapWastePercent=5',
+                '-XX:G1MixedGCCountTarget=4',
+                '-XX:InitiatingHeapOccupancyPercent=15',
+                '-XX:G1MixedGCLiveThresholdPercent=90',
+                '-XX:G1RSetUpdatingPauseTimePercent=5',
+                '-XX:SurvivorRatio=32',
+                '-XX:+PerfDisableSharedMem',
+                '-XX:MaxTenuringThreshold=1',
+                '-XX:+UseCGroupMemoryLimitForHeap',
+                '-XX:+ExitOnOutOfMemoryError',
+                '-XX:+UseCompressedOops',
+                '-XX:G1HeapRegionSize=32M',
+                '-Dfml.ignoreInvalidMinecraftCertificates=true',
+                '-Dfml.ignorePatchDiscrepancies=true',
+                '-Djava.net.preferIPv4Stack=true',
+                '-Dlog4j2.formatMsgNoLookups=true'
+            ]
+            
+            # Добавляем пользовательские аргументы JVM
+            if self.launch_flags_input and hasattr(self.launch_flags_input, 'toPlainText'):
+                custom_flags = self.launch_flags_input.toPlainText().strip()
+                if custom_flags:
+                    for flag in custom_flags.split('\n'):
+                        flag = flag.strip()
+                        if flag:
+                            jvm_arguments.append(flag)
+            
+            # Настройки запуска
             options = {
                 'username': self.username,
                 'uuid': str(uuid.uuid4()),
                 'token': '',
-                'jvmArguments': [
-                    f'-Xmx{self.memory}G',
-                    '-XX:+UnlockExperimentalVMOptions',
-                    '-XX:+UseG1GC',
-                    '-XX:G1NewSizePercent=20',
-                    '-XX:G1ReservePercent=20',
-                    '-XX:MaxGCPauseMillis=50',
-                    '-XX:G1HeapRegionSize=32M',
-                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
-                    '-Dfml.ignorePatchDiscrepancies=true',
-                    '-Djava.net.preferIPv4Stack=true',
-                    '-Dlog4j2.formatMsgNoLookups=true'
-                ],
+                'jvmArguments': jvm_arguments,
                 'launchTarget': 'fmlclient',
                 'executablePath': java_path,
                 'gameDirectory': os.path.abspath(self.install_path)  # Используем абсолютный путь
@@ -636,10 +764,71 @@ class InstallThread(QThread):
 
             # Отправляем сигнал для закрытия главного окна
             QApplication.quit()
-
+            
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
+    
+    def _launch_paper_server(self, java_path):
+        """Запускает сервер PaperMC"""
+        try:
+            # Извлекаем версию Paper из строки "paper_X.Y.Z"
+            paper_version = self.version.replace("paper_", "")
+            
+            # Путь к JAR-файлу Paper
+            paper_dir = os.path.join(self.install_path, "paper")
+            if not os.path.exists(paper_dir):
+                self.error_occurred.emit(f"Папка с Paper сервером не найдена: {paper_dir}")
+                return
+                
+            # Ищем JAR-файл Paper для указанной версии
+            paper_jar_path = None
+            for file in os.listdir(paper_dir):
+                if file.startswith(f"paper-{paper_version}-") and file.endswith(".jar"):
+                    paper_jar_path = os.path.join(paper_dir, file)
+                    break
+            
+            if not paper_jar_path:
+                self.error_occurred.emit(f"JAR-файл Paper для версии {paper_version} не найден")
+                return
+                
+            # Параметры запуска сервера
+            server_command = [
+                java_path,
+                f"-Xmx{self.memory}G",
+                "-Xms1G",
+                "-jar",
+                paper_jar_path,
+                "nogui"
+            ]
+            
+            # Запускаем сервер
+            logging.info(f"Запуск Paper сервера: {' '.join(server_command)}")
+            
+            if platform.system() == "Windows":
+                # Для Windows создаем отдельное окно
+                subprocess.Popen(
+                    server_command,
+                    cwd=os.path.abspath(self.install_path),
+                    creationflags=subprocess.CREATE_NEW_CONSOLE
+                )
+            else:
+                # Для macOS и Linux запускаем в терминале
+                terminal_cmd = ["gnome-terminal", "--", "bash", "-c", f"{' '.join(server_command)}; exec bash"]
+                if platform.system() == "Darwin":  # macOS
+                    terminal_cmd = ["open", "-a", "Terminal", " ".join(server_command)]
+                    
+                subprocess.Popen(
+                    terminal_cmd,
+                    cwd=os.path.abspath(self.install_path)
+                )
+            
+            # Сообщение пользователю
+            self.status_update.emit(f"Paper сервер версии {paper_version} запущен!")
+            
+        except Exception as e:
+            logging.error(f"Ошибка запуска Paper сервера: {str(e)}", exc_info=True)
+            self.error_occurred.emit(f"Не удалось запустить Paper сервер: {str(e)}")
 
     def find_java(self):
         """Находит путь к Java"""
@@ -668,11 +857,10 @@ class InstallThread(QThread):
                 else:
                     result = subprocess.run(['where', 'javaw'], 
                                         capture_output=True, 
-                                        text=True, 
+                text=True,
                                         creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
-                    logging.info(f"java_path: {java_paths}")
                     if java_paths:
                         java_path = java_paths[0]
                         logging.info(f"Java найдена через where: {java_path}")
@@ -928,7 +1116,7 @@ class MainWindow(QMainWindow):
                 else:
                     result = subprocess.run(['where', 'javaw'], 
                                         capture_output=True, 
-                                        text=True, 
+                text=True,
                                         creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
@@ -1020,7 +1208,7 @@ class MainWindow(QMainWindow):
                     self.saved_forge_version = config.get('forge_version', '1.20.1-forge-47.3.22')
                     
                     
-
+                    
                     # Загружаем путь установки
                     install_path = config.get('install_path', '')
                     if install_path:
@@ -1082,51 +1270,51 @@ class MainWindow(QMainWindow):
             return False
 
     def load_versions(self):
+        """Загружает доступные версии Minecraft и Forge"""
         logging.info("Начало загрузки версий")
+        
+        # Проверяем наличие сохраненных версий или значений по умолчанию
+        saved_minecraft_version = self.get_saved_config().get('minecraft_version', '1.20.1')
+        saved_forge_version = self.get_saved_config().get('forge_version', None)
+
+        # Очищаем текущие списки версий
         self.minecraft_version.clear()
         self.forge_version.clear()
+        self.forge_version.setEnabled(False)
 
-        try:
-            has_internet = self.check_internet_connection()
-            if not has_internet:
-                logging.warning("Нет подключения к интернету")
-                QMessageBox.warning(
-                    self,
-                    "Нет подключения",
-                    "Вы без доступа в интернет, будет запускаться только установленная версия."
-                )
-                
-                # Загружаем сохраненные версии из кеша
-                if os.path.exists(CONFIG_FILE):
-                    with open(CONFIG_FILE, 'r') as f:
-                        config = json.load(f)
-                        saved_version = config.get('minecraft_version')
-                        if saved_version:
-                            self.minecraft_version.addItem(saved_version)
-                            self.minecraft_version.setCurrentText(saved_version)
-                            
-                            # Загружаем соответствующую версию Forge из кеша
-                            if saved_version in self.forge_cache:
-                                cached_version = self.forge_cache[saved_version]
-                                if isinstance(cached_version, list):
-                                    for forge_version in cached_version:
-                                        self.forge_version.addItem(forge_version)
-                                else:
-                                    self.forge_version.addItem(cached_version)
-                                self.forge_version.setEnabled(True)
+        # Если есть сохраненные версии, пробуем их использовать
+        if saved_minecraft_version and saved_forge_version:
+            logging.info(f"Найдены сохраненные версии: MC={saved_minecraft_version}, Forge={saved_forge_version}")
+            self.saved_minecraft_version = saved_minecraft_version
+            self.saved_forge_version = saved_forge_version
+            
+            # Проверяем кеш Forge
+            if saved_minecraft_version in self.forge_cache:
+                logging.info(f"Найден кеш Forge для {saved_minecraft_version}")
+                cached_version = self.forge_cache[saved_minecraft_version]
+                if isinstance(cached_version, list):
+                    for forge_version in cached_version:
+                        self.forge_version.addItem(forge_version)
+                else:
+                    self.forge_version.addItem(cached_version)
+                self.forge_version.setEnabled(True)
                 return
 
-            # Остальной код загрузки версий (существующий)
+        try:
+            # Загружаем версии чистого Minecraft
             versions = []
             for v in get_version_list():
                 version_id = v['id']
                 if (v['type'] == 'release' and 
                     version_id != '1.20.5' and
-                    self._compare_versions(version_id, '1.20.1') >= 0):
+                    self._compare_versions(version_id, '1.18') >= 0):
                     versions.append(version_id)
-
             logging.info(f"Получены версии Minecraft: {versions}")
 
+            # Добавляем версии PaperMC
+            paper_versions = get_paper_versions()
+            logging.info(f"Получены версии PaperMC: {paper_versions}")
+            
             # Сортируем версии в порядке убывания, но 1.20.1 всегда первая
             if '1.20.1' in versions:
                 versions.remove('1.20.1')
@@ -1136,8 +1324,12 @@ class MainWindow(QMainWindow):
             else:
                 versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
 
-            # Добавляем версии по одной
+            # Добавляем чистые версии Minecraft
             for version in versions:
+                self.minecraft_version.addItem(version)
+                
+            # Добавляем версии PaperMC после обычных версий
+            for version in paper_versions:
                 self.minecraft_version.addItem(version)
 
             # Устанавливаем сохраненную или дефолтную версию
@@ -1154,6 +1346,9 @@ class MainWindow(QMainWindow):
                 # Загружаем версию Forge для 1.20.1
                 if default_version == "1.20.1":
                     logging.info("Загрузка версии Forge для 1.20.1")
+                    # Добавляем опцию "Не устанавливать"
+                    self.forge_version.addItem("Не устанавливать")
+                    # Добавляем версию Forge
                     forge_version = "1.20.1-47.3.22"
                     forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
                     self.forge_version.addItem(forge_display_version)
@@ -1166,6 +1361,9 @@ class MainWindow(QMainWindow):
                 # Для других версий проверяем кеш
                 elif default_version in self.forge_cache:
                     logging.info(f"Загрузка версии Forge из кеша для {default_version}")
+                    # Добавляем опцию "Не устанавливать"
+                    self.forge_version.addItem("Не устанавливать")
+                    
                     cached_version = self.forge_cache[default_version]
                     # Проверяем, является ли cached_version списком
                     if isinstance(cached_version, list):
@@ -1182,6 +1380,9 @@ class MainWindow(QMainWindow):
                 default_index = self.minecraft_version.findText('1.20.1')
                 if default_index >= 0:
                     self.minecraft_version.setCurrentIndex(default_index)
+                    # Добавляем опцию "Не устанавливать"
+                    self.forge_version.addItem("Не устанавливать")
+                    # Добавляем версию Forge
                     forge_version = "1.20.1-47.3.22"
                     forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
                     self.forge_version.addItem(forge_display_version)
@@ -1258,53 +1459,106 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка сохранения кеша Forge: {str(e)}", exc_info=True)
 
     def on_minecraft_version_changed(self, index):
-        selected_version = self.minecraft_version.currentText()
-        self.forge_version.clear()
-        self.forge_version.setEnabled(True)
-
-        added_versions = set()
-
-        # Специальная обработка для 1.20.1 - добавляем нашу версию Forge первой
-        if selected_version == "1.20.1":
-            forge_version = "1.20.1-47.3.22"
-            forge_display_version = f"1.20.1-forge-47.3.22"  # Добавляем отображаемую версию
-            self.forge_version.addItem(forge_display_version)
-            added_versions.add(forge_display_version)
-            self.add_to_forge_cache("1.20.1", forge_version)
-            self.forge_version.setEnabled(True)
-
-        # Затем добавляем все кешированные версии для этой версии Minecraft
-        cached_versions = []
-        if selected_version in self.forge_cache:
-            cached_versions = self.forge_cache[selected_version]
-            if not isinstance(cached_versions, list):
-                cached_versions = [cached_versions]
-            for version in cached_versions:
-                forge_full_version = f"{selected_version}-forge-{version.split('-')[1]}"
-                if forge_full_version not in added_versions:
-                    added_versions.add(forge_full_version)
-                    self.forge_version.addItem(forge_full_version)
-
-        # Для версий кроме 1.20.1 ищем новые версии в сети
-        if selected_version != "1.20.1":
-            forge_version = minecraft_launcher_lib.forge.find_forge_version(selected_version)
-            if forge_version:
-                forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
-                if forge_full_version not in added_versions:
-                    added_versions.add(forge_full_version)
-                    self.forge_version.addItem(forge_full_version)
-                    self.add_to_forge_cache(selected_version, forge_version)
+        """Обрабатывает изменение версии Minecraft"""
+        try:
+            if index < 0:
+                return
+                
+            selected_version = self.minecraft_version.currentText()
+            logging.info(f"Выбрана версия Minecraft: {selected_version}")
+            
+            # Очищаем список версий Forge
+            self.forge_version.clear()
+            
+            # Добавляем опцию "Не устанавливать"
+            self.forge_version.addItem("Не устанавливать")
+            
+            # Если это версия Paper, не добавляем Forge
+            if selected_version.startswith("Paper "):
                 self.forge_version.setEnabled(True)
-
-        self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
-        self.check_game_installed()
-        
-        # Если это версия 1.20.1, устанавливаем первую версию Forge как выбранную
-        if selected_version == "1.20.1" and self.forge_version.count() > 0:
+                self.forge_version.setCurrentIndex(0)  # Устанавливаем "Не устанавливать"
+                
+                # Устанавливаем путь установки для Paper версии
+                paper_version = selected_version.replace("Paper ", "")
+                custom_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", f"IB_Paper_{paper_version}")
+                self.install_path.setText(custom_path)
+                return
+            
+            # Для чистого Minecraft устанавливаем путь
+            custom_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", f"IB_{selected_version}")
+            self.install_path.setText(custom_path)
+            
+            # Если это версия 1.20.1, добавляем к ней заранее известную версию Forge
+            if selected_version == "1.20.1":
+                forge_version = "1.20.1-47.3.22"
+                forge_display_version = f"1.20.1-forge-47.3.22"
+                self.forge_version.addItem(forge_display_version)
+                self.forge_version.setEnabled(True)
+                
+                # Сохраняем в кеш, если его там еще нет
+                if "1.20.1" not in self.forge_cache:
+                    self.save_forge_cache("1.20.1", forge_version)
+                return
+            
+            # Проверяем кеш для других версий
+            added_versions = set()
+            if selected_version in self.forge_cache:
+                cached_versions = self.forge_cache[selected_version]
+                if isinstance(cached_versions, list):
+                    for forge_version in cached_versions:
+                        forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
+                        if forge_full_version not in added_versions:
+                            added_versions.add(forge_full_version)
+                            self.forge_version.addItem(forge_full_version)
+                else:
+                    forge_full_version = f"{selected_version}-forge-{cached_versions.split('-')[1]}"
+                    if forge_full_version not in added_versions:
+                        added_versions.add(forge_full_version)
+                        self.forge_version.addItem(forge_full_version)
+                self.forge_version.setEnabled(True)
+            
+            # Для других версий пытаемся получить список доступных версий Forge
+            # Здесь можно добавить логику для получения актуальных версий Forge из API
+            # Для примера добавим несколько типовых версий для основных релизов
+            if selected_version == "1.20.4":
+                forge_versions = ["1.20.4-49.0.30", "1.20.4-49.0.26", "1.20.4-49.0.19"]
+                for forge_version in forge_versions:
+                    forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
+                    if forge_full_version not in added_versions:
+                        added_versions.add(forge_full_version)
+                        self.forge_version.addItem(forge_full_version)
+                        self.add_to_forge_cache(selected_version, forge_version)
+                self.forge_version.setEnabled(True)
+            elif selected_version == "1.19.4":
+                forge_versions = ["1.19.4-45.2.0", "1.19.4-45.1.0", "1.19.4-45.0.64"]
+                for forge_version in forge_versions:
+                    forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
+                    if forge_full_version not in added_versions:
+                        added_versions.add(forge_full_version)
+                        self.forge_version.addItem(forge_full_version)
+                        self.add_to_forge_cache(selected_version, forge_version)
+                self.forge_version.setEnabled(True)
+            elif selected_version == "1.18.2":
+                forge_versions = ["1.18.2-40.2.14", "1.18.2-40.2.10", "1.18.2-40.2.0"]
+                for forge_version in forge_versions:
+                    forge_full_version = f"{selected_version}-forge-{forge_version.split('-')[1]}"
+                    if forge_full_version not in added_versions:
+                        added_versions.add(forge_full_version)
+                        self.forge_version.addItem(forge_full_version)
+                        self.add_to_forge_cache(selected_version, forge_version)
+                self.forge_version.setEnabled(True)
+            
+            self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
+            self.check_game_installed()
+            
+            # Выбираем "Не устанавливать" по умолчанию
             self.forge_version.setCurrentIndex(0)
-        
-        # Сохраняем выбранную версию
-        self.save_config()
+            
+            # Сохраняем выбранную версию
+            self.save_config()
+        except Exception as e:
+            logging.error(f"Ошибка при смене версии Minecraft: {str(e)}", exc_info=True)
+            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при выборе версии: {str(e)}")
 
     def on_forge_version_changed(self, index):
         if index >= 0:
@@ -1323,11 +1577,22 @@ class MainWindow(QMainWindow):
             minecraft_version = self.minecraft_version.currentText()
             forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
             
+            # Проверяем, выбран ли пункт "Не устанавливать" для Forge
+            if forge_display_version == "Не устанавливать":
+                forge_display_version = None
+                forge_version = None
             # Преобразуем отображаемую версию Forge в реальную
-            if forge_display_version and forge_display_version.startswith("1.20.1-forge-"):
+            elif forge_display_version and forge_display_version.startswith(minecraft_version + "-forge-"):
                 forge_version = forge_display_version.replace("-forge-", "-")
             else:
                 forge_version = forge_display_version
+            
+            # Обрабатываем PaperMC
+            is_paper = False
+            if minecraft_version.startswith("Paper "):
+                is_paper = True
+                # Извлекаем чистую версию из строки "Paper X.Y.Z"
+                minecraft_version = minecraft_version.replace("Paper ", "")
             
             username = self.username.text().strip()
             install_path = self.install_path.text().strip()
@@ -1344,61 +1609,21 @@ class MainWindow(QMainWindow):
             if not os.access(install_path, os.W_OK):
                 QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
                 return
-
-            # Проверяем наличие модов
-            """ mods_dir = os.path.join(install_path, "mods")
-            if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
-                # Скачиваем модпак с GitHub
-                self.status_label.setText("Скачивание модпака...")
-                logging.info("Начало скачивания модпака с GitHub")
-                
-                try:
-                    # Получаем последний релиз
-                    api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-                    response = requests.get(api_url, timeout=10)
-                    response.raise_for_status()
-                    latest_release = response.json()
-                    
-                    # Ищем модпак в ассетах релиза
-                    modpack_url = None
-                    for asset in latest_release['assets']:
-                        if asset['name'] == 'modpack.zip':
-                            modpack_url = asset['browser_download_url']
-                            break
-                    
-                    if not modpack_url:
-                        raise Exception("Модпак не найден в последнем релизе")
-                    
-                    # Скачиваем модпак
-                    response = requests.get(modpack_url)
-                    response.raise_for_status()
-                    
-                    # Создаем папку mods если её нет
-                    os.makedirs(mods_dir, exist_ok=True)
-                    
-                    # Сохраняем и распаковываем модпак
-                    temp_zip = os.path.join(mods_dir, "modpack.zip")
-                    with open(temp_zip, "wb") as f:
-                        f.write(response.content)
-                    
-                    # Распаковываем моды
-                    with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
-                        for file_info in zip_ref.filelist:
-                            if file_info.filename.endswith('.jar'):
-                                zip_ref.extract(file_info.filename, mods_dir)
-                                logging.info(f"Установлен мод: {file_info.filename}")
-                    
-                    # Удаляем временный zip
-                    os.remove(temp_zip)
-                    logging.info("Модпак успешно установлен")
-                    
-                except Exception as e:
-                    logging.error(f"Ошибка установки модпака: {str(e)}")
-                    QMessageBox.warning(self, "Ошибка", f"Не удалось установить модпак: {str(e)}")
-                    return """
-
+            
+            # Проверяем возможность установки модпака (только для Forge 47.3.22)
+            should_install_modpack = (
+                self.mods_update_switch and 
+                forge_version is not None and 
+                forge_version == "1.20.1-47.3.22"
+            )
+            
             # Если все проверки пройдены, запускаем установку/игру
             version_to_install = forge_version if forge_version else minecraft_version
+            
+            # Для Paper нужно указать, что это Paper версия
+            if is_paper:
+                version_to_install = f"paper_{minecraft_version}"
+            
             logging.info(f"Выбрана версия для установки: {version_to_install}")
 
             self.thread = InstallThread(
@@ -1407,15 +1632,15 @@ class MainWindow(QMainWindow):
                 install_path,
                 self.memory_slider.value(),
                 self.launch_flags_input,
-                self.mods_update_switch
+                should_install_modpack  # Передаем флаг установки модпака
             )
-            
+                
             # Подключаем сигналы из потока к слотам главного окна
             self.thread.progress_update.connect(self.update_progress)
             self.thread.status_update.connect(self.status_label.setText)
             self.thread.error_occurred.connect(self.show_error)
             self.thread.toggle_ui.connect(self.toggle_ui_elements)
-            
+                
             self.thread.start()
             
         except Exception as e:
@@ -1843,7 +2068,7 @@ class MainWindow(QMainWindow):
                     if os.path.exists(mod_path):
                         os.remove(mod_path)
                         logging.info(f"Удален мод: {mod_name}")
-                except Exception as e:
+        except Exception as e:
                     logging.error(f"Ошибка удаления мода {mod_name}: {str(e)}")
             
             self.update_mods_list()
