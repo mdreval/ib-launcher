@@ -1,0 +1,8 @@
+include design.ui
+include *.spec
+include *.txt
+include requirements.txt
+include version_info.txt
+include direct_launch.py
+include forge_launcher.py
+recursive-include assets * 

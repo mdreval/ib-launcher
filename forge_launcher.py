@@ -7,6 +7,19 @@ import minecraft_launcher_lib
 from minecraft_launcher_lib.command import get_minecraft_command
 import platform
 
+# Для Windows, проверяем доступность WinAPI
+if platform.system() == "Windows":
+    try:
+        import win32process
+        import win32con
+        import win32api
+        HAS_WIN32API = True
+    except ImportError:
+        HAS_WIN32API = False
+        logging.warning("win32api не найден, будет использоваться стандартный метод запуска процессов")
+else:
+    HAS_WIN32API = False
+
 def is_new_forge_version(version):
     """Проверяет, является ли версия новой версией Forge (1.20.2+)"""
     if not version or not isinstance(version, str):
@@ -135,6 +148,64 @@ def get_forge_launch_command(version, minecraft_directory, options):
         # В случае ошибки возвращаем стандартную команду
         return get_minecraft_command(version, minecraft_directory, options)
 
+# Функция для запуска процесса в Windows без показа окон
+def launch_process_hidden_forge(command, cwd=None):
+    """
+    Запускает процесс в Windows без показа командного окна, 
+    используя непосредственно WinAPI.
+    
+    Args:
+        command (list): Команда для запуска
+        cwd (str): Рабочая директория
+        
+    Returns:
+        int: ID процесса или None в случае ошибки
+    """
+    if not platform.system() == "Windows" or not HAS_WIN32API:
+        logging.warning("Функция launch_process_hidden требует Windows и win32api")
+        return None
+        
+    try:
+        # Преобразуем команду в строку
+        command_str = subprocess.list2cmdline(command)
+        logging.info(f"Запуск процесса с командой: {command_str}")
+        
+        # Создаем процесс с флагами для скрытия окна
+        startupinfo = win32process.STARTUPINFO()
+        startupinfo.dwFlags = win32process.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = win32con.SW_HIDE  # Скрыть окно
+        
+        # Запускаем процесс
+        process_info = win32process.CreateProcess(
+            None,  # Приложение
+            command_str,  # Командная строка
+            None,  # Process Security
+            None,  # Thread Security
+            0,  # Не наследовать дескрипторы
+            win32process.CREATE_NO_WINDOW | win32process.DETACHED_PROCESS,  # Флаги создания
+            None,  # Переменные окружения
+            cwd,  # Рабочая директория
+            startupinfo  # Информация о запуске
+        )
+        
+        # Освобождаем дескрипторы
+        win32api.CloseHandle(process_info[0])  # Process handle
+        win32api.CloseHandle(process_info[1])  # Thread handle
+        
+        # Возвращаем ID процесса
+        pid = process_info[2]
+        logging.info(f"Процесс успешно запущен с PID: {pid}")
+        
+        # Создаем псевдо-объект процесса для совместимости
+        class PseudoProcess:
+            def __init__(self, pid):
+                self.pid = pid
+        
+        return PseudoProcess(pid)
+    except Exception as e:
+        logging.error(f"Ошибка при запуске процесса через WinAPI: {str(e)}", exc_info=True)
+        return None
+
 def launch_forge_with_command(command):
     """Запускает Forge, используя сформированную команду"""
     try:
@@ -160,22 +231,40 @@ def launch_forge_with_command(command):
             minecraft_dir = os.getcwd()
             logging.warning(f"Не удалось найти рабочую директорию в аргументах, используем текущую: {minecraft_dir}")
         
-        # На Windows НЕ добавляем флаг CREATE_NO_WINDOW, чтобы видеть консоль для отладки
-        creation_flags = 0
-        # if platform.system() == "Windows":
-        #     creation_flags = subprocess.CREATE_NO_WINDOW
-            
-        process = subprocess.Popen(
-            command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=creation_flags,
-            cwd=minecraft_dir  # Устанавливаем рабочую директорию
-        )
+        # Используем WinAPI для запуска в Windows
+        if platform.system() == "Windows" and HAS_WIN32API:
+            process = launch_process_hidden_forge(command, cwd=minecraft_dir)
+            if process:
+                logging.info(f"Forge успешно запущен через WinAPI, PID: {process.pid}")
+                return process
+            else:
+                logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
         
-        logging.info(f"Forge успешно запущен, PID: {process.pid}")
-        return process
+        # На Windows добавляем флаг CREATE_NO_WINDOW, чтобы скрыть консоль
+        creation_flags = 0
+        if platform.system() == "Windows":
+            # Объединяем флаги: CREATE_NO_WINDOW | DETACHED_PROCESS = 0x08000008
+            creation_flags = 0x08000008
+            
+        # Перенаправляем все выводы в devnull для дополнительной изоляции
+        try:
+            with open(os.devnull, 'w') as devnull:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE if platform.system() == "Windows" else None,
+                    stdout=devnull if platform.system() == "Windows" else None,
+                    stderr=devnull if platform.system() == "Windows" else None,
+                    creationflags=creation_flags,
+                    cwd=minecraft_dir,  # Устанавливаем рабочую директорию
+                    close_fds=True,  # Закрыть дескрипторы файлов родителя
+                    start_new_session=True  # Начать новую сессию (для Unix)
+                )
+            
+            logging.info(f"Forge успешно запущен, PID: {process.pid}")
+            return process
+        except Exception as e:
+            logging.error(f"Ошибка запуска Forge: {str(e)}", exc_info=True)
+            return None
     except Exception as e:
         logging.error(f"Ошибка запуска Forge: {str(e)}", exc_info=True)
         return None 

@@ -11,7 +11,9 @@ a = Analysis(
         ('design.ui', '.'),
         ('assets/*', 'assets/'),
     ],
-    hiddenimports=['psutil', 'win32gui', 'win32api', 'win32con'],
+    hiddenimports=['psutil', 'win32gui', 'win32api', 'win32con', 'win32process', 'platform', 'subprocess', 'logging', 
+                 'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 'minecraft_launcher_lib.minecraft', 
+                 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -40,13 +42,14 @@ if platform.system() == 'Windows':
         upx_exclude=[],
         runtime_tmpdir=None,
         console=False,
-        disable_windowed_traceback=False,
+        disable_windowed_traceback=True,
         argv_emulation=False,
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
         icon='assets/icon.ico',
-        version='version_info.txt'
+        version='version_info.txt',
+        uac_admin=False,
     )
 else:  # macOS
     exe = EXE(
@@ -60,7 +63,7 @@ else:  # macOS
         strip=False,
         upx=True,
         console=False,
-        disable_windowed_traceback=False,
+        disable_windowed_traceback=True,
         target_arch='universal2',
         codesign_identity=None,
         entitlements_file=None,
@@ -84,8 +87,8 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.6.7',
-            'CFBundleVersion': '1.0.6.7',
+            'CFBundleShortVersionString': '1.0.7.1',
+            'CFBundleVersion': '1.0.7.1',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
         }

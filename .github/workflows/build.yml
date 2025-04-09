@@ -75,8 +75,6 @@ jobs:
             --app-drop-link 425 120 \
             "dist/IB-Launcher.dmg" \
             "dist/IB-Launcher.app"
-
-          # hdiutil create -volname "IB-Launcher" -srcfolder "dist/IB-Launcher.app" -ov -format UDZO "dist/IB-Launcher.dmg"
           
           # Снимаем атрибут карантина с DMG
           xattr -cr "dist/IB-Launcher.dmg"
@@ -128,3 +126,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body_path: RELEASE_NOTES.md

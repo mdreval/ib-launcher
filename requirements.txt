@@ -2,7 +2,7 @@
 PyQt5>=5.15.9
 
 # Windows-специфичные зависимости
-pywin32==306; platform_system == "Windows"
+pywin32>=306; platform_system == "Windows"
 
 # Minecraft и моды
 minecraft-launcher-lib==7.1

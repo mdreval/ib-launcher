@@ -10,7 +10,8 @@ a = Analysis(
         ('design.ui', '.'),
         ('assets/*', 'assets/'),
     ],
-    hiddenimports=['psutil'],
+    hiddenimports=['psutil', 'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 
+                 'minecraft_launcher_lib.minecraft', 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -34,12 +35,12 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    disable_windowed_traceback=False,
+    disable_windowed_traceback=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/icon.icns',
-    version='1.0.6.6'
+    version='1.0.7.0'
 )
 
 coll = COLLECT(
@@ -59,8 +60,8 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.7.0',
-        'CFBundleVersion': '1.0.7.0',
+        'CFBundleShortVersionString': '1.0.7.1',
+        'CFBundleVersion': '1.0.7.1',
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar',
         'LSMinimumSystemVersion': '10.13.0',

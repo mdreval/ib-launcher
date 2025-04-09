@@ -16,6 +16,7 @@ dist/
 # PyInstaller
 *.manifest
 manifest.xml
+*.spec.backup
 
 # Logs
 *.log
@@ -36,14 +37,33 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
 # Временные файлы
 ---------*
 git
+*.bak
+*.tmp
+*~
+tatus
+ion.py
+back_qt_version.py
+qt_version_fixed.py
+check_forge.py
+direct_launch.py
 
 # Java
-assets/jdk-17.0.10_macos-aarch64_bin.dmg
-assets/jdk-17.0.10_windows-x64_bin.exe
+assets/jdk-*
+assets/jre-*
+assets/openjdk-*
 
 # Большие файлы
 *.zip
+*.7z
+*.rar
+*.tar.gz
 MojNovyLauncher.zip

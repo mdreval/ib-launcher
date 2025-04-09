@@ -20,12 +20,14 @@
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-### Последние обновления (v1.0.7.0)
-- Улучшена стабильность работы лаунчера
-- Исправления ошибок в определении версии Java
-- Оптимизирован процесс установки модов
-- Улучшена поддержка Minecraft 1.21.x
-- Исправлены ошибки при работе с Forge
+### Последние обновления (v1.0.7.1)
+- Исправлена ошибка запуска игры, когда появлялись окна командной строки
+- Устранена проблема зависания лаунчера при запуске игры
+- Улучшена совместимость с разными версиями библиотек Minecraft
+- Исправлена ошибка при установке Minecraft после обновления
+- Улучшена стабильность работы на Windows и macOS
+- Оптимизирована работа с файловой системой
+- Добавлен альтернативный метод запуска игры для сложных случаев
 
 ### Системные требования
 - Windows 10/11 или macOS 10.13+
@@ -74,12 +76,14 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-### Latest Updates (v1.0.7.0)
-- Improved launcher stability
-- Fixed bugs in Java version detection
-- Optimized mod installation process
-- Enhanced support for Minecraft 1.21.x
-- Fixed Forge-related errors
+### Latest Updates (v1.0.7.1)
+- Fixed game launch issue where command prompt windows would appear
+- Fixed launcher freezing when starting the game
+- Improved compatibility with different versions of Minecraft libraries
+- Fixed Minecraft installation error after update
+- Enhanced stability on both Windows and macOS
+- Optimized file system operations
+- Added alternative game launch method for edge cases
 
 ### System Requirements
 - Windows 10/11 or macOS 10.13+

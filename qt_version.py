@@ -29,6 +29,19 @@ import re
 from datetime import datetime
 import forge_launcher
 
+# Для Windows, импортируем модули WinAPI
+if platform.system() == "Windows":
+    try:
+        import win32process
+        import win32con
+        import win32api
+        HAS_WIN32API = True
+    except ImportError:
+        HAS_WIN32API = False
+        logging.warning("win32api не найден, будет использоваться стандартный метод запуска процессов")
+else:
+    HAS_WIN32API = False
+
 # Игнорируем все предупреждения
 warnings.filterwarnings("ignore")
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.*=false;qt.gui.icc*=false'
@@ -410,15 +423,54 @@ class InstallThread(QThread):
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = subprocess.SW_HIDE
 
-        install_minecraft_version(
-            versionid=version_to_install,
-            minecraft_directory=self.install_path,
-            callback={
+        try:
+            # Пробуем новый API в minecraft_launcher_lib
+            callback_dict = {
                 'setStatus': lambda text: self.status_update.emit(text),
                 'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
                 'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
             }
-        )
+            
+            if hasattr(minecraft_launcher_lib, 'install'):
+                # Новые версии библиотеки, где install находится в отдельном модуле
+                minecraft_launcher_lib.install.install_minecraft_version(
+                    version_to_install, self.install_path, callback_dict)
+            elif hasattr(minecraft_launcher_lib, 'minecraft'):
+                # Версии, где функции находятся в модуле minecraft
+                minecraft_launcher_lib.minecraft.install_minecraft_version(
+                    version_to_install, self.install_path, callback_dict)
+            else:
+                # Альтернативный подход через отдельное использование объекта версии
+                version_list = minecraft_launcher_lib.utils.get_version_list()
+                version_id = None
+                for v in version_list:
+                    if v['id'] == version_to_install:
+                        version_id = v
+                        break
+                
+                if not version_id:
+                    raise ValueError(f"Версия {version_to_install} не найдена в списке доступных версий")
+                
+                # Используем стандартный подход через объект Version
+                from minecraft_launcher_lib.types import Version
+                version_obj = Version(version_id)
+                
+                # Вручную устанавливаем версию
+                self.status_update.emit(f"Скачивание клиента Minecraft {version_to_install}...")
+                minecraft_launcher_lib.utils.ensure_minecraft_client_exists(
+                    version_obj, self.install_path, callback_dict)
+                
+                self.status_update.emit(f"Скачивание и установка ассетов...")
+                minecraft_launcher_lib.utils.ensure_minecraft_assets_exists(
+                    version_obj, self.install_path, callback_dict)
+                
+                self.status_update.emit(f"Скачивание и установка библиотек...")
+                minecraft_launcher_lib.utils.ensure_minecraft_libraries_exists(
+                    version_obj, self.install_path, callback_dict)
+                
+        except Exception as e:
+            logging.error(f"Ошибка установки Minecraft: {str(e)}", exc_info=True)
+            raise ValueError(f"Ошибка установки Minecraft: {str(e)}")
 
     def _install_forge(self):
         try:
@@ -716,14 +768,46 @@ class InstallThread(QThread):
                 if not process:
                     raise Exception("Не удалось запустить Forge. Проверьте логи для получения дополнительной информации.")
             else:
-                subprocess.Popen(
-                    minecraft_command,
-                    #creationflags=subprocess.CREATE_NO_WINDOW,
-                    cwd=os.path.abspath(self.install_path)  # Устанавливаем рабочую директорию
-                )
+                # Используем специальную функцию запуска для Windows
+                if platform.system() == "Windows" and HAS_WIN32API:
+                    pid = launch_process_hidden(
+                        minecraft_command,
+                        cwd=os.path.abspath(self.install_path)
+                    )
+                    if not pid:
+                        logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+                        # Создаем флаги для Windows, чтобы скрыть окно командной строки
+                        creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+                        
+                        # Запускаем процесс с дополнительными настройками
+                        with open(os.devnull, 'w') as devnull:
+                            process = subprocess.Popen(
+                                minecraft_command,
+                                creationflags=creation_flags,
+                                stdin=subprocess.PIPE,
+                                stdout=devnull,
+                                stderr=devnull,
+                                cwd=os.path.abspath(self.install_path),
+                                close_fds=True,
+                                start_new_session=True
+                            )
+                else:
+                    # Для macOS и Linux используем стандартный метод
+                    process = subprocess.Popen(
+                        minecraft_command,
+                        stdin=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stdout=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stderr=None if platform.system() == "Windows" else subprocess.PIPE,
+                        cwd=os.path.abspath(self.install_path),
+                        start_new_session=True
+                    )
 
-            # Отправляем сигнал для закрытия главного окна
-            QApplication.quit()
+            # Отправляем сигнал для разблокировки интерфейса после запуска игры
+            self.toggle_ui.emit(True)
+            self.status_update.emit("Игра запущена. Лаунчер остаётся открытым.")
+            
+            # Закомментировано, чтобы лаунчер не закрывался после запуска игры
+            # QApplication.quit()
             
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
@@ -2315,7 +2399,7 @@ class MainWindow(QMainWindow):
     def check_launcher_update(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.0"
+            current_version = "1.0.7.1"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2356,7 +2440,7 @@ class MainWindow(QMainWindow):
     def update_version_label(self):
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.0"
+            current_version = "1.0.7.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3064,6 +3148,58 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка установки игры: {str(e)}", exc_info=True)
             QMessageBox.critical(self, "Ошибка", f"Не удалось установить игру: {str(e)}")
             self.status_label.setText("Произошла ошибка при установке")
+
+# Функция для запуска процесса в Windows без показа окон
+def launch_process_hidden(command, cwd=None):
+    """
+    Запускает процесс в Windows без показа командного окна, 
+    используя непосредственно WinAPI.
+    
+    Args:
+        command (list): Команда для запуска
+        cwd (str): Рабочая директория
+        
+    Returns:
+        int: ID процесса или None в случае ошибки
+    """
+    if not platform.system() == "Windows" or not HAS_WIN32API:
+        logging.warning("Функция launch_process_hidden требует Windows и win32api")
+        return None
+        
+    try:
+        # Преобразуем команду в строку
+        command_str = subprocess.list2cmdline(command)
+        logging.info(f"Запуск процесса с командой: {command_str}")
+        
+        # Создаем процесс с флагами для скрытия окна
+        startupinfo = win32process.STARTUPINFO()
+        startupinfo.dwFlags = win32process.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = win32con.SW_HIDE  # Скрыть окно
+        
+        # Запускаем процесс
+        process_info = win32process.CreateProcess(
+            None,  # Приложение
+            command_str,  # Командная строка
+            None,  # Process Security
+            None,  # Thread Security
+            0,  # Не наследовать дескрипторы
+            win32process.CREATE_NO_WINDOW | win32process.DETACHED_PROCESS,  # Флаги создания
+            None,  # Переменные окружения
+            cwd,  # Рабочая директория
+            startupinfo  # Информация о запуске
+        )
+        
+        # Освобождаем дескрипторы
+        win32api.CloseHandle(process_info[0])  # Process handle
+        win32api.CloseHandle(process_info[1])  # Thread handle
+        
+        # Возвращаем ID процесса
+        pid = process_info[2]
+        logging.info(f"Процесс успешно запущен с PID: {pid}")
+        return pid
+    except Exception as e:
+        logging.error(f"Ошибка при запуске процесса через WinAPI: {str(e)}", exc_info=True)
+        return None
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
