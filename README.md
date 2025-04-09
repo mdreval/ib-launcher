@@ -1,7 +1,8 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
 # IB Launcher
-![Screenshot_1](https://github.com/user-attachments/assets/3409c8b3-e2eb-4db1-8e29-c032e36260f4)
+![Screenshot_2](https://github.com/user-attachments/assets/74ca59bd-b92d-416f-9bdd-099322b47d85)
+
 
 [English version below](#ib-launcher-english)
 
