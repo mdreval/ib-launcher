@@ -10,6 +10,7 @@
 
 ### Возможности
 - Автоматическая установка Minecraft и Forge
+- Поддержка различных версий Minecraft и Forge
 - Автоматическое обновление модов
 - Автоматическая настройка памяти
 - Поддержка Windows и macOS
@@ -19,12 +20,12 @@
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-### Последние обновления (v1.0.6.8)
-- Добавлена возможность "Не устанавливать" Forge для всех версий, кроме 1.20.1
-- Улучшена проверка Java: для Minecraft 1.20.1 и ниже требуется Java 17+, для версий 1.20.2 и выше требуется Java 21+
-- Создание отдельных папок для разных версий Minecraft
-- Исправлена проблема с форматированием версии Forge
-- Устранены ошибки при запуске игры
+### Последние обновления (v1.0.7.0)
+- Улучшена стабильность работы лаунчера
+- Исправления ошибок в определении версии Java
+- Оптимизирован процесс установки модов
+- Улучшена поддержка Minecraft 1.21.x
+- Исправлены ошибки при работе с Forge
 
 ### Системные требования
 - Windows 10/11 или macOS 10.13+
@@ -41,9 +42,14 @@
 1. Запустите лаунчер
 2. Введите имя игрока
 3. Выберите версию Minecraft и Forge (опционально)
-4. Настройте путь установки (при необходимости)
-5. Настройте количество выделяемой памяти
-6. Нажмите "Играть"
+4. Для версий Minecraft выберите версию Forge, либо пункт "Не устанавливать"
+5. Настройте путь установки (при необходимости)
+6. Настройте количество выделяемой памяти
+7. Нажмите "Играть"
+
+#### Особенности установки разных версий
+- **Для обычных версий Minecraft**: Создается папка вида "IB_X.Y.Z"
+- **Для Forge**: При выборе Forge игра устанавливается с модами (только для версии Forge 47.3.22)
 
 ### Обратная связь
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
@@ -58,6 +64,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 
 ### Key Features
 - Automatic Minecraft and Forge installation
+- Support for various Minecraft and Forge versions
 - Automatic mod updates
 - Automatic memory configuration
 - Windows and macOS support
@@ -67,12 +74,12 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-### Latest Updates (v1.0.6.8)
-- Added "Do not install" option for Forge on all versions except 1.20.1
-- Improved Java checking: Minecraft 1.20.1 and below requires Java 17+, versions 1.20.2 and above require Java 21+
-- Creation of separate folders for different Minecraft versions
-- Fixed Forge version formatting issues
-- Fixed game launch errors
+### Latest Updates (v1.0.7.0)
+- Improved launcher stability
+- Fixed bugs in Java version detection
+- Optimized mod installation process
+- Enhanced support for Minecraft 1.21.x
+- Fixed Forge-related errors
 
 ### System Requirements
 - Windows 10/11 or macOS 10.13+
@@ -89,9 +96,14 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 1. Launch the application
 2. Enter player name
 3. Select Minecraft and Forge version (optional)
-4. Configure installation path (if needed)
-5. Adjust memory allocation
-6. Click "Play"
+4. For Minecraft versions, select a Forge version or the "Do not install" option
+5. Configure installation path (if needed)
+6. Adjust memory allocation
+7. Click "Play"
+
+#### Version-specific installation notes
+- **For regular Minecraft versions**: Creates a folder like "IB_X.Y.Z"
+- **For Forge**: When selecting Forge, the game is installed with mods (only for Forge version 47.3.22)
 
 ### Feedback
 ![title](https://github.com/user-attachments/assets/942ebdc8-7696-456e-a2b9-24a646ff7f36)

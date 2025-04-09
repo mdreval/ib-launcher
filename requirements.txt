@@ -5,7 +5,7 @@ PyQt5>=5.15.9
 pywin32==306; platform_system == "Windows"
 
 # Minecraft и моды
-minecraft-launcher-lib==5.2.0
+minecraft-launcher-lib==7.1
 nbtlib==2.0.4
 
 # Сетевые запросы и утилиты
