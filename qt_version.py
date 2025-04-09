@@ -34,6 +34,7 @@ import nbtlib
 import time
 import traceback
 import datetime
+import re
 
 try:
     import win32gui
@@ -324,18 +325,18 @@ class InstallThread(QThread):
         """Подготавливает окружение для установки"""
         try:
             self.status_update.emit("Подготовка директории...")
-            
+
             # Создаем директории только в папке установки игры
             game_dirs = [
-                self.install_path,
-                os.path.join(self.install_path, "versions"),
-                os.path.join(self.install_path, "libraries"),
-                os.path.join(self.install_path, "mods"),
+            self.install_path,
+            os.path.join(self.install_path, "versions"),
+            os.path.join(self.install_path, "libraries"),
+            os.path.join(self.install_path, "mods"),
                 os.path.join(self.install_path, "config"),
                 os.path.join(self.install_path, "schematics"),
                 os.path.join(self.install_path, "logs")
-            ]
-            
+        ]
+
             # Создаем директории игры
             for directory in game_dirs:
                 os.makedirs(directory, exist_ok=True)
@@ -435,7 +436,7 @@ class InstallThread(QThread):
                     all(os.path.exists(os.path.join(mods_dir, mod)) 
                         for mod in current_modpack_info.get('mods', []))):
                     logging.info("Моды актуальны")
-                    return
+                return
             else:
                 # Для exe версии проверяем GitHub
                 self.status_update.emit("Проверка обновлений модпака...")
@@ -526,7 +527,7 @@ class InstallThread(QThread):
                 except Exception as e:
                     logging.error(f"Ошибка удаления временного файла: {str(e)}")
             
-            logging.info("Модпак успешно установлен")
+                logging.info("Модпак успешно установлен")
             self.status_update.emit("Модпак установлен")
             
         except Exception as e:
@@ -636,7 +637,7 @@ class InstallThread(QThread):
 
             # Отправляем сигнал для закрытия главного окна
             QApplication.quit()
-
+            
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Не удалось запустить Minecraft: {str(e)}")
@@ -644,43 +645,117 @@ class InstallThread(QThread):
     def find_java(self):
         """Находит путь к Java"""
         try:
-            # Ищем путь к Java так же, как и при запуске
+            # Расширенный список путей для поиска Java
             possible_paths = [
-                'javaw.exe',  # Проверяем в PATH
-                'java.exe',   # Альтернативный вариант
-                r'\usr\bin\java',
-                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                # Windows paths for Java executables in PATH
+                'javaw.exe',
+                'java.exe',
+                
+                # Common installation paths for JDK and JRE
                 r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.1\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.2\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.3\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.4\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.5\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.6\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.7\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.8\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.9\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                
+                # Java 21 paths
+                r'C:\Program Files\Java\jdk-21\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-21.0.1\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-21.0.2\bin\javaw.exe',
+                
+                # Program Files (x86) paths
+                r'C:\Program Files (x86)\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files (x86)\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files (x86)\Java\jdk-21\bin\javaw.exe',
+                
+                # Adoptium/Eclipse Temurin paths
                 r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-21\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Temurin\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Temurin\jdk-21\bin\javaw.exe',
+                
+                # Amazon Corretto
+                r'C:\Program Files\Amazon Corretto\jdk17\bin\javaw.exe',
+                r'C:\Program Files\Amazon Corretto\jdk21\bin\javaw.exe',
+                
+                # Microsoft OpenJDK
+                r'C:\Program Files\Microsoft\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Microsoft\jdk-21\bin\javaw.exe',
+                
+                # Unix paths
+                r'/usr/bin/java',
+                r'/usr/lib/jvm/java-17-openjdk/bin/java',
+                r'/usr/lib/jvm/java-21-openjdk/bin/java',
+                
+                # JAVA_HOME path
                 os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'java'),
             ]
+
+            # Расширенный поиск через регулярные выражения
+            if platform.system() == "Windows":
+                # Ищем все доступные версии Java в Program Files
+                java_dirs = []
+                for root_dir in [r'C:\Program Files\Java', r'C:\Program Files (x86)\Java']:
+                    if os.path.exists(root_dir):
+                        try:
+                            for dir_name in os.listdir(root_dir):
+                                if 'jdk' in dir_name.lower() or 'jre' in dir_name.lower():
+                                    java_path = os.path.join(root_dir, dir_name, 'bin', 'javaw.exe')
+                                    if os.path.exists(java_path):
+                                        java_dirs.append(java_path)
+                        except Exception as e:
+                            logging.error(f"Ошибка при сканировании директории Java: {str(e)}")
+                
+                # Добавляем найденные пути в список
+                possible_paths.extend(java_dirs)
+                logging.info(f"Найдены дополнительные пути Java: {java_dirs}")
 
             java_path = None
             
-            # Сначала проверяем через where
+            # Сначала проверяем через where/which
             try:
                 system = platform.system()
-                logging.info(f"System: {system}")
-                if system=="Darwin":
+                logging.info(f"Операционная система: {system}")
+                
+                if system == "Darwin":  # macOS
                     result = subprocess.run(['which', 'java'], 
-                                        capture_output=True, 
-                                        text=True)
-                else:
+                                         capture_output=True, 
+                                         text=True)
+                    cmd = 'which java'
+                elif system == "Linux":
+                    result = subprocess.run(['which', 'java'], 
+                                         capture_output=True, 
+                                         text=True)
+                    cmd = 'which java'
+                else:  # Windows
                     result = subprocess.run(['where', 'javaw'], 
-                                        capture_output=True, 
-                                        text=True, 
-                                        creationflags=subprocess.CREATE_NO_WINDOW)
+                                         capture_output=True, 
+                                         text=True, 
+                                         creationflags=subprocess.CREATE_NO_WINDOW)
+                    cmd = 'where javaw'
+                
+                logging.info(f"Выполнена команда: {cmd}")
+                logging.info(f"Код возврата: {result.returncode}")
+                logging.info(f"Вывод команды: {result.stdout}")
+                
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
-                    logging.info(f"java_path: {java_paths}")
                     if java_paths:
                         java_path = java_paths[0]
-                        logging.info(f"Java найдена через where: {java_path}")
+                        logging.info(f"Java найдена через {cmd}: {java_path}")
             except Exception as e:
-                logging.warning(f"Не удалось найти Java через where: {e}")
+                logging.warning(f"Не удалось найти Java через where/which: {str(e)}")
 
-            # Если where не нашел, проверяем другие пути
+            # Если where/which не нашел, проверяем все возможные пути
             if not java_path:
+                logging.info("Поиск Java по всем возможным путям...")
                 for path in possible_paths:
                     if os.path.exists(path):
                         java_path = path
@@ -690,32 +765,43 @@ class InstallThread(QThread):
             if java_path:
                 # Проверяем версию найденной Java
                 java_exe = java_path.replace('javaw.exe', 'java.exe')
-                result = subprocess.run(
-                    [java_exe, '-version'], 
-                    capture_output=True,  # Используем только capture_output
-                    #creationflags=subprocess.CREATE_NO_WINDOW,
-                    text=True                    
-                )
+                logging.info(f"Проверка версии Java: {java_exe}")
                 
-                version_output = result.stderr
-                logging.info(f"Java version check output: {version_output}")
-                
-                # Проверяем версию через регулярное выражение
-                import re
-                version_pattern = r'version "([^"]+)"'
-                match = re.search(version_pattern, version_output)
-                
-                if match:
-                    version_string = match.group(1)
-                    logging.info(f"Found Java version: {version_string}")
+                try:
+                    result = subprocess.run(
+                        [java_exe, '-version'], 
+                        capture_output=True,
+                        text=True                    
+                    )
                     
-                    # Проверяем версию
-                    if any(str(v) in version_string for v in range(17, 22)):
-                        logging.info("Java version is compatible")
-                        return java_path
+                    version_output = result.stderr if result.stderr else result.stdout
+                    logging.info(f"Вывод проверки версии Java: {version_output}")
+                    
+                    # Проверяем версию через регулярное выражение
+                    version_pattern = r'version "([^"]+)"'
+                    match = re.search(version_pattern, version_output)
+                    
+                    if match:
+                        version_string = match.group(1)
+                        logging.info(f"Найдена версия Java: {version_string}")
+                        
+                        # Извлекаем основной номер версии
+                        major_version = self._get_java_version(java_path)
+                        logging.info(f"Основной номер версии Java: {major_version}")
+                        
+                        # Проверяем версию - нужна 17+ или 21+
+                        if major_version >= 17:
+                            logging.info(f"Java версии {major_version} совместима")
+                            return java_path
+                        else:
+                            logging.warning(f"Java версии {major_version} ниже требуемой")
+                    else:
+                        logging.warning("Не удалось извлечь версию Java из вывода")
+                except Exception as e:
+                    logging.error(f"Ошибка при проверке версии Java: {str(e)}")
             
             # Если Java не найдена или версия не подходит
-            logging.warning("Java version is not compatible or not found")
+            logging.warning("Java не найдена или версия не совместима")
             response = QMessageBox.critical(
                 self,
                 "Ошибка",
@@ -852,13 +938,16 @@ class MainWindow(QMainWindow):
         self.check_updates_button.clicked.connect(self.toggle_auto_updates)
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
         
-        self.setup_path()
+        # Проверяем Java
         self.check_java()
         self.check_dependencies()
         
-        # Загружаем конфигурацию и версии
+        # Загружаем конфигурацию
         self.load_config()
-        self.load_versions()
+        
+        # Устанавливаем путь установки для выбранной версии
+        self.load_versions()  # Сначала загружаем версии
+        self.setup_path()     # Затем устанавливаем путь установки
 
         # Подключаем сигналы
         self.browse_button.clicked.connect(self.select_install_path)
@@ -881,13 +970,51 @@ class MainWindow(QMainWindow):
         # Обновляем версию в интерфейсе
         self.version_label = self.findChild(QLabel, "version_label")
         self.update_version_label()
-        #self.update_mods_list()
         self.tabWidget.setCurrentIndex(0)
+        
+        # После загрузки всего проверяем наличие игры
+        self.check_game_installed()
 
     def setup_path(self):
-        self.install_path.setText(DEFAULT_MINECRAFT_DIR)
-        os.makedirs(DEFAULT_MINECRAFT_DIR, exist_ok=True)
-        self.check_game_installed()
+        """
+        Устанавливает путь для выбранной версии Minecraft
+        """
+        try:
+            # Получаем путь к AppData\Roaming
+            if platform.system() == "Windows":
+                appdata_path = os.path.join(os.environ.get('APPDATA', ''))
+            else:
+                # На macOS и Linux используем ~/.IBLauncher
+                appdata_path = os.path.expanduser('~')
+            
+            # Получаем выбранную версию Minecraft
+            selected_version = self.minecraft_version.currentText()
+            
+            # Для версии 1.20.1 используем стандартную папку IBLauncher
+            if selected_version == "1.20.1":
+                install_path = os.path.join(appdata_path, 'IBLauncher')
+            else:
+                # Для других версий создаем отдельные папки с именем версии
+                install_path = os.path.join(appdata_path, f'IBLauncher_{selected_version}')
+            
+            # Устанавливаем путь в UI
+            self.install_path.setText(install_path)
+            self.install_path_str = install_path  # Сохраняем путь в переменной экземпляра
+            
+            # Создаем директорию, если она не существует
+            if not os.path.exists(install_path):
+                try:
+                    os.makedirs(install_path, exist_ok=True)
+                    logging.info(f"Создана директория для установки: {install_path}")
+                except Exception as e:
+                    logging.error(f"Ошибка при создании директории: {str(e)}")
+            
+            # Проверяем установку игры
+            self.check_game_installed()
+        except Exception as e:
+            logging.error(f"Ошибка при настройке пути установки: {str(e)}")
+            # Используем путь по умолчанию в случае ошибки
+            self.install_path.setText(DEFAULT_MINECRAFT_DIR)
 
     def select_install_path(self):
         path = QFileDialog.getExistingDirectory(
@@ -928,7 +1055,7 @@ class MainWindow(QMainWindow):
                 else:
                     result = subprocess.run(['where', 'javaw'], 
                                         capture_output=True, 
-                                        text=True, 
+                text=True,
                                         creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode == 0:
                     java_paths = result.stdout.strip().split('\n')
@@ -1019,14 +1146,8 @@ class MainWindow(QMainWindow):
                     self.saved_minecraft_version = config.get('minecraft_version', '1.20.1')
                     self.saved_forge_version = config.get('forge_version', '1.20.1-forge-47.3.22')
                     
-                    
-
-                    # Загружаем путь установки
-                    install_path = config.get('install_path', '')
-                    if install_path:
-                        self.install_path.setText(install_path)
-                    else:
-                        self.install_path.setText(DEFAULT_MINECRAFT_DIR)
+                    logging.info(f"Загружена сохраненная версия Minecraft: {self.saved_minecraft_version}")
+                    logging.info(f"Загружена сохраненная версия Forge: {self.saved_forge_version}")
                     
                     # Загружаем настройки памяти
                     memory = config.get('memory', None)
@@ -1042,11 +1163,11 @@ class MainWindow(QMainWindow):
                     if config.get('auto_update_mods', True):
                         self.check_updates_button.setText("Отключить обновление модов")
                         self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
-                        self.mods_update_switch= True
+                        self.mods_update_switch = True
                     else:
                         self.check_updates_button.setText("Включить обновление модов")
                         self.check_updates_button.setStyleSheet("background-color: red; color:white; font-weight:bold;");
-                        self.mods_update_switch= False
+                        self.mods_update_switch = False
             else:
                 # При первом запуске устанавливаем версии по умолчанию
                 self.saved_minecraft_version = '1.20.1'
@@ -1061,14 +1182,26 @@ class MainWindow(QMainWindow):
     def save_config(self):
         """Сохраняет настройки лаунчера"""
         try:
+            minecraft_version = self.minecraft_version.currentText()
+            forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
+            
             config = {
                 'username': self.username.text(),
                 'memory': self.memory_slider.value(),
-                'install_path': self.install_path.text()
+                'install_path': self.install_path.text(),
+                'minecraft_version': minecraft_version,
+                'forge_version': forge_version,
+                'launch_flags': self.launch_flags_input.toPlainText(),
+                'auto_update_mods': self.mods_update_switch
             }
+            
+            # Создаём директорию конфига, если она не существует
+            os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+            
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(config, f)
-            logging.info("Настройки сохранены")
+                
+            logging.info(f"Настройки сохранены. Minecraft: {minecraft_version}, Forge: {forge_version}")
         except Exception as e:
             logging.error(f"Ошибка сохранения настроек: {str(e)}")
 
@@ -1272,6 +1405,10 @@ class MainWindow(QMainWindow):
             added_versions.add(forge_display_version)
             self.add_to_forge_cache("1.20.1", forge_version)
             self.forge_version.setEnabled(True)
+        else:
+            # Для всех остальных версий добавляем "Не устанавливать" как первый пункт
+            self.forge_version.addItem("Не устанавливать")
+            added_versions.add("Не устанавливать")
 
         # Затем добавляем все кешированные версии для этой версии Minecraft
         cached_versions = []
@@ -1296,11 +1433,17 @@ class MainWindow(QMainWindow):
                     self.add_to_forge_cache(selected_version, forge_version)
                 self.forge_version.setEnabled(True)
 
+        # Обновляем путь установки в зависимости от выбранной версии
+        self.setup_path()
+
         self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
         self.check_game_installed()
         
         # Если это версия 1.20.1, устанавливаем первую версию Forge как выбранную
         if selected_version == "1.20.1" and self.forge_version.count() > 0:
+            self.forge_version.setCurrentIndex(0)
+        else:
+            # Для других версий устанавливаем "Не устанавливать" по умолчанию
             self.forge_version.setCurrentIndex(0)
         
         # Сохраняем выбранную версию
@@ -1318,89 +1461,66 @@ class MainWindow(QMainWindow):
         self.save_config()  # Сохраняем конфиг при изменении значения памяти
 
     def start_installation(self):
-        """Запускает установку"""
+        """Запускает установку или игру"""
         try:
             minecraft_version = self.minecraft_version.currentText()
             forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
+        
+            logging.info(f"Запуск установки/игры. Minecraft: {minecraft_version}, Forge: {forge_display_version}")
             
-            # Преобразуем отображаемую версию Forge в реальную
-            if forge_display_version and forge_display_version.startswith("1.20.1-forge-"):
-                forge_version = forge_display_version.replace("-forge-", "-")
-            else:
-                forge_version = forge_display_version
+            # Проверка полей формы
+            if not minecraft_version:
+                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft!")
+                return
             
             username = self.username.text().strip()
-            install_path = self.install_path.text().strip()
-
             if not username:
                 QMessageBox.warning(self, "Ошибка", "Введите имя игрока!")
                 self.username.setFocus()
                 return
 
-            if not minecraft_version:
-                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft!")
-                return
+            install_path = self.install_path.text().strip()
+            
+            # Проверяем наличие пути установки
+            if not os.path.exists(install_path):
+                try:
+                    os.makedirs(install_path)
+                    logging.info(f"Создана директория установки: {install_path}")
+                except Exception as e:
+                    logging.error(f"Ошибка создания директории: {str(e)}")
+                    QMessageBox.critical(self, "Ошибка", f"Не удалось создать директорию установки: {str(e)}")
+                    return
 
             if not os.access(install_path, os.W_OK):
                 QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
                 return
 
-            # Проверяем наличие модов
-            """ mods_dir = os.path.join(install_path, "mods")
-            if not os.path.exists(mods_dir) or not os.listdir(mods_dir):
-                # Скачиваем модпак с GitHub
-                self.status_label.setText("Скачивание модпака...")
-                logging.info("Начало скачивания модпака с GitHub")
-                
+            # Проверяем наличие подходящей версии Java
+            logging.info(f"Проверка Java для версии {minecraft_version}")
+            if not self.check_java_for_version(minecraft_version):
+                logging.warning(f"Проверка Java для версии {minecraft_version} не пройдена")
+                # Сообщение уже было показано в check_java_for_version
+                return
+            
+            # Определяем версию для установки
+            # Если у выбранной версии Forge есть "forge" в имени и это не "Не устанавливать"
+            forge_version = None
+            if forge_display_version and forge_display_version != "Не устанавливать" and "forge" in forge_display_version.lower():
                 try:
-                    # Получаем последний релиз
-                    api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-                    response = requests.get(api_url, timeout=10)
-                    response.raise_for_status()
-                    latest_release = response.json()
-                    
-                    # Ищем модпак в ассетах релиза
-                    modpack_url = None
-                    for asset in latest_release['assets']:
-                        if asset['name'] == 'modpack.zip':
-                            modpack_url = asset['browser_download_url']
-                            break
-                    
-                    if not modpack_url:
-                        raise Exception("Модпак не найден в последнем релизе")
-                    
-                    # Скачиваем модпак
-                    response = requests.get(modpack_url)
-                    response.raise_for_status()
-                    
-                    # Создаем папку mods если её нет
-                    os.makedirs(mods_dir, exist_ok=True)
-                    
-                    # Сохраняем и распаковываем модпак
-                    temp_zip = os.path.join(mods_dir, "modpack.zip")
-                    with open(temp_zip, "wb") as f:
-                        f.write(response.content)
-                    
-                    # Распаковываем моды
-                    with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
-                        for file_info in zip_ref.filelist:
-                            if file_info.filename.endswith('.jar'):
-                                zip_ref.extract(file_info.filename, mods_dir)
-                                logging.info(f"Установлен мод: {file_info.filename}")
-                    
-                    # Удаляем временный zip
-                    os.remove(temp_zip)
-                    logging.info("Модпак успешно установлен")
-                    
+                    # Получаем номер версии Forge из форматированного текста
+                    # формат: "1.20.1-forge-47.3.22" -> "1.20.1-47.3.22"
+                    forge_parts = forge_display_version.split('-forge-')
+                    if len(forge_parts) == 2:
+                        forge_version = f"{minecraft_version}-{forge_parts[1]}"
+                        logging.info(f"Извлечена версия Forge: {forge_version}")
                 except Exception as e:
-                    logging.error(f"Ошибка установки модпака: {str(e)}")
-                    QMessageBox.warning(self, "Ошибка", f"Не удалось установить модпак: {str(e)}")
-                    return """
-
-            # Если все проверки пройдены, запускаем установку/игру
+                    logging.error(f"Ошибка извлечения версии Forge: {str(e)}")
+            
+            # Определяем, что устанавливать - Forge или Vanilla
             version_to_install = forge_version if forge_version else minecraft_version
-            logging.info(f"Выбрана версия для установки: {version_to_install}")
+            logging.info(f"Выбрана версия для установки/запуска: {version_to_install}")
 
+            # Создаем поток установки
             self.thread = InstallThread(
                 version_to_install,
                 username,
@@ -1410,17 +1530,20 @@ class MainWindow(QMainWindow):
                 self.mods_update_switch
             )
             
-            # Подключаем сигналы из потока к слотам главного окна
+            # Подключаем сигналы
             self.thread.progress_update.connect(self.update_progress)
             self.thread.status_update.connect(self.status_label.setText)
             self.thread.error_occurred.connect(self.show_error)
             self.thread.toggle_ui.connect(self.toggle_ui_elements)
             
+            # Запускаем поток установки
             self.thread.start()
-            
+            logging.info(f"Запущен поток установки/запуска игры")
+                
         except Exception as e:
-            logging.error(f"Ошибка запуска установки: {str(e)}")
-            QMessageBox.critical(self, "Ошибка", str(e))
+            logging.error(f"Ошибка запуска установки: {str(e)}", exc_info=True)
+            QMessageBox.critical(self, "Ошибка", f"Не удалось запустить установку: {str(e)}")
+            self.toggle_ui_elements(True)  # Разблокируем интерфейс в случае ошибки
 
     def toggle_ui_elements(self, enabled):
         self.start_button.setEnabled(enabled)
@@ -1520,43 +1643,96 @@ class MainWindow(QMainWindow):
     def check_mods_update(self):
         """Проверяет обновления модов"""
         try:
-            install_path = self.install_path.text() if hasattr(self.install_path, 'text') else self.install_path
-            mods_dir = os.path.join(install_path, "mods")
+            # Проверяем, что выбрана версия 1.20.1
+            selected_version = self.minecraft_version.currentText()
+            if selected_version != "1.20.1":
+                logging.info(f"Проверка обновлений модов пропущена: версия {selected_version} не 1.20.1")
+                return False
+
+            # Проверяем, включено ли автообновление модов
+            if not self.mods_update_checkbox.isChecked():
+                logging.info("Автообновление модов отключено")
+                return False
+            
             logging.info("Начало проверки обновлений модов")
             
-            # Проверяем информацию о текущем модпаке
-            modpack_info_file = os.path.join(mods_dir, "modpack_info.json")
-            if not os.path.exists(modpack_info_file):
-                logging.info("Файл информации о модпаке не найден")
+            # Проверяем наличие папки модов
+            mods_path = os.path.join(self.install_path_str, "mods")
+            if not os.path.exists(mods_path):
+                os.makedirs(mods_path)
+                logging.info(f"Создана папка модов: {mods_path}")
+            
+            # Получаем список доступных модов с GitHub
+            try:
+                api_url = "https://api.github.com/repos/IGROBAR/ib-launcher-modpack/contents/mods"
+                response = requests.get(api_url, timeout=10)
+                response.raise_for_status()
+                github_mods = response.json()
+                
+                # Преобразуем в словарь для удобства
+                github_mods_dict = {mod["name"]: mod for mod in github_mods if mod["name"].endswith(".jar")}
+                
+                # Получаем список установленных модов
+                installed_mods = {}
+                if os.path.exists(mods_path):
+                    for file in os.listdir(mods_path):
+                        if file.endswith('.jar'):
+                            installed_mods[file] = os.path.getsize(os.path.join(mods_path, file))
+                
+                # Определяем необходимые обновления
+                mods_to_update = {}
+                
+                # Проверяем новые и обновленные моды
+                for github_mod_name, github_mod in github_mods_dict.items():
+                    if github_mod_name not in installed_mods:
+                        # Новый мод
+                        mods_to_update[github_mod_name] = github_mod
+                        logging.info(f"Обнаружен новый мод: {github_mod_name}")
+                    elif int(github_mod["size"]) != installed_mods[github_mod_name]:
+                        # Размер отличается - нужно обновить
+                        mods_to_update[github_mod_name] = github_mod
+                        logging.info(f"Обнаружено обновление мода: {github_mod_name}")
+                
+                # Проверяем устаревшие моды (не существующие на GitHub)
+                for installed_mod in list(installed_mods.keys()):
+                    if installed_mod not in github_mods_dict and installed_mod != "modpack_info.json":
+                        # Устаревший мод - добавляем его к удалению
+                        mods_to_update[installed_mod] = None
+                        logging.info(f"Обнаружен устаревший мод: {installed_mod}")
+                
+                if mods_to_update:
+                    # Спрашиваем пользователя, хочет ли он обновить моды
+                    reply = QMessageBox.question(self, "Обновление модов", 
+                                                f"Доступны обновления модов ({len(mods_to_update)} шт.). Обновить?", 
+                                                QMessageBox.Yes | QMessageBox.No)
+                    
+                    if reply == QMessageBox.Yes:
+                        # Удаляем устаревшие моды
+                        for mod_name, mod_info in list(mods_to_update.items()):
+                            if mod_info is None:
+                                mod_path = os.path.join(mods_path, mod_name)
+                                if os.path.exists(mod_path):
+                                    os.remove(mod_path)
+                                    logging.info(f"Удален устаревший мод: {mod_name}")
+                                del mods_to_update[mod_name]
+                        
+                        # Обновляем моды
+                        if mods_to_update:
+                            return self.update_mods(mods_to_update, mods_path)
+                        else:
+                            QMessageBox.information(self, "Обновление модов", "Моды успешно обновлены")
+                            return True
+                else:
+                    logging.info("Моды актуальны")
+                    return True
+                    
+            except Exception as e:
+                logging.error(f"Ошибка при проверке обновлений модов: {str(e)}", exc_info=True)
+                QMessageBox.warning(self, "Ошибка", f"Ошибка при проверке обновлений модов: {str(e)}")
                 return False
                 
-            with open(modpack_info_file, 'r') as f:
-                current_modpack_info = json.load(f)
-                
-            # Получаем информацию о последнем релизе
-            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-            response = requests.get(api_url, timeout=10)
-            response.raise_for_status()
-            release_data = response.json()
-            
-            modpack_asset = next((asset for asset in release_data['assets'] 
-                                if asset['name'] == 'modpack.zip'), None)
-            if not modpack_asset:
-                logging.info("Модпак не найден в релизе")
-                return False
-                
-            # Проверяем размер и наличие всех модов
-            if (current_modpack_info.get('size') == modpack_asset.get('size') and
-                all(os.path.exists(os.path.join(mods_dir, mod)) 
-                    for mod in current_modpack_info.get('mods', []))):
-                logging.info("Моды актуальны")
-                return True
-                
-            logging.info("Требуется обновление модов")
-            return False
-            
         except Exception as e:
-            logging.error(f"Ошибка проверки модов: {str(e)}")
+            logging.error(f"Ошибка в методе check_mods_update: {str(e)}", exc_info=True)
             return False
 
     def install_modpack(self):
@@ -1690,9 +1866,9 @@ class MainWindow(QMainWindow):
             raise ValueError(f"Ошибка установки модпака: {str(e)}")
 
     def check_launcher_update(self):
+        """Проверяет наличие обновления лаунчера"""
         try:
-            # Текущая версия лаунчера
-            current_version = "1.0.6.7"
+            current_version = "1.0.6.8"
             
             # Проверяем GitHub API
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1731,9 +1907,9 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка проверки обновлений: {str(e)}")
 
     def update_version_label(self):
+        """Обновляет метку версии"""
         try:
-            # Текущая версия лаунчера
-            current_version = "1.0.6.7"
+            current_version = "1.0.6.8"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -1819,22 +1995,26 @@ class MainWindow(QMainWindow):
     def remove_selected_mods(self):
         """Удаляет выбранные моды"""
         try:
+            # Получаем выбранные моды
             selected_items = self.mods_list.selectedItems()
+            
             if not selected_items:
+                QMessageBox.information(self, "Информация", "Выберите моды для удаления")
                 return
-                
+            
+            # Спрашиваем подтверждение
             response = QMessageBox.question(
                 self,
-                "Подтверждение",
-                f"Удалить выбранные моды ({len(selected_items)})?",
+                "Удаление модов",
+                f"Вы уверены, что хотите удалить {len(selected_items)} мод(ов)?",
                 QMessageBox.Yes | QMessageBox.No
             )
             
             if response == QMessageBox.No:
                 return
                 
-            install_path = self.install_path.text().strip()
-            mods_dir = os.path.join(install_path, "mods")
+            # Удаляем файлы модов
+            mods_dir = os.path.join(self.install_path_str, "mods")
             
             for item in selected_items:
                 mod_name = item.text().lower().replace(' ', '-') + '.jar'
@@ -1884,6 +2064,490 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка переключения автообновления: {str(e)}")
             self.mods_update_switch= True
             self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
+
+    def check_java_for_version(self, minecraft_version):
+        """
+        Проверяет наличие подходящей версии Java для указанной версии Minecraft
+        Для версий 1.20.2+ требуется Java 21+
+        Для версий 1.20.1 и ниже требуется Java 17+
+        """
+        try:
+            logging.info(f"Проверка требуемой версии Java для Minecraft: {minecraft_version}")
+            
+            # Определяем, требуется ли Java 21+
+            requires_java21 = False
+            
+            # Упрощенное определение требуемой версии Java - для 1.20.2 и выше требуется Java 21
+            if minecraft_version == "1.20.1" or minecraft_version == "1.20.0":
+                logging.info(f"Для версии {minecraft_version} требуется Java 17+")
+                requires_java21 = False
+            else:
+                try:
+                    # Разбиваем версию на числа
+                    parts = minecraft_version.split('.')
+                    if len(parts) >= 3:  # Формат x.y.z (1.20.2)
+                        major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
+                        # Для версии 1.20.2 и выше нужна Java 21
+                        if (major > 1) or (major == 1 and minor > 20) or (major == 1 and minor == 20 and patch >= 2):
+                            requires_java21 = True
+                            logging.info(f"Для версии {minecraft_version} требуется Java 21+")
+                    elif len(parts) >= 2:  # Формат x.y (1.21)
+                        major, minor = int(parts[0]), int(parts[1])
+                        # Для версии 1.21 и выше нужна Java 21
+                        if (major > 1) or (major == 1 and minor >= 21):
+                            requires_java21 = True
+                            logging.info(f"Для версии {minecraft_version} требуется Java 21+")
+                except Exception as e:
+                    logging.error(f"Ошибка при анализе версии Minecraft: {str(e)}")
+                
+                if requires_java21:
+                    logging.info(f"Для версии {minecraft_version} требуется Java 21+")
+                else:
+                    logging.info(f"Для версии {minecraft_version} требуется Java 17+")
+            
+            # Находим путь к Java (аналогично методу find_java в InstallThread)
+            java_path = self.find_java_path(requires_java21)
+            logging.info(f"Результат поиска Java: {java_path}")
+            
+            if java_path:
+                # Проверяем версию найденной Java
+                java_version = self._get_java_version(java_path)
+                logging.info(f"Определена версия Java: {java_version}")
+                
+                # Проверяем соответствие версии требованиям
+                if requires_java21 and java_version < 21:
+                    logging.warning(f"У вас Java {java_version}, но требуется Java 21+ для Minecraft {minecraft_version}")
+                    
+                    # Показываем диалог установки Java 21
+                    message = (
+                        f"Для Minecraft {minecraft_version} требуется Java 21 или выше!\n\n"
+                        f"Текущая версия: Java {java_version}\n\n"
+                        "Сейчас откроется страница загрузки Oracle Java 21.\n"
+                        "На сайте выберите версию для вашей системы (Windows, macOS или Linux)."
+                    )
+                    
+                    response = QMessageBox.critical(
+                        self,
+                        "Требуется Java 21+",
+                        message,
+                        QMessageBox.Ok | QMessageBox.Cancel
+                    )
+                    
+                    if response == QMessageBox.Ok:
+                        QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"))
+                    return False
+                    
+                elif not requires_java21 and java_version < 17:
+                    logging.warning(f"У вас Java {java_version}, но требуется Java 17+ для Minecraft {minecraft_version}")
+                    
+                    # Показываем диалог установки Java 17
+                    message = (
+                        f"Для Minecraft {minecraft_version} требуется Java 17 или выше!\n\n"
+                        f"Текущая версия: Java {java_version}\n\n"
+                        "Сейчас откроется страница загрузки Oracle Java 17.\n"
+                        "На сайте выберите версию для вашей системы (Windows, macOS или Linux)."
+                    )
+                    
+                    response = QMessageBox.critical(
+                        self,
+                        "Требуется Java 17+",
+                        message,
+                        QMessageBox.Ok | QMessageBox.Cancel
+                    )
+                    
+                    if response == QMessageBox.Ok:
+                        QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+                    return False
+                    
+                else:
+                    logging.info(f"Версия Java {java_version} подходит для Minecraft {minecraft_version}")
+                    return True
+            else:
+                logging.warning("Java не найдена в системе")
+                
+                # Определяем, какую версию Java нужно скачать
+                java_url = "https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"
+                java_version_text = "17"
+                
+                if requires_java21:
+                    java_url = "https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"
+                    java_version_text = "21"
+                
+                # Показываем диалог установки Java
+                message = (
+                    f"Для Minecraft {minecraft_version} требуется Java {java_version_text}+\n\n"
+                    "Java не найдена на вашем компьютере.\n\n"
+                    "Сейчас откроется страница загрузки Oracle Java.\n"
+                    "На сайте выберите версию для вашей системы (Windows, macOS или Linux)."
+                )
+                
+                response = QMessageBox.critical(
+                    self,
+                    "Java не найдена",
+                    message,
+                    QMessageBox.Ok | QMessageBox.Cancel
+                )
+                
+                if response == QMessageBox.Ok:
+                    QDesktopServices.openUrl(QUrl(java_url))
+                return False
+                
+        except Exception as e:
+            logging.error(f"Ошибка при проверке Java: {str(e)}", exc_info=True)
+            
+            # При ошибке показываем стандартный диалог установки Java 17
+            response = QMessageBox.critical(
+                self,
+                "Ошибка проверки Java",
+                "Произошла ошибка при проверке Java.\n\n"
+                "Рекомендуется установить Java 17 или новее.\n\n"
+                "Сейчас откроется страница загрузки Oracle Java 17.",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            
+            if response == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            return False
+            
+    def find_java_path(self, requires_java21=False):
+        """
+        Находит путь к Java в системе
+        Возвращает путь к Java или None, если Java не найдена
+        """
+        try:
+            # Расширенный список путей для поиска Java
+            possible_paths = [
+                # Windows paths for Java executables in PATH
+                'javaw.exe',
+                'java.exe',
+                
+                # Common installation paths for JDK and JRE
+                r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.1\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.2\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.3\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.4\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.5\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.6\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.7\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.8\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.9\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.11\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-17.0.12\bin\javaw.exe',
+                
+                # Java 21 paths
+                r'C:\Program Files\Java\jdk-21\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-21.0.1\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-21.0.2\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-21.0.3\bin\javaw.exe',
+                
+                # Program Files (x86) paths
+                r'C:\Program Files (x86)\Java\jdk-17\bin\javaw.exe',
+                r'C:\Program Files (x86)\Java\jdk-17.0.10\bin\javaw.exe',
+                r'C:\Program Files (x86)\Java\jdk-21\bin\javaw.exe',
+                
+                # Adoptium/Eclipse Temurin paths
+                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-21\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Temurin\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Temurin\jdk-21\bin\javaw.exe',
+                
+                # Amazon Corretto
+                r'C:\Program Files\Amazon Corretto\jdk17\bin\javaw.exe',
+                r'C:\Program Files\Amazon Corretto\jdk21\bin\javaw.exe',
+                
+                # Microsoft OpenJDK
+                r'C:\Program Files\Microsoft\jdk-17\bin\javaw.exe',
+                r'C:\Program Files\Microsoft\jdk-21\bin\javaw.exe',
+                
+                # Unix paths
+                r'/usr/bin/java',
+                r'/usr/lib/jvm/java-17-openjdk/bin/java',
+                r'/usr/lib/jvm/java-21-openjdk/bin/java',
+                
+                # JAVA_HOME path
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
+                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'java'),
+            ]
+
+            # Расширенный поиск через регулярные выражения
+            if platform.system() == "Windows":
+                # Ищем все доступные версии Java в Program Files
+                java_dirs = []
+                for root_dir in [r'C:\Program Files\Java', r'C:\Program Files (x86)\Java']:
+                    if os.path.exists(root_dir):
+                        try:
+                            for dir_name in os.listdir(root_dir):
+                                if 'jdk' in dir_name.lower() or 'jre' in dir_name.lower():
+                                    java_path = os.path.join(root_dir, dir_name, 'bin', 'javaw.exe')
+                                    if os.path.exists(java_path):
+                                        java_dirs.append(java_path)
+                        except Exception as e:
+                            logging.error(f"Ошибка при сканировании директории Java: {str(e)}")
+                
+                # Добавляем найденные пути в список
+                possible_paths.extend(java_dirs)
+                logging.info(f"Найдены дополнительные пути Java: {java_dirs}")
+
+            java_path = None
+            
+            # Сначала проверяем через where/which
+            try:
+                system = platform.system()
+                logging.info(f"Операционная система: {system}")
+                
+                if system == "Darwin":  # macOS
+                    result = subprocess.run(['which', 'java'], 
+                                        capture_output=True, 
+                                        text=True)
+                    cmd = 'which java'
+                elif system == "Linux":
+                    result = subprocess.run(['which', 'java'], 
+                                        capture_output=True, 
+                                        text=True)
+                    cmd = 'which java'
+                else:  # Windows
+                    result = subprocess.run(['where', 'javaw'], 
+                                        capture_output=True, 
+                                        text=True, 
+                                        creationflags=subprocess.CREATE_NO_WINDOW)
+                    cmd = 'where javaw'
+                
+                logging.info(f"Выполнена команда: {cmd}")
+                logging.info(f"Код возврата: {result.returncode}")
+                logging.info(f"Вывод команды: {result.stdout}")
+                
+                if result.returncode == 0:
+                    java_paths = result.stdout.strip().split('\n')
+                    if java_paths:
+                        java_path = java_paths[0]
+                        logging.info(f"Java найдена через {cmd}: {java_path}")
+            except Exception as e:
+                logging.warning(f"Не удалось найти Java через where/which: {str(e)}")
+
+            # Если where/which не нашел, проверяем все возможные пути
+            if not java_path:
+                logging.info("Поиск Java по всем возможным путям...")
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        java_path = path
+                        logging.info(f"Java найдена по пути: {java_path}")
+                        break
+
+            if java_path:
+                # Проверяем версию найденной Java
+                java_exe = java_path.replace('javaw.exe', 'java.exe')
+                logging.info(f"Проверка версии Java: {java_exe}")
+                
+                try:
+                    result = subprocess.run(
+                        [java_exe, '-version'], 
+                        capture_output=True,
+                        text=True                    
+                    )
+                    
+                    version_output = result.stderr if result.stderr else result.stdout
+                    logging.info(f"Вывод проверки версии Java: {version_output}")
+                    
+                    # Проверяем версию через регулярное выражение
+                    version_pattern = r'version "([^"]+)"'
+                    match = re.search(version_pattern, version_output)
+                    
+                    if match:
+                        version_string = match.group(1)
+                        logging.info(f"Найдена версия Java: {version_string}")
+                        
+                        # Извлекаем основной номер версии
+                        major_version = self._get_java_version(java_path)
+                        logging.info(f"Основной номер версии Java: {major_version}")
+                        
+                        min_version = 21 if requires_java21 else 17
+                        
+                        # Проверяем версию - нужна min_version+
+                        if major_version >= min_version:
+                            logging.info(f"Java версии {major_version} совместима (требуется {min_version}+)")
+                            return java_path
+                        else:
+                            logging.warning(f"Java версии {major_version} ниже требуемой (нужна {min_version}+)")
+                    else:
+                        logging.warning("Не удалось извлечь версию Java из вывода")
+                except Exception as e:
+                    logging.error(f"Ошибка при проверке версии Java: {str(e)}")
+            
+            return None
+            
+        except Exception as e:
+            logging.error(f"Ошибка поиска Java: {str(e)}", exc_info=True)
+            return None
+
+    def _get_java_version(self, java_path):
+        """Получает версию Java из пути"""
+        try:
+            # Заменяем javaw.exe на java.exe для лучшей совместимости
+            java_exe = java_path.replace('javaw.exe', 'java.exe')
+            logging.info(f"Проверка версии исполняемым файлом: {java_exe}")
+            
+            result = subprocess.run(
+                [java_exe, '-version'],
+                capture_output=True,
+                text=True
+            )
+
+            # Java выводит информацию о версии в stderr
+            version_output = result.stderr if result.stderr else result.stdout
+            logging.info(f"Вывод команды java -version: {version_output}")
+
+            # Проверяем несколько паттернов версий
+            # Oracle Java часто использует формат: "java version "1.8.0_301""
+            # Новые версии Oracle Java: "java version "11.0.2""
+            # OpenJDK часто использует: "openjdk version "11.0.8""
+            version_patterns = [
+                r'version "([^"]+)"',               # Стандартный формат
+                r'openjdk version "([^"]+)"',       # OpenJDK формат
+                r'(\d+)\.(\d+)\.(\d+)(?:_\d+)?',    # Прямой поиск чисел версии
+                r'(\d+)-[A-Za-z0-9]+',              # Amazon Corretto/другие формат
+                r'(\d+)',                           # Последняя попытка - найти хоть какое-то число
+            ]
+            
+            version_string = None
+            for pattern in version_patterns:
+                match = re.search(pattern, version_output)
+                if match:
+                    version_string = match.group(1)
+                    logging.info(f"Найдена версия Java по шаблону '{pattern}': {version_string}")
+                    break
+            
+            if not version_string:
+                logging.warning("Не удалось определить версию Java")
+                return 0
+                
+            logging.info(f"Извлеченная строка версии Java: {version_string}")
+
+            # Определяем основной номер версии
+            # Формат может быть "1.8.0_301" (Java 8) или "11.0.2" (Java 11+) или просто "17" (Java 17)
+            if version_string.startswith("1."):
+                # Старый формат версии (1.8 = Java 8)
+                try:
+                    major_version = int(version_string.split('.')[1])
+                    logging.info(f"Определена старая версия Java: 1.{major_version} -> Java {major_version}")
+                    return major_version
+                except Exception as e:
+                    logging.error(f"Ошибка при парсинге старой версии Java: {str(e)}")
+                    return 0
+            else:
+                # Новый формат версии (11.0.2 = Java 11, 17.0.1 = Java 17, 21 = Java 21)
+                try:
+                    major_version = int(version_string.split('.')[0])
+                    logging.info(f"Определена новая версия Java: {major_version}")
+                    return major_version
+                except Exception as e:
+                    # Последняя попытка - извлечь первое число
+                    try:
+                        major_version = int(re.search(r'(\d+)', version_string).group(1))
+                        logging.info(f"Определена версия Java по первому числу: {major_version}")
+                        return major_version
+                    except Exception as e2:
+                        logging.error(f"Ошибка при парсинге новой версии Java: {str(e)} / {str(e2)}")
+                        return 0
+
+        except Exception as e:
+            logging.error(f"Ошибка получения версии Java: {str(e)}", exc_info=True)
+            return 0
+
+    def install_game(self):
+        """Установка игры"""
+        try:
+            # Проверяем, что выбрана версия Minecraft
+            selected_version = self.minecraft_version.currentText()
+            if not selected_version:
+                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft")
+                return
+            
+            # Получаем имя пользователя
+            username = self.username.text().strip()
+            if not username:
+                QMessageBox.warning(self, "Ошибка", "Введите имя пользователя")
+                return
+            
+            # Получаем путь установки
+            install_path = self.install_path.text().strip()
+            if not os.path.exists(install_path):
+                os.makedirs(install_path, exist_ok=True)
+            
+            # Проверяем доступность записи в указанный путь
+            if not os.access(install_path, os.W_OK):
+                QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
+                return
+            
+            # Проверяем наличие Java в зависимости от выбранной версии
+            if not self.check_java_for_version(selected_version):
+                QMessageBox.warning(self, "Ошибка", f"Требуется соответствующая версия Java для Minecraft {selected_version}")
+                return
+            
+            # Проверка Forge
+            forge_selected = (
+                self.forge_version.isEnabled() and 
+                self.forge_version.currentText() != "Не устанавливать"
+            )
+            
+            if forge_selected:
+                # Сначала устанавливаем базовую версию Minecraft
+                self.status_label.setText(f"Установка Minecraft {selected_version}...")
+                minecraft_launcher_lib.install.install_minecraft_version(
+                    versionid=selected_version,
+                    minecraft_directory=install_path,
+                    callback={
+                        'setStatus': lambda text: self.status_label.setText(text),
+                        'setProgress': lambda val: self.progress_bar.setValue(val),
+                        'setMax': lambda val: self.progress_bar.setMaximum(val)
+                    }
+                )
+                
+                # Затем устанавливаем Forge
+                forge_version = self.forge_version.currentText()
+                forge_version_id = forge_version.replace(f"{selected_version}-forge-", f"{selected_version}-")
+                self.status_label.setText(f"Установка Forge {forge_version_id}...")
+                
+                minecraft_launcher_lib.forge.install_forge_version(
+                    forge_version_id,
+                    install_path,
+                    callback={
+                        'setStatus': lambda text: self.status_label.setText(text),
+                        'setProgress': lambda val: self.progress_bar.setValue(val),
+                        'setMax': lambda val: self.progress_bar.setMaximum(val)
+                    }
+                )
+                
+                # Добавляем версию Forge в кеш
+                self.add_to_forge_cache(selected_version, forge_version_id)
+                
+                # Для 1.20.1 с Forge устанавливаем модпак
+                if selected_version == "1.20.1" and self.mods_update_checkbox.isChecked():
+                    self.install_modpack()
+            else:
+                # Установка только Minecraft без Forge
+                self.status_label.setText(f"Установка Minecraft {selected_version}...")
+                minecraft_launcher_lib.install.install_minecraft_version(
+                    versionid=selected_version,
+                    minecraft_directory=install_path,
+                    callback={
+                        'setStatus': lambda text: self.status_label.setText(text),
+                        'setProgress': lambda val: self.progress_bar.setValue(val),
+                        'setMax': lambda val: self.progress_bar.setMaximum(val)
+                    }
+                )
+            
+            self.status_label.setText(f"Minecraft {selected_version} установлен")
+            self.start_button.setText("Играть")
+            
+            # Проверяем успешность установки
+            self.check_game_installed()
+            
+        except Exception as e:
+            logging.error(f"Ошибка установки игры: {str(e)}", exc_info=True)
+            QMessageBox.critical(self, "Ошибка", f"Не удалось установить игру: {str(e)}")
+            self.status_label.setText("Произошла ошибка при установке")
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
