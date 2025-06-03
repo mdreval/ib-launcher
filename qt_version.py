@@ -713,15 +713,32 @@ class InstallThread(QThread):
 
             # Добавляем специальные аргументы для macOS
             if platform.system() == "Darwin":
+                # Добавляем -XstartOnFirstThread в начало списка
                 options['jvmArguments'].insert(0, '-XstartOnFirstThread')
-                # Определяем архитектуру процессора
+                
+                # Определяем архитектуру процессора для M1/M2
                 if platform.machine() == 'arm64':
-                    options['jvmArguments'].append('-Dos.arch=aarch64')
+                    options['jvmArguments'].extend([
+                        '-Dos.arch=aarch64',
+                        '-Djava.library.path=${natives_directory}'
+                    ])
                 
                 # Добавляем путь к нативным библиотекам
                 natives_suffix = self.get_natives_path()
                 if natives_suffix:
-                    options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    natives_dir = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    options['natives_directory'] = natives_dir
+                    
+                    # Добавляем путь к нативным библиотекам в java.library.path
+                    if not any('-Djava.library.path=' in arg for arg in options['jvmArguments']):
+                        options['jvmArguments'].append(f'-Djava.library.path={natives_dir}')
+                
+                # Добавляем дополнительные оптимизации для macOS
+                options['jvmArguments'].extend([
+                    '-XX:+UseParallelGC',
+                    '-XX:ParallelGCThreads=4',
+                    '-Dorg.lwjgl.system.allocator=system'
+                ])
 
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
@@ -3351,9 +3368,15 @@ class MainWindow(QMainWindow):
             
         arch = platform.machine()
         if arch == 'arm64':
-            return "-natives-macos-arm64"
+            # Для Apple Silicon (M1/M2)
+            natives_path = "-natives-macos-arm64"
+            logging.info(f"Используются нативные библиотеки для Apple Silicon: {natives_path}")
+            return natives_path
         else:
-            return "-natives-macos"
+            # Для Intel Mac
+            natives_path = "-natives-macos"
+            logging.info(f"Используются нативные библиотеки для Intel Mac: {natives_path}")
+            return natives_path
 
 # Функция для запуска процесса в Windows без показа окон
 def launch_process_hidden(command, cwd=None):
