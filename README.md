@@ -54,7 +54,7 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-### Последние обновления (v1.0.7.2)
+### Последние обновления (v1.0.7.3)
 - Добавлена возможность удаления установленных версий игры
 - Улучшена работа с путями установки
 - Оптимизирована загрузка версий Forge
@@ -106,7 +106,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-### Latest Updates (v1.0.7.2)
+### Latest Updates (v1.0.7.3)
 - Added ability to remove installed game versions
 - Improved installation path handling
 - Optimized Forge version loading
