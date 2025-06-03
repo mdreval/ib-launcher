@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version 1.0.7.6
+- Updated launcher version to 1.0.7.6
+- Fixed version checking mechanism
+- Improved error handling and logging
+
 ## Version 1.0.7.5
 - Исправлено дублирование пути установки при смене версии Minecraft
 - Улучшена обработка путей для Windows

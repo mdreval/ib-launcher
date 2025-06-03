@@ -2,27 +2,7 @@ import re
 import requests
 
 def get_version():
-    try:
-        # Пробуем получить версию из GitHub
-        api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-        response = requests.get(api_url, timeout=10)
-        response.raise_for_status()
-        latest_release = response.json()
-        version = latest_release['tag_name'].lstrip('v')
-        return version
-    except Exception as e:
-        print(f"Ошибка получения версии из GitHub: {e}")
-        # Если не удалось получить из GitHub, ищем в файле
-        try:
-            with open('qt_version.py', 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'current_version\s*=\s*["\']([0-9.]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception as e:
-            print(f"Ошибка чтения версии из файла: {e}")
-        
-        return "1.0.7.0"  # Версия по умолчанию
+    return "1.0.7.6"  # Версия по умолчанию
 
 def generate_info_plist():
     version = get_version()

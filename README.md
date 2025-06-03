@@ -1,10 +1,10 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.7.5
+# IB Launcher v1.0.7.6
 
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
-## Текущая версия: 1.0.7.4
+## Текущая версия: 1.0.7.6
 
 ### Основные возможности:
 - Установка и запуск Minecraft с поддержкой Forge
@@ -54,7 +54,7 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-### Последние обновления (v1.0.7.4)
+### Последние обновления (v1.0.7.6)
 - Исправлена проблема с отображением версии лаунчера
 - Обновлены все файлы конфигурации
 - Улучшена совместимость версий
@@ -106,7 +106,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-### Latest Updates (v1.0.7.4)
+### Latest Updates (v1.0.7.6)
 - Fixed launcher version display issue
 - Updated all configuration files
 - Improved version compatibility

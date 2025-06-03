@@ -2512,54 +2512,69 @@ class MainWindow(QMainWindow):
             raise ValueError(f"Ошибка установки модпака: {str(e)}")
 
     def check_launcher_update(self):
+        """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.4"
+            current_version = "1.0.7.6"
             
-            # Проверяем GitHub API
+            # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
             response = requests.get(api_url, timeout=10, verify=True)
             response.raise_for_status()
             latest_release = response.json()
-            
-            # Получаем версию последнего релиза (убираем 'v' из начала)
             latest_version = latest_release['tag_name'].lstrip('v')
             
-            # Проверяем только обновления лаунчера
-            launcher_updated = False
-            for asset in latest_release['assets']:
-                if platform.system() == "Windows" and asset['name'] == "IB-Launcher.exe":
-                    launcher_updated = True
-                elif platform.system() == "Darwin" and asset['name'] == "IB-Launcher.dmg":
-                    launcher_updated = True
-            
-            if launcher_updated and latest_version > current_version:
-                # Показываем диалог обновления
-                update_dialog = QMessageBox()
-                update_dialog.setWindowTitle("Доступно обновление")
-                update_dialog.setText(f"Доступна новая версия лаунчера: {latest_version}\n\nТекущая версия: {current_version}")
-                update_dialog.setInformativeText("Хотите обновить лаунчер?")
-                update_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                update_dialog.setDefaultButton(QMessageBox.Yes)
+            # Сравниваем версии
+            if latest_version > current_version:
+                # Спрашиваем пользователя об обновлении
+                reply = QMessageBox.question(
+                    self,
+                    "Доступно обновление",
+                    f"Доступна новая версия лаунчера (v{latest_version}). Хотите обновиться?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
                 
-                if update_dialog.exec_() == QMessageBox.Yes:
+                if reply == QMessageBox.Yes:
                     # Открываем страницу релиза в браузере
-                    QDesktopServices.openUrl(QUrl(latest_release['html_url']))
+                    webbrowser.open(latest_release['html_url'])
                     
-                    # Закрываем лаунчер
-                    QApplication.quit()
-                
+                    # Показываем сообщение о необходимости закрыть лаунчер
+                    QMessageBox.information(
+                        self,
+                        "Обновление",
+                        "Пожалуйста, закройте лаунчер и установите новую версию."
+                    )
+            
         except Exception as e:
             logging.error(f"Ошибка проверки обновлений: {str(e)}")
 
     def update_version_label(self):
         """Обновляет метку версии в интерфейсе"""
         try:
-            version_label = self.findChild(QLabel, "version_label")
-            if version_label:
-                version_label.setText("v1.0.7.5")
+            # Текущая версия лаунчера
+            current_version = "1.0.7.6"
+            
+            # Пробуем получить последнюю версию с GitHub
+            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
+            response = requests.get(api_url, timeout=10, verify=True)
+            response.raise_for_status()
+            latest_release = response.json()
+            latest_version = latest_release['tag_name'].lstrip('v')
+            
+            # Сравниваем версии
+            if latest_version > current_version:
+                # Если доступна новая версия, показываем обе
+                self.version_label.setText(f"Версия: {current_version} (Доступно обновление: {latest_version})")
+                self.version_label.setStyleSheet("QLabel { color: #ff6b6b; }")  # Красный цвет для уведомления
+            else:
+                # Если версия актуальная
+                self.version_label.setText(f"Версия: {current_version}")
+                self.version_label.setStyleSheet("QLabel { color: #666666; }")  # Возвращаем обычный цвет
+            
         except Exception as e:
-            logging.error(f"Ошибка при обновлении метки версии: {str(e)}")
+            logging.error(f"Ошибка получения версии: {str(e)}")
+            # При ошибке показываем только текущую версию
+            self.version_label.setText(f"Версия: {current_version}")
 
     def on_tab_changed(self, index):
         """Обработчик смены вкладки"""
