@@ -87,8 +87,8 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.7.4',
-            'CFBundleVersion': '1.0.7.4',
+            'CFBundleShortVersionString': '1.0.7.5',
+            'CFBundleVersion': '1.0.7.5',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar'
         }

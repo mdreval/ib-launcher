@@ -1396,19 +1396,22 @@ class MainWindow(QMainWindow):
                 # Используем путь по умолчанию
                 if platform.system() == "Windows":
                     appdata_path = os.path.join(os.environ.get('APPDATA', ''))
-                    base_path = os.path.join(appdata_path, "IBLauncher")
+                    base_path = appdata_path
                 else:
                     home_path = os.path.expanduser("~")
-                    base_path = os.path.join(home_path, "IBLauncher")
+                    base_path = home_path
             else:
                 # Если путь уже установлен пользователем
-                # Проверяем, содержит ли путь уже IBLauncher
-                if "IBLauncher" in current_path:
-                    # Если содержит, получаем родительскую директорию
-                    base_path = os.path.dirname(current_path)
-                else:
-                    # Если не содержит, используем текущий путь как есть
-                    base_path = current_path
+                # Нормализуем текущий путь
+                current_path = current_path.replace("/", "\\") if platform.system() == "Windows" else current_path
+                
+                # Удаляем возможные дублирования IBLauncher в пути
+                path_parts = current_path.split("IBLauncher")
+                base_path = path_parts[0].rstrip("\\")
+                
+                # Если путь заканчивается на номер версии, удаляем его
+                if base_path.endswith("_"):
+                    base_path = base_path.rstrip("_")
 
             # Формируем новый путь в зависимости от версии
             if selected_version == "1.20.1":
@@ -1416,8 +1419,13 @@ class MainWindow(QMainWindow):
             else:
                 new_path = os.path.join(base_path, f"IBLauncher_{selected_version}")
             
-            # Нормализуем путь
-            new_path = os.path.normpath(new_path)
+            # Нормализуем путь для Windows
+            if platform.system() == "Windows":
+                new_path = new_path.replace("/", "\\")
+                if new_path.startswith("C:") and not new_path.startswith("C:\\"):
+                    new_path = "C:\\" + new_path[2:]
+            
+            logging.info(f"Setup path: base_path={base_path}, new_path={new_path}")
             
             # Устанавливаем путь в UI
             self.install_path.setText(new_path)
@@ -1435,6 +1443,13 @@ class MainWindow(QMainWindow):
             else:
                 home_path = os.path.expanduser("~")
                 default_path = os.path.join(home_path, "IBLauncher")
+            
+            # Нормализуем путь по умолчанию для Windows
+            if platform.system() == "Windows":
+                default_path = default_path.replace("/", "\\")
+                if default_path.startswith("C:") and not default_path.startswith("C:\\"):
+                    default_path = "C:\\" + default_path[2:]
+            
             self.install_path.setText(default_path)
             self.install_path_str = default_path
 
@@ -2114,101 +2129,127 @@ class MainWindow(QMainWindow):
 
     def check_game_installed(self):
         """Проверяет наличие игры и обновляет текст кнопки"""
-        install_path = self.install_path.text().strip()
-        minecraft_version = self.minecraft_version.currentText()
-        forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
-        
-        logging.info(f"=== Начало проверки установки игры ===")
-        logging.info(f"Путь установки: {install_path}")
-        logging.info(f"Версия Minecraft: {minecraft_version}")
-        logging.info(f"Версия Forge: {forge_version}")
-        
-        # Определяем, какую версию нужно проверять
-        if forge_version == "Не устанавливать" or forge_version is None:
-            # Проверяем наличие ванильной версии Minecraft
-            version_to_check = minecraft_version
-        else:
-            # Проверяем наличие Forge версии
-            version_to_check = forge_version
-        
-        logging.info(f"Версия для проверки: {version_to_check}")
-        
-        # Проверяем наличие конкретной версии в папке versions
-        versions_path = os.path.join(install_path, "versions")
-        version_folder = os.path.join(versions_path, version_to_check)
-        is_installed = False
-        
-        logging.info(f"Проверяемая папка: {version_folder}")
-        logging.info(f"Папка существует: {os.path.exists(version_folder)}")
-        
-        # Проверяем наличие явной версии (либо Forge, либо ванильной)
-        if os.path.exists(version_folder) and os.listdir(version_folder):
-            files = os.listdir(version_folder)
-            logging.info(f"Содержимое папки: {files}")
-            is_installed = True
-        # Если это "Не устанавливать", дополнительно проверяем наличие ванильной версии внутри Forge
-        elif forge_version == "Не устанавливать":
-            # Проверяем, есть ли Forge-версии, которые могли установить ванильную версию
-            if os.path.exists(versions_path):
-                for folder in os.listdir(versions_path):
-                    # Ищем папки с именами, содержащими версию Minecraft (например, "1.21.4-forge-x.y.z")
-                    if folder.startswith(f"{minecraft_version}-") and "forge" in folder.lower():
-                        forge_folder = os.path.join(versions_path, folder)
-                        logging.info(f"Найдена Forge-версия: {forge_folder}")
-                        # Проверяем, установлена ли внутри ванильная версия
-                        vanilla_json = os.path.join(forge_folder, f"{minecraft_version}.json")
-                        if os.path.exists(vanilla_json):
-                            logging.info(f"Ванильная версия {minecraft_version} найдена внутри Forge")
-                            is_installed = True
-                            break
-        
-        logging.info(f"Результат проверки установки: {is_installed}")
-        
-        # Находим кнопку удаления
-        remove_button = self.findChild(QPushButton, "remove_version_button")
-        
-        if is_installed:
-            logging.info("Меняем текст кнопки на 'Играть'")
-            self.start_button.setText("Играть")
-            if not self.start_button.text() == "Играть":
-                logging.error("Не удалось изменить текст кнопки на 'Играть'")
-            logging.info(f"Версия {version_to_check} найдена")
-            # Включаем кнопку удаления
-            if remove_button:
-                remove_button.setEnabled(True)
-                remove_button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #DC143C;
-                        color: white;
-                        border: none;
-                        border-radius: 4px;
-                        padding: 5px;
-                    }
-                    QPushButton:hover {
-                        background-color: #B22222;
-                    }
-                """)
-        else:
-            logging.info("Меняем текст кнопки на 'Установить'")
+        try:
+            # Получаем и нормализуем путь
+            raw_path = self.install_path.text().strip()
+            if platform.system() == "Windows":
+                # Убеждаемся, что путь начинается правильно для Windows
+                if raw_path.startswith("C:"):
+                    raw_path = "C:\\" + raw_path[2:]
+                install_path = os.path.normpath(raw_path)
+            else:
+                install_path = os.path.normpath(raw_path)
+            
+            minecraft_version = self.minecraft_version.currentText()
+            forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
+            
+            logging.info(f"=== Начало проверки установки игры ===")
+            logging.info(f"Исходный путь: {raw_path}")
+            logging.info(f"Путь установки (после нормализации): {install_path}")
+            logging.info(f"Версия Minecraft: {minecraft_version}")
+            logging.info(f"Версия Forge: {forge_version}")
+            
+            # Определяем, какую версию нужно проверять
+            if forge_version == "Не устанавливать" or forge_version is None:
+                # Проверяем наличие ванильной версии Minecraft
+                version_to_check = minecraft_version
+                logging.info("Проверяем ванильную версию Minecraft")
+            else:
+                # Проверяем наличие Forge версии
+                version_to_check = forge_version
+                logging.info("Проверяем версию Forge")
+            
+            logging.info(f"Версия для проверки: {version_to_check}")
+            
+            # Проверяем наличие конкретной версии в папке versions
+            versions_path = os.path.join(install_path, "versions")
+            version_folder = os.path.join(versions_path, version_to_check)
+            is_installed = False
+            
+            logging.info(f"Путь к папке versions: {versions_path}")
+            logging.info(f"Проверяемая папка версии: {version_folder}")
+            logging.info(f"Папка versions существует: {os.path.exists(versions_path)}")
+            logging.info(f"Папка версии существует: {os.path.exists(version_folder)}")
+            
+            # Проверяем наличие явной версии (либо Forge, либо ванильной)
+            if os.path.exists(version_folder):
+                if os.path.isdir(version_folder):
+                    files = os.listdir(version_folder)
+                    logging.info(f"Содержимое папки версии: {files}")
+                    if files:  # Проверяем, что папка не пуста
+                        is_installed = True
+                        logging.info("Версия найдена в папке versions")
+            
+            # Если версия не найдена и это ванильная версия, проверяем в Forge
+            if not is_installed and (forge_version == "Не устанавливать" or forge_version is None):
+                logging.info("Версия не найдена напрямую, проверяем в папках Forge")
+                # Проверяем, есть ли Forge-версии, которые могли установить ванильную версию
+                if os.path.exists(versions_path):
+                    for folder in os.listdir(versions_path):
+                        logging.info(f"Проверяем папку: {folder}")
+                        # Ищем папки с именами, содержащими версию Minecraft
+                        if folder.startswith(f"{minecraft_version}-") and "forge" in folder.lower():
+                            forge_folder = os.path.join(versions_path, folder)
+                            logging.info(f"Найдена папка Forge: {forge_folder}")
+                            # Проверяем, установлена ли внутри ванильная версия
+                            vanilla_json = os.path.join(forge_folder, f"{minecraft_version}.json")
+                            logging.info(f"Проверяем наличие файла: {vanilla_json}")
+                            if os.path.exists(vanilla_json):
+                                logging.info(f"Найден файл {minecraft_version}.json внутри папки Forge")
+                                is_installed = True
+                                break
+            
+            logging.info(f"Итоговый результат проверки установки: {is_installed}")
+            
+            # Находим кнопку удаления
+            remove_button = self.findChild(QPushButton, "remove_version_button")
+            
+            if is_installed:
+                logging.info("Меняем текст кнопки на 'Играть'")
+                self.start_button.setText("Играть")
+                if not self.start_button.text() == "Играть":
+                    logging.error("Не удалось изменить текст кнопки на 'Играть'")
+                logging.info(f"Версия {version_to_check} найдена")
+                # Включаем кнопку удаления
+                if remove_button:
+                    remove_button.setEnabled(True)
+                    remove_button.setStyleSheet("""
+                        QPushButton {
+                            background-color: #DC143C;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 5px;
+                        }
+                        QPushButton:hover {
+                            background-color: #B22222;
+                        }
+                    """)
+            else:
+                logging.info("Меняем текст кнопки на 'Установить'")
+                self.start_button.setText("Установить")
+                if not self.start_button.text() == "Установить":
+                    logging.error("Не удалось изменить текст кнопки на 'Установить'")
+                logging.info(f"Версия {version_to_check} не найдена")
+                # Отключаем кнопку удаления
+                if remove_button:
+                    remove_button.setEnabled(False)
+                    remove_button.setStyleSheet("""
+                        QPushButton {
+                            background-color: #CCCCCC;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 5px;
+                        }
+                    """)
+            
+            logging.info(f"Текущий текст кнопки: {self.start_button.text()}")
+            logging.info("=== Конец проверки установки игры ===")
+            
+        except Exception as e:
+            logging.error(f"Ошибка при проверке установки игры: {str(e)}", exc_info=True)
             self.start_button.setText("Установить")
-            if not self.start_button.text() == "Установить":
-                logging.error("Не удалось изменить текст кнопки на 'Установить'")
-            logging.info(f"Версия {version_to_check} не найдена")
-            # Отключаем кнопку удаления
-            if remove_button:
-                remove_button.setEnabled(False)
-                remove_button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #CCCCCC;
-                        color: white;
-                        border: none;
-                        border-radius: 4px;
-                        padding: 5px;
-                    }
-                """)
-        
-        logging.info(f"Текущий текст кнопки: {self.start_button.text()}")
-        logging.info("=== Конец проверки установки игры ===")
 
     def add_to_forge_cache(self, minecraft_version, forge_version):
         try:
@@ -2512,31 +2553,13 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка проверки обновлений: {str(e)}")
 
     def update_version_label(self):
+        """Обновляет метку версии в интерфейсе"""
         try:
-            # Текущая версия лаунчера
-            current_version = "1.0.7.4"
-            
-            # Пробуем получить последнюю версию с GitHub
-            api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
-            response = requests.get(api_url, timeout=10, verify=True)
-            response.raise_for_status()
-            latest_release = response.json()
-            latest_version = latest_release['tag_name'].lstrip('v')
-            
-            # Сравниваем версии
-            if latest_version > current_version:
-                # Если доступна новая версия, показываем обе
-                self.version_label.setText(f"Версия: {current_version} (Доступно обновление: {latest_version})")
-                self.version_label.setStyleSheet("QLabel { color: #ff6b6b; }")  # Красный цвет для уведомления
-            else:
-                # Если версия актуальная
-                self.version_label.setText(f"Версия: {current_version}")
-                self.version_label.setStyleSheet("QLabel { color: #666666; }")  # Возвращаем обычный цвет
-            
+            version_label = self.findChild(QLabel, "version_label")
+            if version_label:
+                version_label.setText("v1.0.7.5")
         except Exception as e:
-            logging.error(f"Ошибка получения версии: {str(e)}")
-            # При ошибке показываем только текущую версию
-            self.version_label.setText(f"Версия: {current_version}")
+            logging.error(f"Ошибка при обновлении метки версии: {str(e)}")
 
     def on_tab_changed(self, index):
         """Обработчик смены вкладки"""
