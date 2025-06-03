@@ -2,6 +2,7 @@
 
 # IB Launcher v1.0.7.6
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
+
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
 ## Текущая версия: 1.0.7.6
