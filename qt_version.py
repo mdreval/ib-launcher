@@ -719,16 +719,14 @@ class InstallThread(QThread):
                     options['jvmArguments'].append('-Dos.arch=aarch64')
                 
                 # Добавляем путь к нативным библиотекам
-                natives_suffix = None
-                if platform.system() == "Darwin":
-                    arch = platform.machine()
-                    if arch == 'arm64':
-                        natives_suffix = "-natives-macos-arm64"
-                    else:
-                        natives_suffix = "-natives-macos"
-                
+                natives_suffix = self.get_natives_path()
                 if natives_suffix:
-                    options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    natives_dir = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    if os.path.exists(natives_dir):
+                        options['natives_directory'] = natives_dir
+                        logging.info(f"Установлен путь к нативным библиотекам: {natives_dir}")
+                    else:
+                        logging.warning(f"Директория нативных библиотек не найдена: {natives_dir}")
 
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
@@ -1300,6 +1298,17 @@ class InstallThread(QThread):
                 "Ошибка",
                 f"Не удалось удалить версию: {str(e)}"
             )
+
+    def get_natives_path(self):
+        """Определяет путь к нативным библиотекам в зависимости от архитектуры"""
+        if platform.system() != "Darwin":
+            return None
+            
+        arch = platform.machine()
+        if arch == 'arm64':
+            return "-natives-macos-arm64"
+        else:
+            return "-natives-macos"
 
 class MainWindow(QMainWindow):
     # Добавляем сигналы
@@ -3433,16 +3442,14 @@ class MainWindow(QMainWindow):
                     options['jvmArguments'].append('-Dos.arch=aarch64')
                 
                 # Добавляем путь к нативным библиотекам
-                natives_suffix = None
-                if platform.system() == "Darwin":
-                    arch = platform.machine()
-                    if arch == 'arm64':
-                        natives_suffix = "-natives-macos-arm64"
-                    else:
-                        natives_suffix = "-natives-macos"
-                
+                natives_suffix = self.get_natives_path()
                 if natives_suffix:
-                    options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    natives_dir = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+                    if os.path.exists(natives_dir):
+                        options['natives_directory'] = natives_dir
+                        logging.info(f"Установлен путь к нативным библиотекам: {natives_dir}")
+                    else:
+                        logging.warning(f"Директория нативных библиотек не найдена: {natives_dir}")
 
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
