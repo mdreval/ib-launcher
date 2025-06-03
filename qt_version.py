@@ -719,7 +719,14 @@ class InstallThread(QThread):
                     options['jvmArguments'].append('-Dos.arch=aarch64')
                 
                 # Добавляем путь к нативным библиотекам
-                natives_suffix = self.get_natives_path()
+                natives_suffix = None
+                if platform.system() == "Darwin":
+                    arch = platform.machine()
+                    if arch == 'arm64':
+                        natives_suffix = "-natives-macos-arm64"
+                    else:
+                        natives_suffix = "-natives-macos"
+                
                 if natives_suffix:
                     options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
 
@@ -2527,7 +2534,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.6"
+            current_version = "1.0.7.7"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2564,7 +2571,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.6"
+            current_version = "1.0.7.7"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3426,7 +3433,14 @@ class MainWindow(QMainWindow):
                     options['jvmArguments'].append('-Dos.arch=aarch64')
                 
                 # Добавляем путь к нативным библиотекам
-                natives_suffix = self.get_natives_path()
+                natives_suffix = None
+                if platform.system() == "Darwin":
+                    arch = platform.machine()
+                    if arch == 'arm64':
+                        natives_suffix = "-natives-macos-arm64"
+                    else:
+                        natives_suffix = "-natives-macos"
+                
                 if natives_suffix:
                     options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
 
