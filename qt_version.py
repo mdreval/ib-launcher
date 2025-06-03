@@ -1381,51 +1381,47 @@ class MainWindow(QMainWindow):
         return os.sep.join(cleaned_parts)
 
     def setup_path(self):
-        """
-        Устанавливает путь для выбранной версии Minecraft
-        """
+        """Настраивает путь установки в зависимости от выбранной версии"""
         try:
-            # Получаем базовый путь установки
-            base_path = self.install_path.text()
-            
             # Получаем выбранную версию Minecraft
             selected_version = self.minecraft_version.currentText()
+            if not selected_version:
+                return
+
+            # Получаем текущий путь
+            current_path = self.install_path.text().strip()
             
-            # Если путь не установлен или это первый запуск, используем путь по умолчанию
-            if not base_path:
+            # Если путь пустой или это путь по умолчанию
+            if not current_path or current_path == DEFAULT_MINECRAFT_DIR:
+                # Используем путь по умолчанию
                 if platform.system() == "Windows":
                     appdata_path = os.path.join(os.environ.get('APPDATA', ''))
-                    # Для версии 1.20.1 используем IBLauncher, для других версий добавляем суффикс
-                    if selected_version == "1.20.1":
-                        base_path = os.path.join(appdata_path, "IBLauncher")
-                    else:
-                        base_path = os.path.join(appdata_path, f"IBLauncher_{selected_version}")
+                    base_path = os.path.join(appdata_path, "IBLauncher")
                 else:
                     home_path = os.path.expanduser("~")
-                    if selected_version == "1.20.1":
-                        base_path = os.path.join(home_path, "IBLauncher")
-                    else:
-                        base_path = os.path.join(home_path, f"IBLauncher_{selected_version}")
+                    base_path = os.path.join(home_path, "IBLauncher")
             else:
                 # Если путь уже установлен пользователем
-                # Всегда используем родительскую директорию
-                if "IBLauncher" in base_path:
-                    base_dir = os.path.dirname(base_path)
+                # Проверяем, содержит ли путь уже IBLauncher
+                if "IBLauncher" in current_path:
+                    # Если содержит, получаем родительскую директорию
+                    base_path = os.path.dirname(current_path)
                 else:
-                    base_dir = base_path
-                
-                # Для версии 1.20.1 используем IBLauncher, для других версий добавляем суффикс
-                if selected_version == "1.20.1":
-                    base_path = os.path.join(base_dir, "IBLauncher")
-                else:
-                    base_path = os.path.join(base_dir, f"IBLauncher_{selected_version}")
+                    # Если не содержит, используем текущий путь как есть
+                    base_path = current_path
+
+            # Формируем новый путь в зависимости от версии
+            if selected_version == "1.20.1":
+                new_path = os.path.join(base_path, "IBLauncher")
+            else:
+                new_path = os.path.join(base_path, f"IBLauncher_{selected_version}")
             
-            # Нормализуем путь для отображения
-            base_path = os.path.normpath(base_path)
+            # Нормализуем путь
+            new_path = os.path.normpath(new_path)
             
             # Устанавливаем путь в UI
-            self.install_path.setText(base_path)
-            self.install_path_str = base_path
+            self.install_path.setText(new_path)
+            self.install_path_str = new_path
             
             # Проверяем установку игры
             self.check_game_installed()
@@ -1443,16 +1439,49 @@ class MainWindow(QMainWindow):
             self.install_path_str = default_path
 
     def select_install_path(self):
-        path = QFileDialog.getExistingDirectory(
-            self,
-            "Выберите папку для установки",
-            DEFAULT_MINECRAFT_DIR,
-            QFileDialog.ShowDirsOnly
-        )
-        if path:
-            self.install_path.setText(path)
-            os.makedirs(path, exist_ok=True)
-            self.check_game_installed()
+        """Открывает диалог выбора пути установки"""
+        try:
+            # Получаем текущий путь
+            current_path = self.install_path.text().strip()
+            
+            # Если путь пустой, используем путь по умолчанию
+            if not current_path:
+                if platform.system() == "Windows":
+                    current_path = os.path.join(os.environ.get('APPDATA', ''))
+                else:
+                    current_path = os.path.expanduser("~")
+            
+            # Открываем диалог выбора папки
+            folder_path = QFileDialog.getExistingDirectory(
+                self,
+                "Выберите папку для установки",
+                current_path,
+                QFileDialog.ShowDirsOnly
+            )
+            
+            if folder_path:
+                # Получаем выбранную версию Minecraft
+                selected_version = self.minecraft_version.currentText()
+                
+                # Формируем новый путь в зависимости от версии
+                if selected_version == "1.20.1":
+                    new_path = os.path.join(folder_path, "IBLauncher")
+                else:
+                    new_path = os.path.join(folder_path, f"IBLauncher_{selected_version}")
+                
+                # Нормализуем путь
+                new_path = os.path.normpath(new_path)
+                
+                # Устанавливаем путь в UI
+                self.install_path.setText(new_path)
+                self.install_path_str = new_path
+                
+                # Проверяем установку игры
+                self.check_game_installed()
+                
+        except Exception as e:
+            logging.error(f"Ошибка при выборе пути установки: {str(e)}")
+            self.show_error(f"Ошибка при выборе пути установки: {str(e)}")
 
     def check_java(self):
         """Проверяет наличие Java"""
@@ -1565,86 +1594,87 @@ class MainWindow(QMainWindow):
             return False
 
     def load_config(self):
+        """Загружает конфигурацию из файла"""
         try:
-            if os.path.exists(CONFIG_FILE):
-                with open(CONFIG_FILE, 'r') as f:
+            config_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config", "launcher_config.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     
-                    # Загружаем никнейм
-                    if 'username' in config:
-                        self.username.setText(config['username'])
-                    
-                    # Загружаем последние выбранные версии
-                    self.saved_minecraft_version = config.get('minecraft_version', '1.20.1')
-                    self.saved_forge_version = config.get('forge_version', '1.20.1-forge-47.3.22')
-                    
-                    logging.info(f"Загружена сохраненная версия Minecraft: {self.saved_minecraft_version}")
-                    logging.info(f"Загружена сохраненная версия Forge: {self.saved_forge_version}")
-                    
-                    # Загружаем настройки памяти
-                    memory = config.get('memory', None)
-                    if memory is not None:
-                        self.memory_slider.setValue(int(memory))
-                        self.memory_label.setText(f"{memory} ГБ")
-                    
-                    # Загружаем флаги запуска
-                    if 'launch_flags' in config:
-                        self.launch_flags_input.setPlainText(config['launch_flags'])
-                        
-                    # Загружаем настройку автообновления
-                    if config.get('auto_update_mods', True):
-                        self.check_updates_button.setText("Отключить обновление модов")
-                        self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
-                        self.mods_update_switch = True
-                    else:
-                        self.check_updates_button.setText("Включить обновление модов")
-                        self.check_updates_button.setStyleSheet("background-color: red; color:white; font-weight:bold;");
-                        self.mods_update_switch = False
-                        
-                    # Загружаем пользовательский путь установки
-                    if 'install_path' in config:
-                        self.install_path.setText(config['install_path'])
-                        self.install_path_str = config['install_path']
-                    else:
-                        # Если путь не сохранен, используем путь по умолчанию
-                        if platform.system() == "Windows":
-                            appdata_path = os.path.join(os.environ.get('APPDATA', ''))
-                            default_path = os.path.join(appdata_path, "IBLauncher")
-                        else:
-                            home_path = os.path.expanduser("~")
-                            default_path = os.path.join(home_path, "IBLauncher")
-                        self.install_path.setText(default_path)
-                        self.install_path_str = default_path
-            else:
-                # При первом запуске устанавливаем версии по умолчанию
-                self.saved_minecraft_version = '1.20.1'
-                self.saved_forge_version = '1.20.1-forge-47.3.22'
+                # Загружаем имя пользователя
+                if 'username' in config:
+                    self.username_input.setText(config['username'])
                 
-                # Устанавливаем путь по умолчанию
-                if platform.system() == "Windows":
-                    appdata_path = os.path.join(os.environ.get('APPDATA', ''))
-                    default_path = os.path.join(appdata_path, "IBLauncher")
-                else:
-                    home_path = os.path.expanduser("~")
-                    default_path = os.path.join(home_path, "IBLauncher")
-                self.install_path.setText(default_path)
-                self.install_path_str = default_path
-
+                # Загружаем выделенную память
+                if 'memory' in config:
+                    memory = config['memory']
+                    self.memory_slider.setValue(memory)
+                    self.memory_label.setText(f"{memory} ГБ")
+                
+                # Загружаем путь установки
+                if 'install_path' in config:
+                    install_path = config['install_path']
+                    # Получаем версию Minecraft
+                    minecraft_version = config.get('minecraft_version', '1.20.1')
+                    
+                    # Нормализуем путь для Windows
+                    install_path = os.path.normpath(install_path)
+                    
+                    # Разбиваем путь на части, учитывая оба типа разделителей
+                    path_parts = [part for part in install_path.replace('\\', '/').split('/') if part]
+                    
+                    # Находим индекс последнего IBLauncher
+                    iblauncher_indices = [i for i, part in enumerate(path_parts) if part == "IBLauncher" or part.startswith("IBLauncher_")]
+                    
+                    if iblauncher_indices:
+                        # Берем путь до последнего IBLauncher
+                        base_path = os.path.join(*path_parts[:iblauncher_indices[-1]])
+                    else:
+                        # Если IBLauncher не найден, используем весь путь
+                        base_path = install_path
+                    
+                    # Формируем новый путь
+                    if minecraft_version == "1.20.1":
+                        new_path = os.path.join(base_path, "IBLauncher")
+                    else:
+                        new_path = os.path.join(base_path, f"IBLauncher_{minecraft_version}")
+                    
+                    # Нормализуем путь
+                    new_path = os.path.normpath(new_path)
+                    
+                    self.install_path.setText(new_path)
+                    self.install_path_str = new_path
+                
+                # Загружаем версию Minecraft
+                if 'minecraft_version' in config:
+                    version = config['minecraft_version']
+                    index = self.minecraft_version.findText(version)
+                    if index >= 0:
+                        self.minecraft_version.setCurrentIndex(index)
+                
+                # Загружаем версию Forge
+                if 'forge_version' in config:
+                    forge_version = config['forge_version']
+                    index = self.forge_version.findText(forge_version)
+                    if index >= 0:
+                        self.forge_version.setCurrentIndex(index)
+                
+                # Загружаем флаги запуска
+                if 'launch_flags' in config:
+                    self.launch_flags_input.setPlainText(config['launch_flags'])
+                
+                # Загружаем настройку автообновления модов
+                if 'auto_update_mods' in config:
+                    self.auto_update_mods = config['auto_update_mods']
+                    self.check_updates_button.setText(
+                        "Отключить обновление модов" if self.auto_update_mods else "Включить обновление модов"
+                    )
+                
         except Exception as e:
-            logging.error(f"Ошибка загрузки конфига: {str(e)}")
-            # При ошибке также устанавливаем версии по умолчанию
-            self.saved_minecraft_version = '1.20.1'
-            self.saved_forge_version = '1.20.1-forge-47.3.22'
-            
-            # Устанавливаем путь по умолчанию
-            if platform.system() == "Windows":
-                appdata_path = os.path.join(os.environ.get('APPDATA', ''))
-                default_path = os.path.join(appdata_path, "IBLauncher")
-            else:
-                home_path = os.path.expanduser("~")
-                default_path = os.path.join(home_path, "IBLauncher")
-            self.install_path.setText(default_path)
-            self.install_path_str = default_path
+            logging.error(f"Ошибка при загрузке конфигурации: {str(e)}")
+            # Используем значения по умолчанию
+            self.install_path.setText(DEFAULT_MINECRAFT_DIR)
+            self.install_path_str = DEFAULT_MINECRAFT_DIR
 
     def save_config(self):
         """Сохраняет настройки лаунчера"""
