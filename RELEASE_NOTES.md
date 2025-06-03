@@ -1,6 +1,11 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
 
+## Версия 1.0.7.7
+- Обновлена версия лаунчера до 1.0.7.7
+- Улучшена стабильность работы лаунчера в MacOS
+- Исправлены мелкие ошибки
+
 ## Версия 1.0.7.6
 - Обновлена ​​версия лаунчера до 1.0.7.6
 - Исправлен механизм проверки версии
@@ -65,5 +70,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.6/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.6/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.dmg) - macOS 

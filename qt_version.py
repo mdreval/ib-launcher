@@ -711,6 +711,18 @@ class InstallThread(QThread):
                 'gameDirectory': os.path.abspath(self.install_path)
             }
 
+            # Добавляем специальные аргументы для macOS
+            if platform.system() == "Darwin":
+                options['jvmArguments'].insert(0, '-XstartOnFirstThread')
+                # Определяем архитектуру процессора
+                if platform.machine() == 'arm64':
+                    options['jvmArguments'].append('-Dos.arch=aarch64')
+                
+                # Добавляем путь к нативным библиотекам
+                natives_suffix = self.get_natives_path()
+                if natives_suffix:
+                    options['natives_directory'] = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
+
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
 
@@ -2515,7 +2527,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.6"
+            current_version = "1.0.7.7"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2552,7 +2564,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.6"
+            current_version = "1.0.7.7"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3331,6 +3343,17 @@ class MainWindow(QMainWindow):
                 "Ошибка",
                 f"Не удалось удалить версию: {str(e)}"
             )
+
+    def get_natives_path(self):
+        """Определяет путь к нативным библиотекам в зависимости от архитектуры"""
+        if platform.system() != "Darwin":
+            return None
+            
+        arch = platform.machine()
+        if arch == 'arm64':
+            return "-natives-macos-arm64"
+        else:
+            return "-natives-macos"
 
 # Функция для запуска процесса в Windows без показа окон
 def launch_process_hidden(command, cwd=None):
