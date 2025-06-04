@@ -1498,7 +1498,11 @@ class MainWindow(QMainWindow):
             else:
                 # Если путь уже установлен пользователем
                 # Нормализуем текущий путь
-                current_path = current_path.replace("/", "\\") if platform.system() == "Windows" else current_path
+                if platform.system() == "Windows":
+                    current_path = current_path.replace("/", "\\")
+                    # Убеждаемся, что после буквы диска есть обратный слеш
+                    if len(current_path) >= 2 and current_path[1] == ':' and current_path[2] != '\\':
+                        current_path = current_path[:2] + '\\' + current_path[2:]
                 
                 # Удаляем возможные дублирования IBLauncher в пути
                 path_parts = current_path.split("IBLauncher")
@@ -1517,19 +1521,15 @@ class MainWindow(QMainWindow):
             # Нормализуем путь для Windows
             if platform.system() == "Windows":
                 new_path = new_path.replace("/", "\\")
-                if new_path.startswith("C:") and not new_path.startswith("C:\\"):
-                    new_path = "C:\\" + new_path[2:]
+                # Убеждаемся, что после буквы диска есть обратный слеш
+                if len(new_path) >= 2 and new_path[1] == ':' and new_path[2] != '\\':
+                    new_path = new_path[:2] + '\\' + new_path[2:]
             
             logging.info(f"Setup path: base_path={base_path}, new_path={new_path}")
             
             # Устанавливаем путь в UI
             self.install_path.setText(new_path)
             self.install_path_str = new_path
-            
-            # Создаем директорию, если её нет
-            if not os.path.exists(new_path):
-                os.makedirs(new_path, exist_ok=True)
-                logging.info(f"Создана директория установки: {new_path}")
             
             # Проверяем установку игры
             self.check_game_installed()
@@ -1550,8 +1550,8 @@ class MainWindow(QMainWindow):
             # Нормализуем путь по умолчанию для Windows
             if platform.system() == "Windows":
                 default_path = default_path.replace("/", "\\")
-                if default_path.startswith("C:") and not default_path.startswith("C:\\"):
-                    default_path = "C:\\" + default_path[2:]
+                if len(default_path) >= 2 and default_path[1] == ':' and default_path[2] != '\\':
+                    default_path = default_path[:2] + '\\' + default_path[2:]
             
             self.install_path.setText(default_path)
             self.install_path_str = default_path
@@ -1587,8 +1587,12 @@ class MainWindow(QMainWindow):
                 else:
                     new_path = os.path.join(folder_path, f"IBLauncher_{selected_version}")
                 
-                # Нормализуем путь
-                new_path = os.path.normpath(new_path)
+                # Нормализуем путь для Windows
+                if platform.system() == "Windows":
+                    # Убеждаемся, что после буквы диска есть обратный слеш
+                    if len(new_path) >= 2 and new_path[1] == ':' and new_path[2] != '\\':
+                        new_path = new_path[:2] + '\\' + new_path[2:]
+                    new_path = new_path.replace('/', '\\')
                 
                 # Устанавливаем путь в UI
                 self.install_path.setText(new_path)
