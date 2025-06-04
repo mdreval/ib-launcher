@@ -2,7 +2,7 @@ import re
 import requests
 
 def get_version():
-    return "1.0.7.7"  # Версия по умолчанию
+    return "1.0.7.8"  # Версия по умолчанию
 
 def generate_info_plist():
     version = get_version()

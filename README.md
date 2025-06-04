@@ -1,11 +1,11 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.7.7
+# IB Launcher v1.0.7.8
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
 
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
-## Текущая версия: 1.0.7.7
+## Текущая версия: 1.0.7.8
 
 ### Основные возможности:
 - Установка и запуск Minecraft с поддержкой Forge
@@ -55,8 +55,8 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-## Версия 1.0.7.7
-- Обновлена версия лаунчера до 1.0.7.7
+## Версия 1.0.7.8
+- Обновлена версия лаунчера до 1.0.7.8
 - Улучшена стабильность работы лаунчера в MacOS
 - Исправлены мелкие ошибки
 
@@ -136,8 +136,8 @@ Copyright © 2024 IB Launcher. Все права защищены.
 4. Лаунчер автоматически скачает и установит все необходимые компоненты
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.8/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.8/IB-Launcher.dmg) - macOS 
 
 
 ### Обратная связь
@@ -163,7 +163,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-## Version 1.0.7.7
+## Version 1.0.7.8
 - Updated launcher version to 1.0.7.7
 - Improved error handling and logging
 - MacOS fix
@@ -243,8 +243,8 @@ This version primarily focuses on bug fixes and launcher stability improvements.
 4. The launcher will automatically download and install all required components
 
 ### Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.7/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.8/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.8/IB-Launcher.dmg) - macOS
 
 ### Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
