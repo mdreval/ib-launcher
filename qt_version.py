@@ -717,16 +717,6 @@ class InstallThread(QThread):
                 # Определяем архитектуру процессора
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
-                
-                # Добавляем путь к нативным библиотекам
-                natives_suffix = self.get_natives_path()
-                if natives_suffix:
-                    natives_dir = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
-                    if os.path.exists(natives_dir):
-                        options['natives_directory'] = natives_dir
-                        logging.info(f"Установлен путь к нативным библиотекам: {natives_dir}")
-                    else:
-                        logging.warning(f"Директория нативных библиотек не найдена: {natives_dir}")
 
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
@@ -750,7 +740,45 @@ class InstallThread(QThread):
             else:
                 # Запускаем ванильную версию
                 command = get_minecraft_command(version_to_launch, self.install_path, options)
-                process = launch_process_hidden(command, cwd=self.install_path)
+                process = None  # Инициализируем переменную process
+                
+                # Для новых версий Forge используем специальный метод запуска
+                if platform.system() == "Windows" and HAS_WIN32API:
+                    pid = launch_process_hidden(command, cwd=self.install_path)
+                    if pid:
+                        # Создаем объект PseudoProcess для совместимости
+                        class PseudoProcess:
+                            def __init__(self, pid):
+                                self.pid = pid
+                        process = PseudoProcess(pid)
+                    else:
+                        logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+                        # Создаем флаги для Windows, чтобы скрыть окно командной строки
+                        creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+                        
+                        # Запускаем процесс с дополнительными настройками
+                        with open(os.devnull, 'w') as devnull:
+                            process = subprocess.Popen(
+                                command,
+                                creationflags=creation_flags,
+                                stdin=subprocess.PIPE,
+                                stdout=devnull,
+                                stderr=devnull,
+                                cwd=os.path.abspath(self.install_path),
+                                close_fds=True,
+                                start_new_session=True
+                            )
+                else:
+                    # Для macOS и Linux используем стандартный метод
+                    process = subprocess.Popen(
+                        command,
+                        stdin=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stdout=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stderr=None if platform.system() == "Windows" else subprocess.PIPE,
+                        cwd=os.path.abspath(self.install_path),
+                        start_new_session=True
+                    )
+                
                 if process:
                     # Проверяем тип process и логируем соответственно
                     if isinstance(process, int):
@@ -1327,6 +1355,26 @@ class MainWindow(QMainWindow):
         self.forge_cache = {}
         self.mods_update_switch = True
         
+        # Устанавливаем иконку для окна и панели задач с учетом платформы
+        if platform.system() == "Windows":
+            # Устанавливаем иконку до создания окна
+            import ctypes
+            myappid = 'igrobar.iblauncher.1.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            
+            # Загружаем иконку
+            icon_path = resource_path(os.path.join("assets", "icon.ico"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+        elif platform.system() == "Darwin":  # macOS
+            icon_path = resource_path(os.path.join("assets", "icon.icns"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+        else:  # Linux и другие
+            icon_path = resource_path(os.path.join("assets", "icon.png"))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+
         # Находим все необходимые виджеты
         self.username = self.findChild(QLineEdit, "username_input")
         self.minecraft_version = self.findChild(QComboBox, "minecraft_version")
@@ -1425,7 +1473,10 @@ class MainWindow(QMainWindow):
                 if platform.system() == "Windows":
                     appdata_path = os.path.join(os.environ.get('APPDATA', ''))
                     base_path = appdata_path
-                else:
+                elif platform.system() == "Darwin":  # macOS
+                    home_path = os.path.expanduser("~")
+                    base_path = os.path.join(home_path, "Library", "Application Support")
+                else:  # Linux
                     home_path = os.path.expanduser("~")
                     base_path = home_path
             else:
@@ -1459,6 +1510,11 @@ class MainWindow(QMainWindow):
             self.install_path.setText(new_path)
             self.install_path_str = new_path
             
+            # Создаем директорию, если её нет
+            if not os.path.exists(new_path):
+                os.makedirs(new_path, exist_ok=True)
+                logging.info(f"Создана директория установки: {new_path}")
+            
             # Проверяем установку игры
             self.check_game_installed()
             
@@ -1468,7 +1524,10 @@ class MainWindow(QMainWindow):
             if platform.system() == "Windows":
                 appdata_path = os.path.join(os.environ.get('APPDATA', ''))
                 default_path = os.path.join(appdata_path, "IBLauncher")
-            else:
+            elif platform.system() == "Darwin":  # macOS
+                home_path = os.path.expanduser("~")
+                default_path = os.path.join(home_path, "Library", "Application Support", "IBLauncher")
+            else:  # Linux
                 home_path = os.path.expanduser("~")
                 default_path = os.path.join(home_path, "IBLauncher")
             
@@ -3440,16 +3499,6 @@ class MainWindow(QMainWindow):
                 # Определяем архитектуру процессора
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
-                
-                # Добавляем путь к нативным библиотекам
-                natives_suffix = self.get_natives_path()
-                if natives_suffix:
-                    natives_dir = os.path.join(versions_dir, version_to_launch, "natives" + natives_suffix)
-                    if os.path.exists(natives_dir):
-                        options['natives_directory'] = natives_dir
-                        logging.info(f"Установлен путь к нативным библиотекам: {natives_dir}")
-                    else:
-                        logging.warning(f"Директория нативных библиотек не найдена: {natives_dir}")
 
             # Логируем финальные JVM аргументы
             logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
@@ -3473,7 +3522,38 @@ class MainWindow(QMainWindow):
             else:
                 # Запускаем ванильную версию
                 command = get_minecraft_command(version_to_launch, self.install_path, options)
-                process = launch_process_hidden(command, cwd=self.install_path)
+                
+                # Для новых версий Forge используем специальный метод запуска
+                if platform.system() == "Windows" and HAS_WIN32API:
+                    pid = launch_process_hidden(command, cwd=self.install_path)
+                    if not pid:
+                        logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+                        # Создаем флаги для Windows, чтобы скрыть окно командной строки
+                        creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+                        
+                        # Запускаем процесс с дополнительными настройками
+                        with open(os.devnull, 'w') as devnull:
+                            process = subprocess.Popen(
+                                command,
+                                creationflags=creation_flags,
+                                stdin=subprocess.PIPE,
+                                stdout=devnull,
+                                stderr=devnull,
+                                cwd=os.path.abspath(self.install_path),
+                                close_fds=True,
+                                start_new_session=True
+                            )
+                else:
+                    # Для macOS и Linux используем стандартный метод
+                    process = subprocess.Popen(
+                        command,
+                        stdin=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stdout=None if platform.system() == "Windows" else subprocess.PIPE,
+                        stderr=None if platform.system() == "Windows" else subprocess.PIPE,
+                        cwd=os.path.abspath(self.install_path),
+                        start_new_session=True
+                    )
+                
                 if process:
                     # Проверяем тип process и логируем соответственно
                     if isinstance(process, int):
@@ -3638,6 +3718,13 @@ def get_forge_launch_command(version, minecraft_directory, options):
                     logging.info("Добавляем аргумент --versionType release")
                     command.append("--versionType")
                     command.append("release")
+                
+                # Добавляем специальные аргументы для macOS
+                if platform.system() == "Darwin":
+                    if "-XstartOnFirstThread" not in command:
+                        command.insert(1, "-XstartOnFirstThread")
+                    if platform.machine() == 'arm64' and "-Dos.arch=aarch64" not in command:
+                        command.append("-Dos.arch=aarch64")
         else:
             logging.warning(f"Не удалось найти главный класс {main_class} в команде запуска")
         
@@ -3725,15 +3812,28 @@ def launch_forge_with_command(command):
             creation_flags = 0x08000008
             
         try:
-            process = subprocess.Popen(
-                command,
-                cwd=minecraft_dir,
-                creationflags=creation_flags,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                shell=False
-            )
+            # Специальная обработка для macOS
+            if platform.system() == "Darwin":
+                # На macOS используем subprocess с перенаправлением вывода
+                process = subprocess.Popen(
+                    command,
+                    cwd=minecraft_dir,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    shell=False,
+                    start_new_session=True
+                )
+            else:
+                process = subprocess.Popen(
+                    command,
+                    cwd=minecraft_dir,
+                    creationflags=creation_flags,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    shell=False
+                )
             logging.info(f"Forge успешно запущен через subprocess, PID: {process.pid}")
             return process
         except Exception as e:
