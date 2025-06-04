@@ -39,12 +39,12 @@ import socket
 import struct
 import binascii
 import ctypes
-import winreg
 import shutil
 
 # Для Windows, импортируем модули WinAPI
 if platform.system() == "Windows":
     try:
+        import winreg
         import win32process
         import win32con
         import win32api
@@ -54,6 +54,7 @@ if platform.system() == "Windows":
         logging.warning("win32api не найден, будет использоваться стандартный метод запуска процессов")
 else:
     HAS_WIN32API = False
+    winreg = None  # Для не-Windows систем
 
 # Игнорируем все предупреждения
 warnings.filterwarnings("ignore")
