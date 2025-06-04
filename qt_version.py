@@ -684,11 +684,13 @@ class InstallThread(QThread):
                             break
             # Если это Forge версия, форматируем её правильно
             elif "-" in version_to_launch:
-                version_to_launch = version_to_launch.replace("-", "-forge-", 1)
+                # Проверяем, есть ли уже префикс forge
+                if "forge" not in version_to_launch.lower():
+                    version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            # Формируем опции запуска
+            # Формируем опции запуска с оптимизированными параметрами
             options = {
                 'username': self.username,
                 'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
@@ -704,7 +706,11 @@ class InstallThread(QThread):
                     '-Dfml.ignoreInvalidMinecraftCertificates=true',
                     '-Dfml.ignorePatchDiscrepancies=true',
                     '-Djava.net.preferIPv4Stack=true',
-                    '-Dlog4j2.formatMsgNoLookups=true'
+                    '-Dlog4j2.formatMsgNoLookups=true',
+                    '-XX:+DisableAttachMechanism',  # Ускоряет запуск
+                    '-XX:+UseStringDeduplication',  # Оптимизация памяти
+                    '-XX:+OptimizeStringConcat',    # Оптимизация строк
+                    '-XX:+UseCompressedOops'        # Оптимизация указателей
                 ],
                 'launchTarget': 'fmlclient',
                 'executablePath': self.find_java_path(True),
@@ -714,80 +720,90 @@ class InstallThread(QThread):
             # Добавляем специальные аргументы для macOS
             if platform.system() == "Darwin":
                 options['jvmArguments'].insert(0, '-XstartOnFirstThread')
-                # Определяем архитектуру процессора
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
 
-            # Логируем финальные JVM аргументы
-            logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
-
-            # Проверяем, является ли версия новым Forge (1.20.2+ или 1.21.x)
+            # Проверяем, является ли версия новым Forge
             is_forge_version = "forge" in version_to_launch.lower()
             
-            if is_forge_version:
-                # Получаем команду запуска для Forge
-                command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                if command:
-                    # Запускаем Forge с полученной командой
-                    process = launch_forge_with_command(command)
+            try:
+                if is_forge_version:
+                    # Получаем команду запуска для Forge
+                    command = get_forge_launch_command(version_to_launch, self.install_path, options)
+                    if command:
+                        process = launch_forge_with_command(command)
+                        if process:
+                            logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                            return
+                        else:
+                            raise Exception("Не удалось запустить Forge")
+                    else:
+                        raise Exception("Не удалось сформировать команду запуска Forge")
+                else:
+                    # Запускаем ванильную версию
+                    command = get_minecraft_command(version_to_launch, self.install_path, options)
+                    
+                    if platform.system() == "Windows" and HAS_WIN32API:
+                        pid = launch_process_hidden(command, cwd=self.install_path)
+                        if pid:
+                            logging.info(f"Игра успешно запущена с PID: {pid}")
+                            return
+                        else:
+                            logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+                    
+                    # Создаем флаги для Windows
+                    creation_flags = 0x08000008 if platform.system() == "Windows" else 0
+                    
+                    # Запускаем процесс с оптимизированными настройками
+                    process = subprocess.Popen(
+                        command,
+                        creationflags=creation_flags,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        cwd=os.path.abspath(self.install_path),
+                        close_fds=True,
+                        start_new_session=True
+                    )
+                    
                     if process:
                         logging.info(f"Игра успешно запущена с PID: {process.pid}")
                         return
                     else:
-                        raise Exception("Не удалось запустить Forge")
-                else:
-                    raise Exception("Не удалось сформировать команду запуска Forge")
-            else:
-                # Запускаем ванильную версию
-                command = get_minecraft_command(version_to_launch, self.install_path, options)
-                process = None  # Инициализируем переменную process
+                        raise Exception("Не удалось запустить игру")
+            except minecraft_launcher_lib.exceptions.VersionNotFound as e:
+                logging.error(f"Версия {version_to_launch} не найдена. Проверяем альтернативные варианты...")
                 
-                # Для новых версий Forge используем специальный метод запуска
-                if platform.system() == "Windows" and HAS_WIN32API:
-                    pid = launch_process_hidden(command, cwd=self.install_path)
-                    if pid:
-                        # Создаем объект PseudoProcess для совместимости
-                        class PseudoProcess:
-                            def __init__(self, pid):
-                                self.pid = pid
-                        process = PseudoProcess(pid)
-                    else:
-                        logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
-                        # Создаем флаги для Windows, чтобы скрыть окно командной строки
-                        creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+                # Пробуем найти подходящую версию
+                if is_forge_version:
+                    # Извлекаем базовую версию Minecraft
+                    base_version = version_to_launch.split("-forge-")[0]
+                    forge_version = version_to_launch.split("-forge-")[1]
+                    
+                    # Ищем установленные версии Forge
+                    forge_versions = []
+                    if os.path.exists(versions_dir):
+                        for folder in os.listdir(versions_dir):
+                            if folder.startswith(f"{base_version}-forge-"):
+                                forge_versions.append(folder)
+                    
+                    if forge_versions:
+                        # Берем последнюю установленную версию Forge
+                        version_to_launch = sorted(forge_versions)[-1]
+                        logging.info(f"Найдена альтернативная версия Forge: {version_to_launch}")
                         
-                        # Запускаем процесс с дополнительными настройками
-                        with open(os.devnull, 'w') as devnull:
-                            process = subprocess.Popen(
-                                command,
-                                creationflags=creation_flags,
-                                stdin=subprocess.PIPE,
-                                stdout=devnull,
-                                stderr=devnull,
-                                cwd=os.path.abspath(self.install_path),
-                                close_fds=True,
-                                start_new_session=True
-                            )
-                else:
-                    # Для macOS и Linux используем стандартный метод
-                    process = subprocess.Popen(
-                        command,
-                        stdin=None if platform.system() == "Windows" else subprocess.PIPE,
-                        stdout=None if platform.system() == "Windows" else subprocess.PIPE,
-                        stderr=None if platform.system() == "Windows" else subprocess.PIPE,
-                        cwd=os.path.abspath(self.install_path),
-                        start_new_session=True
-                    )
-                
-                if process:
-                    # Проверяем тип process и логируем соответственно
-                    if isinstance(process, int):
-                        logging.info(f"Игра успешно запущена с PID: {process}")
-                    else:
-                        logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                    return
-                else:
-                    raise Exception("Не удалось запустить игру")
+                        # Повторяем попытку запуска с новой версией
+                        if is_forge_version:
+                            command = get_forge_launch_command(version_to_launch, self.install_path, options)
+                        else:
+                            command = get_minecraft_command(version_to_launch, self.install_path, options)
+                        
+                        if command:
+                            process = launch_forge_with_command(command)
+                            if process:
+                                logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                                return
+                raise Exception(f"Не удалось найти подходящую версию для запуска: {str(e)}")
 
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
@@ -3466,11 +3482,13 @@ class MainWindow(QMainWindow):
                             break
             # Если это Forge версия, форматируем её правильно
             elif "-" in version_to_launch:
-                version_to_launch = version_to_launch.replace("-", "-forge-", 1)
+                # Проверяем, есть ли уже префикс forge
+                if "forge" not in version_to_launch.lower():
+                    version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            # Формируем опции запуска
+            # Формируем опции запуска с оптимизированными параметрами
             options = {
                 'username': self.username,
                 'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
@@ -3486,7 +3504,11 @@ class MainWindow(QMainWindow):
                     '-Dfml.ignoreInvalidMinecraftCertificates=true',
                     '-Dfml.ignorePatchDiscrepancies=true',
                     '-Djava.net.preferIPv4Stack=true',
-                    '-Dlog4j2.formatMsgNoLookups=true'
+                    '-Dlog4j2.formatMsgNoLookups=true',
+                    '-XX:+DisableAttachMechanism',  # Ускоряет запуск
+                    '-XX:+UseStringDeduplication',  # Оптимизация памяти
+                    '-XX:+OptimizeStringConcat',    # Оптимизация строк
+                    '-XX:+UseCompressedOops'        # Оптимизация указателей
                 ],
                 'launchTarget': 'fmlclient',
                 'executablePath': self.find_java_path(True),
@@ -3496,73 +3518,90 @@ class MainWindow(QMainWindow):
             # Добавляем специальные аргументы для macOS
             if platform.system() == "Darwin":
                 options['jvmArguments'].insert(0, '-XstartOnFirstThread')
-                # Определяем архитектуру процессора
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
 
-            # Логируем финальные JVM аргументы
-            logging.info(f"JVM аргументы для запуска: {options['jvmArguments']}")
-
-            # Проверяем, является ли версия новым Forge (1.20.2+ или 1.21.x)
+            # Проверяем, является ли версия новым Forge
             is_forge_version = "forge" in version_to_launch.lower()
             
-            if is_forge_version:
-                # Получаем команду запуска для Forge
-                command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                if command:
-                    # Запускаем Forge с полученной командой
-                    process = launch_forge_with_command(command)
+            try:
+                if is_forge_version:
+                    # Получаем команду запуска для Forge
+                    command = get_forge_launch_command(version_to_launch, self.install_path, options)
+                    if command:
+                        process = launch_forge_with_command(command)
+                        if process:
+                            logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                            return
+                        else:
+                            raise Exception("Не удалось запустить Forge")
+                    else:
+                        raise Exception("Не удалось сформировать команду запуска Forge")
+                else:
+                    # Запускаем ванильную версию
+                    command = get_minecraft_command(version_to_launch, self.install_path, options)
+                    
+                    if platform.system() == "Windows" and HAS_WIN32API:
+                        pid = launch_process_hidden(command, cwd=self.install_path)
+                        if pid:
+                            logging.info(f"Игра успешно запущена с PID: {pid}")
+                            return
+                        else:
+                            logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+                    
+                    # Создаем флаги для Windows
+                    creation_flags = 0x08000008 if platform.system() == "Windows" else 0
+                    
+                    # Запускаем процесс с оптимизированными настройками
+                    process = subprocess.Popen(
+                        command,
+                        creationflags=creation_flags,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        cwd=os.path.abspath(self.install_path),
+                        close_fds=True,
+                        start_new_session=True
+                    )
+                    
                     if process:
                         logging.info(f"Игра успешно запущена с PID: {process.pid}")
                         return
                     else:
-                        raise Exception("Не удалось запустить Forge")
-                else:
-                    raise Exception("Не удалось сформировать команду запуска Forge")
-            else:
-                # Запускаем ванильную версию
-                command = get_minecraft_command(version_to_launch, self.install_path, options)
+                        raise Exception("Не удалось запустить игру")
+            except minecraft_launcher_lib.exceptions.VersionNotFound as e:
+                logging.error(f"Версия {version_to_launch} не найдена. Проверяем альтернативные варианты...")
                 
-                # Для новых версий Forge используем специальный метод запуска
-                if platform.system() == "Windows" and HAS_WIN32API:
-                    pid = launch_process_hidden(command, cwd=self.install_path)
-                    if not pid:
-                        logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
-                        # Создаем флаги для Windows, чтобы скрыть окно командной строки
-                        creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+                # Пробуем найти подходящую версию
+                if is_forge_version:
+                    # Извлекаем базовую версию Minecraft
+                    base_version = version_to_launch.split("-forge-")[0]
+                    forge_version = version_to_launch.split("-forge-")[1]
+                    
+                    # Ищем установленные версии Forge
+                    forge_versions = []
+                    if os.path.exists(versions_dir):
+                        for folder in os.listdir(versions_dir):
+                            if folder.startswith(f"{base_version}-forge-"):
+                                forge_versions.append(folder)
+                    
+                    if forge_versions:
+                        # Берем последнюю установленную версию Forge
+                        version_to_launch = sorted(forge_versions)[-1]
+                        logging.info(f"Найдена альтернативная версия Forge: {version_to_launch}")
                         
-                        # Запускаем процесс с дополнительными настройками
-                        with open(os.devnull, 'w') as devnull:
-                            process = subprocess.Popen(
-                                command,
-                                creationflags=creation_flags,
-                                stdin=subprocess.PIPE,
-                                stdout=devnull,
-                                stderr=devnull,
-                                cwd=os.path.abspath(self.install_path),
-                                close_fds=True,
-                                start_new_session=True
-                            )
-                else:
-                    # Для macOS и Linux используем стандартный метод
-                    process = subprocess.Popen(
-                        command,
-                        stdin=None if platform.system() == "Windows" else subprocess.PIPE,
-                        stdout=None if platform.system() == "Windows" else subprocess.PIPE,
-                        stderr=None if platform.system() == "Windows" else subprocess.PIPE,
-                        cwd=os.path.abspath(self.install_path),
-                        start_new_session=True
-                    )
-                
-                if process:
-                    # Проверяем тип process и логируем соответственно
-                    if isinstance(process, int):
-                        logging.info(f"Игра успешно запущена с PID: {process}")
-                    else:
-                        logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                    return
-                else:
-                    raise Exception("Не удалось запустить игру")
+                        # Повторяем попытку запуска с новой версией
+                        if is_forge_version:
+                            command = get_forge_launch_command(version_to_launch, self.install_path, options)
+                        else:
+                            command = get_minecraft_command(version_to_launch, self.install_path, options)
+                        
+                        if command:
+                            process = launch_forge_with_command(command)
+                            if process:
+                                logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                                return
+                raise Exception(f"Не удалось найти подходящую версию для запуска: {str(e)}")
 
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
@@ -3573,13 +3612,6 @@ def launch_process_hidden(command, cwd=None):
     """
     Запускает процесс в Windows без показа командного окна, 
     используя непосредственно WinAPI.
-    
-    Args:
-        command (list): Команда для запуска
-        cwd (str): Рабочая директория
-        
-    Returns:
-        int: ID процесса или None в случае ошибки
     """
     if not platform.system() == "Windows" or not HAS_WIN32API:
         logging.warning("Функция launch_process_hidden требует Windows и win32api")
@@ -3593,31 +3625,103 @@ def launch_process_hidden(command, cwd=None):
         # Создаем процесс с флагами для скрытия окна
         startupinfo = win32process.STARTUPINFO()
         startupinfo.dwFlags = win32process.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = win32con.SW_HIDE  # Скрыть окно
+        startupinfo.wShowWindow = win32con.SW_HIDE
         
-        # Запускаем процесс
+        # Запускаем процесс с дополнительными флагами для оптимизации
         process_info = win32process.CreateProcess(
-            None,  # Приложение
-            command_str,  # Командная строка
-            None,  # Process Security
-            None,  # Thread Security
-            0,  # Не наследовать дескрипторы
-            win32process.CREATE_NO_WINDOW | win32process.DETACHED_PROCESS,  # Флаги создания
-            None,  # Переменные окружения
-            cwd,  # Рабочая директория
-            startupinfo  # Информация о запуске
+            None,
+            command_str,
+            None,
+            None,
+            0,
+            win32process.CREATE_NO_WINDOW | win32process.DETACHED_PROCESS | win32process.CREATE_NEW_PROCESS_GROUP,
+            None,
+            cwd,
+            startupinfo
         )
         
         # Освобождаем дескрипторы
-        win32api.CloseHandle(process_info[0])  # Process handle
-        win32api.CloseHandle(process_info[1])  # Thread handle
+        win32api.CloseHandle(process_info[0])
+        win32api.CloseHandle(process_info[1])
         
-        # Возвращаем ID процесса
         pid = process_info[2]
         logging.info(f"Процесс успешно запущен с PID: {pid}")
         return pid
     except Exception as e:
         logging.error(f"Ошибка при запуске процесса через WinAPI: {str(e)}", exc_info=True)
+        return None
+
+def launch_forge_with_command(command):
+    """Запускает Forge, используя сформированную команду"""
+    try:
+        logging.info(f"Запуск Forge с командой длиной {len(command)} аргументов")
+        
+        minecraft_dir = None
+        for arg in command:
+            if "--gameDir" in arg:
+                idx = command.index(arg)
+                if idx + 1 < len(command):
+                    minecraft_dir = command[idx + 1]
+                    logging.info(f"Используем рабочую директорию: {minecraft_dir}")
+                    break
+        
+        if minecraft_dir and not os.path.exists(minecraft_dir):
+            logging.warning(f"Рабочая директория {minecraft_dir} не существует, пытаемся создать")
+            os.makedirs(minecraft_dir, exist_ok=True)
+        
+        if not minecraft_dir:
+            minecraft_dir = os.getcwd()
+            logging.warning(f"Не удалось найти рабочую директорию в аргументах, используем текущую: {minecraft_dir}")
+        
+        if platform.system() == "Windows" and HAS_WIN32API:
+            # Используем оптимизированный метод запуска для Windows
+            pid = launch_process_hidden(command, cwd=minecraft_dir)
+            if pid:
+                class PseudoProcess:
+                    def __init__(self, pid):
+                        self.pid = pid
+                return PseudoProcess(pid)
+            else:
+                logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
+        
+        # Для других ОС или если WinAPI не сработал
+        creation_flags = 0
+        if platform.system() == "Windows":
+            creation_flags = 0x08000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
+            
+        try:
+            # Специальная обработка для macOS
+            if platform.system() == "Darwin":
+                process = subprocess.Popen(
+                    command,
+                    cwd=minecraft_dir,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    shell=False,
+                    start_new_session=True
+                )
+            else:
+                # Для Windows и Linux используем оптимизированные настройки
+                process = subprocess.Popen(
+                    command,
+                    cwd=minecraft_dir,
+                    creationflags=creation_flags if platform.system() == "Windows" else 0,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    shell=False,
+                    start_new_session=True,
+                    close_fds=True
+                )
+            logging.info(f"Forge успешно запущен через subprocess, PID: {process.pid}")
+            return process
+        except Exception as e:
+            logging.error(f"Ошибка при запуске процесса через subprocess: {str(e)}", exc_info=True)
+            return None
+            
+    except Exception as e:
+        logging.error(f"Ошибка при запуске Forge: {str(e)}", exc_info=True)
         return None
 
 def is_new_forge_version(version):
@@ -3775,73 +3879,6 @@ def launch_process_hidden_forge(command, cwd=None):
         return PseudoProcess(pid)
     except Exception as e:
         logging.error(f"Ошибка при запуске процесса через WinAPI: {str(e)}", exc_info=True)
-        return None
-
-def launch_forge_with_command(command):
-    """Запускает Forge, используя сформированную команду"""
-    try:
-        logging.info(f"Запуск Forge с командой длиной {len(command)} аргументов")
-        
-        minecraft_dir = None
-        for arg in command:
-            if "--gameDir" in arg:
-                idx = command.index(arg)
-                if idx + 1 < len(command):
-                    minecraft_dir = command[idx + 1]
-                    logging.info(f"Используем рабочую директорию: {minecraft_dir}")
-                    break
-        
-        if minecraft_dir and not os.path.exists(minecraft_dir):
-            logging.warning(f"Рабочая директория {minecraft_dir} не существует, пытаемся создать")
-            os.makedirs(minecraft_dir, exist_ok=True)
-        
-        if not minecraft_dir:
-            minecraft_dir = os.getcwd()
-            logging.warning(f"Не удалось найти рабочую директорию в аргументах, используем текущую: {minecraft_dir}")
-        
-        if platform.system() == "Windows" and HAS_WIN32API:
-            process = launch_process_hidden_forge(command, cwd=minecraft_dir)
-            if process:
-                logging.info(f"Forge успешно запущен через WinAPI, PID: {process.pid}")
-                return process
-            else:
-                logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
-        
-        creation_flags = 0
-        if platform.system() == "Windows":
-            creation_flags = 0x08000008
-            
-        try:
-            # Специальная обработка для macOS
-            if platform.system() == "Darwin":
-                # На macOS используем subprocess с перенаправлением вывода
-                process = subprocess.Popen(
-                    command,
-                    cwd=minecraft_dir,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL,
-                    shell=False,
-                    start_new_session=True
-                )
-            else:
-                process = subprocess.Popen(
-                    command,
-                    cwd=minecraft_dir,
-                    creationflags=creation_flags,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL,
-                    shell=False
-                )
-            logging.info(f"Forge успешно запущен через subprocess, PID: {process.pid}")
-            return process
-        except Exception as e:
-            logging.error(f"Ошибка при запуске процесса через subprocess: {str(e)}", exc_info=True)
-            return None
-            
-    except Exception as e:
-        logging.error(f"Ошибка при запуске Forge: {str(e)}", exc_info=True)
         return None
 
 if __name__ == "__main__":
