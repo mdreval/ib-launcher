@@ -205,6 +205,7 @@ class JavaInstaller(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Установка Java")
         self.setFixedSize(400, 150)
+        self.install_thread = None
 
         layout = QVBoxLayout()
         self.status_label = QLabel("Для работы требуется Java 17+. Установить сейчас?")
@@ -220,6 +221,39 @@ class JavaInstaller(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def start_java_installation(self):
+        self.install_button.setEnabled(False)
+        self.cancel_button.setEnabled(False)
+        self.status_label.setText("Подготовка к установке...")
+        QApplication.processEvents()
+
+        self.install_thread = JavaInstallThread()
+        self.install_thread.status_update.connect(self.update_status)
+        self.install_thread.finished.connect(self.installation_finished)
+        self.install_thread.error_occurred.connect(self.installation_error)
+        self.install_thread.start()
+
+    def update_status(self, message):
+        self.status_label.setText(message)
+        QApplication.processEvents()
+
+    def installation_finished(self):
+        QMessageBox.information(
+            self,
+            "Успех",
+            "Java успешно установлена! Лаунчер будет перезапущен."
+        )
+        QApplication.exit(1337)
+
+    def installation_error(self, error_message):
+        self.install_button.setEnabled(True)
+        self.cancel_button.setEnabled(True)
+        QMessageBox.critical(self, "Ошибка", f"Ошибка установки: {error_message}")
+
+class JavaInstallThread(QThread):
+    status_update = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+
+    def run(self):
         try:
             os_type = platform.system()
             
@@ -245,8 +279,7 @@ class JavaInstaller(QDialog):
             installer_path = os.path.join(temp_dir, installer_name)
             
             # Скачиваем установщик
-            self.status_label.setText("Загрузка Java...")
-            QApplication.processEvents()
+            self.status_update.emit("Загрузка Java...")
             
             response = requests.get(java_urls[os_type], headers=headers, stream=True, verify=True)
             response.raise_for_status()
@@ -255,8 +288,7 @@ class JavaInstaller(QDialog):
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             
-            self.status_label.setText("Запуск установщика...")
-            QApplication.processEvents()
+            self.status_update.emit("Запуск установщика...")
             
             # Для Windows
             if os_type == "Windows":
@@ -293,16 +325,9 @@ class JavaInstaller(QDialog):
             except:
                 pass
             
-            QMessageBox.information(
-                self,
-                "Успех",
-                "Java успешно установлена! Лаунчер будет перезапущен."
-            )
-            QApplication.exit(1337)
-            
         except Exception as e:
             logging.error(f"Ошибка установки Java: {str(e)}")
-            QMessageBox.critical(self, "Ошибка", f"Ошибка установки: {str(e)}")
+            self.error_occurred.emit(str(e))
 
 class InstallThread(QThread):
     progress_update = pyqtSignal(int, int, str)
@@ -2623,7 +2648,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.8"
+            current_version = "1.0.7.9"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2660,7 +2685,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.8"
+            current_version = "1.0.7.9"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
