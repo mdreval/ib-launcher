@@ -2,7 +2,7 @@ import re
 import requests
 
 def get_version():
-    return "1.0.7.8"  # Версия по умолчанию
+    return "1.0.8.0"  # Версия по умолчанию
 
 def generate_info_plist():
     version = get_version()
@@ -36,7 +36,7 @@ def generate_info_plist():
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright (c) 2024 Igrobar</string>
+    <string>Copyright (c) 2024-2025 Igrobar</string>
 </dict>
 </plist>'''
     

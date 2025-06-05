@@ -40,7 +40,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/icon.icns',
-    version='1.0.7.8'
+    version='1.0.8.0'
 )
 
 coll = COLLECT(
@@ -60,10 +60,10 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.7.9',
-        'CFBundleVersion': '1.0.7.9',
+        'CFBundleShortVersionString': '1.0.8.0',
+        'CFBundleVersion': '1.0.8.0',
         'NSHighResolutionCapable': True,
-        'NSHumanReadableCopyright': 'Copyright (c) 2024 Igrobar',
+        'NSHumanReadableCopyright': 'Copyright (c) 2024-2025 Igrobar',
         'LSMinimumSystemVersion': '10.13.0',
         'NSAppleEventsUsageDescription': 'IB Launcher needs to control Minecraft for launching.',
         'NSAppleMusicUsageDescription': 'IB Launcher needs access to media for game sounds.',

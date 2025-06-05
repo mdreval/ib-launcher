@@ -61,7 +61,16 @@ warnings.filterwarnings("ignore")
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.*=false;qt.gui.icc*=false'
 
 # Настройка путей
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config")
+CONFIG_DIR = os.path.join(
+    os.path.expanduser("~"),
+    "AppData", "Roaming", "IBLauncher-config" if platform.system() == "Windows"
+    else "Library/Application Support/IBLauncher-config"
+)
+
+# Исправляем путь для macOS
+if platform.system() == "Darwin":
+    CONFIG_DIR = "/" + CONFIG_DIR
+
 LOG_FILE = os.path.join(CONFIG_DIR, "launcher.log")
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
 FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
@@ -72,6 +81,10 @@ DEFAULT_MINECRAFT_DIR = os.path.join(
     "AppData", "Roaming", "IBLauncher" if platform.system() == "Windows"
     else "Library/Application Support/IBLauncher"
 )
+
+# Исправляем путь для macOS
+if platform.system() == "Darwin":
+    DEFAULT_MINECRAFT_DIR = "/" + DEFAULT_MINECRAFT_DIR
 
 # Создаем только директорию для конфигурации лаунчера
 os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -2648,7 +2661,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.9"
+            current_version = "1.0.8.0"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2685,7 +2698,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.7.9"
+            current_version = "1.0.8.0"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"

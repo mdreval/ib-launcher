@@ -1,6 +1,13 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
 
+## Версия 1.0.8.0
+- Обновлена версия лаунчера до 1.0.8.0
+- Исправлены пути установки для macOS
+- Улучшена работа с конфигурацией на macOS
+- Исправлена проблема с зависанием при установке Java
+- Оптимизирована работа с путями в обеих операционных системах
+
 ## Версия 1.0.7.9
 - Обновлена версия лаунчера до 1.0.7.8
 - Улучшена стабильность работы лаунчера в MacOS
@@ -70,5 +77,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.9/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.7.9/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.dmg) - macOS 
