@@ -1407,6 +1407,7 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        self.is_loading = True
         
         # Загружаем UI
         uic.loadUi(resource_path("design.ui"), self)
@@ -1511,6 +1512,8 @@ class MainWindow(QMainWindow):
         self.online_timer.start(30000)
         # Применяем тему при запуске
         self.apply_theme()
+
+        self.is_loading = False
 
     def clean_path(self, path):
         """
@@ -1873,6 +1876,8 @@ class MainWindow(QMainWindow):
 
     def save_config(self):
         """Сохраняет настройки лаунчера"""
+        if hasattr(self, 'is_loading') and self.is_loading:
+            return
         try:
             minecraft_version = self.minecraft_version.currentText()
             forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
@@ -2681,7 +2686,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.3"
+            current_version = "1.0.8.4"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2718,7 +2723,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.3"
+            current_version = "1.0.8.4"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"

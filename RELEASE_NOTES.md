@@ -1,7 +1,7 @@
 # Release Notes
-![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
+![Screenshot_1](https://github.com/user-attachments/assets/650ba267-636d-44f9-ab20-f384e661017e)
 
-## Версия 1.0.8.3
+## Версия 1.0.8.4
 
 ### Что нового
 - Добавлен индикатор онлайн-игроков сервера прямо в лаунчере
@@ -18,7 +18,7 @@
 - Улучшена обработка сигналов запуска игры и закрытия лаунчера
 - Мелкие улучшения и рефакторинг кода
 
-## Version 1.0.8.3
+## Version 1.0.8.4
 
 ### What's new
 - Added server online players indicator directly in the launcher
@@ -42,5 +42,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.4/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.4/IB-Launcher.dmg) - macOS
