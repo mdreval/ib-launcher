@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QTabWidget, QListWidget, QCheckBox, QDialog, QSlider,
                             QGroupBox, QRadioButton, QButtonGroup, QSplitter,
                             QFrame, QScrollArea, QSizePolicy, QSpacerItem,
-                            QPlainTextEdit, QListWidgetItem)
+                            QPlainTextEdit, QListWidgetItem, QTabBar)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QUrl
 from PyQt5.QtGui import QIcon, QPixmap, QFont, QDesktopServices
 from PyQt5 import uic
@@ -61,11 +61,12 @@ warnings.filterwarnings("ignore")
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.*=false;qt.gui.icc*=false'
 
 # Настройка путей
-CONFIG_DIR = os.path.join(
-    os.path.expanduser("~"),
-    "AppData", "Roaming", "IBLauncher-config" if platform.system() == "Windows"
-    else "Library/Application Support/IBLauncher-config"
-)
+if platform.system() == "Windows":
+    CONFIG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config")
+    DEFAULT_MINECRAFT_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher")
+else:
+    CONFIG_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "IBLauncher-config")
+    DEFAULT_MINECRAFT_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "IBLauncher")
 
 # Исправляем путь для macOS
 if platform.system() == "Darwin":
@@ -74,17 +75,6 @@ if platform.system() == "Darwin":
 LOG_FILE = os.path.join(CONFIG_DIR, "launcher.log")
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
 FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
-
-# Путь установки Minecraft
-DEFAULT_MINECRAFT_DIR = os.path.join(
-    os.path.expanduser("~"),
-    "AppData", "Roaming", "IBLauncher" if platform.system() == "Windows"
-    else "Library/Application Support/IBLauncher"
-)
-
-# Исправляем путь для macOS
-if platform.system() == "Darwin":
-    DEFAULT_MINECRAFT_DIR = "/" + DEFAULT_MINECRAFT_DIR
 
 # Создаем только директорию для конфигурации лаунчера
 os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -347,6 +337,7 @@ class InstallThread(QThread):
     status_update = pyqtSignal(str)
     toggle_ui = pyqtSignal(bool)
     error_occurred = pyqtSignal(str)
+    game_started = pyqtSignal()
 
     def __init__(self, version, username, install_path, memory=4, launch_flags_input=None, mods_update_switch=True):
         super().__init__()
@@ -357,6 +348,7 @@ class InstallThread(QThread):
         self.launch_flags_input = launch_flags_input
         self.stop_requested = False
         self.mods_update_switch=mods_update_switch
+        self._game_started = False
 
     def run(self):
         try:
@@ -773,6 +765,7 @@ class InstallThread(QThread):
                         process = launch_forge_with_command(command)
                         if process:
                             logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                            self.game_started.emit()
                             return
                         else:
                             raise Exception("Не удалось запустить Forge")
@@ -786,6 +779,7 @@ class InstallThread(QThread):
                         pid = launch_process_hidden(command, cwd=self.install_path)
                         if pid:
                             logging.info(f"Игра успешно запущена с PID: {pid}")
+                            self.game_started.emit()
                             return
                         else:
                             logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
@@ -807,6 +801,7 @@ class InstallThread(QThread):
                     
                     if process:
                         logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                        self.game_started.emit()
                         return
                     else:
                         raise Exception("Не удалось запустить игру")
@@ -841,6 +836,7 @@ class InstallThread(QThread):
                             process = launch_forge_with_command(command)
                             if process:
                                 logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                                self.game_started.emit()
                                 return
                 raise Exception(f"Не удалось найти подходящую версию для запуска: {str(e)}")
 
@@ -1447,6 +1443,10 @@ class MainWindow(QMainWindow):
         self.remove_mod_button = self.findChild(QPushButton, "remove_mod_button")
         self.check_updates_button = self.findChild(QPushButton, "check_updates_button")
         self.remove_version_button = self.findChild(QPushButton, "remove_version_button")
+        self.players_online_label = self.findChild(QLabel, "players_online_label")
+        self.light_theme_radio = self.findChild(QRadioButton, "light_theme_radio")
+        self.dark_theme_radio = self.findChild(QRadioButton, "dark_theme_radio")
+        self.close_launcher_checkbox = self.findChild(QCheckBox, "close_launcher_checkbox")
         
         # Подключаем сигналы для модов
         self.add_mod_button.clicked.connect(self.add_mods)
@@ -1454,6 +1454,10 @@ class MainWindow(QMainWindow):
         self.check_updates_button.clicked.connect(self.toggle_auto_updates)
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.remove_version_button.clicked.connect(self.remove_version)  # Подключаем обработчик удаления версии
+        # Подключаем обработчики
+        self.light_theme_radio.toggled.connect(self.on_theme_changed)
+        self.dark_theme_radio.toggled.connect(self.on_theme_changed)
+        self.close_launcher_checkbox.toggled.connect(self.save_config)
         
         # Проверяем Java
         self.check_java()
@@ -1491,6 +1495,12 @@ class MainWindow(QMainWindow):
         
         # После загрузки всего проверяем наличие игры
         self.check_game_installed()
+        self.update_players_online()
+        self.online_timer = QTimer()
+        self.online_timer.timeout.connect(self.update_players_online)
+        self.online_timer.start(30000)
+        # Применяем тему при запуске
+        self.apply_theme()
 
     def clean_path(self, path):
         """
@@ -1831,6 +1841,16 @@ class MainWindow(QMainWindow):
                         "Отключить обновление модов" if self.auto_update_mods else "Включить обновление модов"
                     )
                 
+                # Загружаем тему
+                if 'theme' in config:
+                    if config['theme'] == 'dark':
+                        self.dark_theme_radio.setChecked(True)
+                    else:
+                        self.light_theme_radio.setChecked(True)
+                # Загружаем опцию закрытия лаунчера
+                if 'close_launcher' in config:
+                    self.close_launcher_checkbox.setChecked(config['close_launcher'])
+                
         except Exception as e:
             logging.error(f"Ошибка при загрузке конфигурации: {str(e)}")
             # Используем значения по умолчанию
@@ -1850,7 +1870,9 @@ class MainWindow(QMainWindow):
                 'minecraft_version': minecraft_version,
                 'forge_version': forge_version,
                 'launch_flags': self.launch_flags_input.toPlainText(),
-                'auto_update_mods': self.mods_update_switch
+                'auto_update_mods': self.mods_update_switch,
+                'theme': 'dark' if self.dark_theme_radio.isChecked() else 'light',
+                'close_launcher': self.close_launcher_checkbox.isChecked()
             }
             
             # Создаём директорию конфига, если она не существует
@@ -1947,11 +1969,10 @@ class MainWindow(QMainWindow):
             else:
                 versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
 
-            # Добавляем версии по одной
             for version in versions:
                 self.minecraft_version.addItem(version)
 
-            # Загружаем сохраненную версию из конфига
+            # --- ДОБАВЛЕНО: выбираем последние сохранённые версии ---
             saved_version = None
             saved_forge = None
             if os.path.exists(CONFIG_FILE):
@@ -1960,56 +1981,27 @@ class MainWindow(QMainWindow):
                     saved_version = config.get('minecraft_version')
                     saved_forge = config.get('forge_version')
 
-            # Устанавливаем версию по умолчанию или сохраненную
-            default_version = "1.20.1"
-            default_index = self.minecraft_version.findText(default_version)
-            
-            if saved_version:
-                saved_index = self.minecraft_version.findText(saved_version)
-                if saved_index >= 0:
-                    default_index = saved_index
-                    default_version = saved_version
-
-            if default_index >= 0:
-                self.minecraft_version.setCurrentIndex(default_index)
-                logging.info("Установлена версия Minecraft по умолчанию")
-
-                # Загружаем версию Forge для 1.20.1
-                if default_version == "1.20.1":
-                    logging.info("Загрузка версии Forge для 1.20.1")
-                    forge_version = "1.20.1-47.3.22"
-                    forge_display_version = f"1.20.1-forge-47.3.22"
-                    self.forge_version.addItem(forge_display_version)
-                    self.forge_version.setEnabled(True)
-                    logging.info(f"Добавлена версия Forge: {forge_display_version}")
-
-                    if "1.20.1" not in self.forge_cache:
-                        logging.info("Сохранение версии Forge в кеш")
-                        self.save_forge_cache("1.20.1", forge_version)
-                else:
-                    # Для других версий обновляем список версий Forge
-                    self.update_forge_versions()
-                    
-                    # Устанавливаем сохраненную версию Forge
-                    if saved_forge and saved_forge != "None":
-                        index = self.forge_version.findText(saved_forge)
-                        if index >= 0:
-                            self.forge_version.setCurrentIndex(index)
-                        else:
-                            self.forge_version.setCurrentIndex(0)
-                    else:
-                        self.forge_version.setCurrentIndex(0)
+            # Если есть сохранённая версия — выбираем её
+            if saved_version and self.minecraft_version.findText(saved_version) >= 0:
+                self.minecraft_version.setCurrentText(saved_version)
             else:
-                # Если индекс не найден, устанавливаем 1.20.1
-                logging.info("Индекс не найден, устанавливаем версию 1.20.1")
-                default_index = self.minecraft_version.findText('1.20.1')
-                if default_index >= 0:
-                    self.minecraft_version.setCurrentIndex(default_index)
-                    forge_version = "1.20.1-47.3.22"
-                    forge_display_version = f"1.20.1-forge-47.3.22"
-                    self.forge_version.addItem(forge_display_version)
-                    self.forge_version.setEnabled(True)
-                    logging.info("Установлена версия 1.20.1 и Forge")
+                # По умолчанию выбираем 1.20.1, если есть
+                idx_1201 = self.minecraft_version.findText('1.20.1')
+                if idx_1201 >= 0:
+                    self.minecraft_version.setCurrentIndex(idx_1201)
+                else:
+                    self.minecraft_version.setCurrentIndex(0)
+
+            # После выбора версии — обновляем список Forge и выбираем сохранённую версию Forge
+            self.on_minecraft_version_changed(self.minecraft_version.currentIndex())
+            if saved_forge and self.forge_version.findText(saved_forge) >= 0:
+                self.forge_version.setCurrentText(saved_forge)
+            else:
+                # По умолчанию выбираем 1.20.1-forge-47.3.22, если есть
+                idx_forge = self.forge_version.findText('1.20.1-forge-47.3.22')
+                if idx_forge >= 0:
+                    self.forge_version.setCurrentIndex(idx_forge)
+            # --- КОНЕЦ ДОБАВЛЕНИЯ ---
 
         except Exception as e:
             logging.error(f"Ошибка загрузки версий: {str(e)}", exc_info=True)
@@ -2124,36 +2116,45 @@ class MainWindow(QMainWindow):
 
         added_versions = set()
 
-        # Специальная обработка для 1.20.1 - добавляем нашу версию Forge первой
+        # Для 1.20.1: сначала добавляем пункт "Не устанавливать", затем дефолтную версию, затем все >= 47.3.22
         if selected_version == "1.20.1":
-            forge_version = "1.20.1-47.3.22"
-            forge_display_version = f"1.20.1-forge-47.3.22"
-            self.forge_version.addItem(forge_display_version)
-            added_versions.add(forge_display_version)
-            self.add_to_forge_cache("1.20.1", forge_version)
+            self.forge_version.addItem("Не устанавливать")
+            default_forge_version = "1.20.1-47.3.22"
+            default_forge_display = f"1.20.1-forge-47.3.22"
+            self.forge_version.addItem(default_forge_display)
+            added_versions = {default_forge_display}
+            self.add_to_forge_cache("1.20.1", default_forge_version)
             self.forge_version.setEnabled(True)
+            try:
+                forge_versions = minecraft_launcher_lib.forge.list_forge_versions()
+                for version in forge_versions:
+                    if version.startswith("1.20.1"):
+                        forge_number = version.split('-')[1]
+                        def ver_tuple(s):
+                            return tuple(int(x) for x in s.split('.'))
+                        if ver_tuple(forge_number) >= ver_tuple("47.3.22"):
+                            forge_display = f"1.20.1-forge-{forge_number}"
+                            if forge_display not in added_versions:
+                                self.forge_version.addItem(forge_display)
+                                added_versions.add(forge_display)
+                                self.add_to_forge_cache("1.20.1", version)
+            except Exception as e:
+                logging.error(f"Ошибка получения списка версий Forge для 1.20.1: {str(e)}")
+            self.forge_version.setEnabled(True)
+            self.forge_version.setCurrentIndex(1)
         else:
-            # Для всех остальных версий добавляем "Не устанавливать" как первый пункт
             self.forge_version.addItem("Не устанавливать")
             added_versions.add("Не устанавливать")
-            
-            # Обновляем список версий Forge
             self.update_forge_versions()
 
-        # Обновляем путь установки в зависимости от выбранной версии
         self.setup_path()
-
         self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
         self.check_game_installed()
-        
-        # Если это версия 1.20.1, устанавливаем первую версию Forge как выбранную
-        if selected_version == "1.20.1" and self.forge_version.count() > 0:
-            self.forge_version.setCurrentIndex(0)
+        # Для 1.20.1 — по умолчанию дефолтная версия Forge, для других — "Не устанавливать"
+        if selected_version == "1.20.1":
+            self.forge_version.setCurrentIndex(1)
         else:
-            # Для других версий устанавливаем "Не устанавливать" по умолчанию
             self.forge_version.setCurrentIndex(0)
-        
-        # Сохраняем выбранную версию
         self.save_config()
 
     def on_forge_version_changed(self, index):
@@ -2246,7 +2247,8 @@ class MainWindow(QMainWindow):
             self.thread.status_update.connect(self.status_label.setText)
             self.thread.error_occurred.connect(self.show_error)
             self.thread.toggle_ui.connect(self.toggle_ui_elements)
-            
+            self.thread.finished.connect(self.on_install_thread_finished)
+            self.thread.game_started.connect(self.on_game_started)
             # Запускаем поток установки
             self.thread.start()
             logging.info(f"Запущен поток установки/запуска игры с памятью {memory_value}GB")
@@ -2255,6 +2257,10 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка запуска установки: {str(e)}", exc_info=True)
             QMessageBox.critical(self, "Ошибка", f"Не удалось запустить установку: {str(e)}")
             self.toggle_ui_elements(True)  # Разблокируем интерфейс в случае ошибки
+
+    def on_install_thread_finished(self):
+        # Не закрываем лаунчер здесь, закрытие теперь только через on_game_started
+        pass
 
     def toggle_ui_elements(self, enabled):
         self.start_button.setEnabled(enabled)
@@ -2661,7 +2667,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.0"
+            current_version = "1.0.8.1"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2698,7 +2704,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.0"
+            current_version = "1.0.8.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3575,6 +3581,7 @@ class MainWindow(QMainWindow):
                         process = launch_forge_with_command(command)
                         if process:
                             logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                            self.game_started.emit()
                             return
                         else:
                             raise Exception("Не удалось запустить Forge")
@@ -3588,6 +3595,7 @@ class MainWindow(QMainWindow):
                         pid = launch_process_hidden(command, cwd=self.install_path)
                         if pid:
                             logging.info(f"Игра успешно запущена с PID: {pid}")
+                            self.game_started.emit()
                             return
                         else:
                             logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
@@ -3609,6 +3617,7 @@ class MainWindow(QMainWindow):
                     
                     if process:
                         logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                        self.game_started.emit()
                         return
                     else:
                         raise Exception("Не удалось запустить игру")
@@ -3643,12 +3652,220 @@ class MainWindow(QMainWindow):
                             process = launch_forge_with_command(command)
                             if process:
                                 logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                                self.game_started.emit()
                                 return
                 raise Exception(f"Не удалось найти подходящую версию для запуска: {str(e)}")
 
         except Exception as e:
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Ошибка запуска игры: {str(e)}")
+
+    def update_players_online(self):
+        ip = "135.181.237.56"
+        port = 25970
+        online = get_minecraft_online(ip, port)
+        if online is None:
+            self.players_online_label.setText('<span style="color:#DC143C;font-weight:bold;">Сервер Offline</span>')
+        else:
+            self.players_online_label.setText(f'Игроков онлайн: <span style="color:#2E8B57;font-weight:bold;">{online}</span>')
+
+    def on_theme_changed(self):
+        self.apply_theme()
+        self.save_config()
+
+    def apply_theme(self):
+        if self.dark_theme_radio.isChecked():
+            self.setStyleSheet("""
+                QWidget { background-color: #23272e; color: #e0e0e0; }
+                QLineEdit, QPlainTextEdit, QComboBox, QGroupBox, QTabWidget, QSlider, QCheckBox, QRadioButton {
+                    background-color: #2c313c; color: #e0e0e0; border-color: #444;
+                }
+                QGroupBox {
+                    font-size: 10pt;
+                    font-weight: bold;
+                    border: 2px solid #cccccc;
+                    border-radius: 6px;
+                    margin-top: 1ex;
+                    padding: 10px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+                QTabWidget::pane {
+                    border: 2px solid #23272e;
+                    background: #23272e;
+                }
+                QTabBar::tab {
+                    background: #2c313c;
+                    color: #e0e0e0;
+                    border: 1px solid #444;
+                    border-bottom: none;
+                    padding: 8px 20px 8px 20px;
+                    min-width: 80px;
+                    font-weight: bold;
+                }
+                QTabBar::tab:selected {
+                    background: #23272e;
+                    color: #fff;
+                    border-bottom: 2px solid #2E8B57;
+                }
+                QTabBar::tab:!selected {
+                    margin-top: 2px;
+                }
+                QTabBar::tab:hover {
+                    background: #3a3f4b;
+                }
+                QComboBox {
+                    padding: 2px;
+                    border: 2px solid #ccc;
+                    border-radius: 4px;
+                    background: #23272e;
+                    color: #e0e0e0;
+                    min-height: 23px;
+                    font-size: 8pt;
+                }
+                QComboBox QAbstractItemView {
+                    background: #23272e;
+                    color: #e0e0e0;
+                    selection-background-color: #2E8B57;
+                    selection-color: #fff;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    padding-right: 5px;
+                }
+                QComboBox::down-arrow {
+                    image: url(assets/arrow.png);
+                    width: 12px;
+                    height: 12px;
+                }
+                QComboBox:hover {
+                    border-color: #2E8B57;
+                }
+                QPlainTextEdit {
+                    padding: 5px;
+                    border: 2px solid #ccc;
+                    border-radius: 4px;
+                    background: #23272e;
+                    color: #e0e0e0;
+                    font-size: 9pt;
+                }
+                QPlainTextEdit:focus {
+                    border-color: #8B0000;
+                }
+                QPushButton {
+                    background-color: #2E8B57;
+                    color: #fff;
+                }
+                QProgressBar { background: #23272e; color: #fff; border: 1px solid #444; }
+            """)
+        else:
+            self.setStyleSheet("""
+                QWidget { background-color: #f5f5f5; color: #23272e; }
+                QLineEdit, QPlainTextEdit, QComboBox, QGroupBox, QTabWidget, QSlider, QCheckBox, QRadioButton {
+                    background-color: #fff; color: #23272e; border-color: #ccc;
+                }
+                QGroupBox {
+                    font-size: 10pt;
+                    font-weight: bold;
+                    border: 1.5px solid #cccccc;
+                    border-radius: 6px;
+                    margin-top: 1ex;
+                    padding: 10px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+                QTabWidget::pane {
+                    border: 2px solid #f5f5f5;
+                    background: #f5f5f5;
+                }
+                QTabBar::tab {
+                    background: #fff;
+                    color: #23272e;
+                    border: 1px solid #ccc;
+                    border-bottom: none;
+                    padding: 8px 20px 8px 20px;
+                    min-width: 80px;
+                    font-weight: bold;
+                }
+                QTabBar::tab:selected {
+                    background: #f5f5f5;
+                    color: #23272e;
+                    border-bottom: 2px solid #2E8B57;
+                }
+                QTabBar::tab:!selected {
+                    margin-top: 2px;
+                }
+                QTabBar::tab:hover {
+                    background: #eaeaea;
+                }
+                QComboBox {
+                    padding: 2px;
+                    border: 2px solid #ccc;
+                    border-radius: 4px;
+                    background: #fff;
+                    color: #23272e;
+                    min-height: 23px;
+                    font-size: 8pt;
+                }
+                QComboBox QAbstractItemView {
+                    background: #fff;
+                    color: #23272e;
+                    selection-background-color: #2E8B57;
+                    selection-color: #fff;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    padding-right: 5px;
+                }
+                QComboBox::down-arrow {
+                    image: url(assets/arrow.png);
+                    width: 12px;
+                    height: 12px;
+                }
+                QComboBox:hover {
+                    border-color: #2E8B57;
+                }
+                QPlainTextEdit {
+                    padding: 5px;
+                    border: 2px solid #ccc;
+                    border-radius: 4px;
+                    background: #fff;
+                    color: #23272e;
+                    font-size: 9pt;
+                }
+                QPlainTextEdit:focus {
+                    border-color: #8B0000;
+                }
+                QPushButton {
+                    background-color: #2E8B57;
+                    color: #fff;
+                }
+                QProgressBar { background: #f5f5f5; color: #23272e; border: 1px solid #ccc; }
+            """)
+            # Сбросить стили для QTabWidget, QTabBar, QComboBox, QPlainTextEdit, чтобы они были светлыми
+            self.tabWidget.setStyleSheet("")
+            self.findChild(QTabBar).setStyleSheet("")
+            self.minecraft_version.setStyleSheet("")
+            self.forge_version.setStyleSheet("")
+            self.launch_flags_input.setStyleSheet("")
+
+    def on_game_started(self):
+        # Слот вызывается, когда игра действительно стартовала
+        if self.close_launcher_checkbox.isChecked():
+            import logging
+            logging.info('on_game_started called, setting status and starting timer')
+            label = self.findChild(QLabel, 'status_label')
+            if label:
+                label.setText("Игра запускается, лаунчер закроется через 20 секунд...")
+            else:
+                print('status_label not found!')
+            QTimer.singleShot(20000, self.close)
 
 # Функция для запуска процесса в Windows без показа окон
 def launch_process_hidden(command, cwd=None):
@@ -3922,6 +4139,44 @@ def launch_process_hidden_forge(command, cwd=None):
         return PseudoProcess(pid)
     except Exception as e:
         logging.error(f"Ошибка при запуске процесса через WinAPI: {str(e)}", exc_info=True)
+        return None
+
+def get_minecraft_online(ip, port, timeout=2):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        sock.connect((ip, port))
+        # Handshake packet
+        host = ip.encode('utf-8')
+        data = b''
+        data += b'\x00'  # packet id = 0 (handshake)
+        data += b'\x47'  # protocol version (71 for 1.17, 47 for 1.8, 754 for 1.16.5+)
+        data += struct.pack('>b', len(host)) + host
+        data += struct.pack('>H', port)
+        data += b'\x01'  # next state: status
+        packet = struct.pack('>B', len(data)) + data
+        sock.sendall(packet)
+        # Status request
+        sock.sendall(b'\x01\x00')
+        # Read response
+        def read_varint(sock):
+            number = 0
+            for i in range(5):
+                part = sock.recv(1)[0]
+                number |= (part & 0x7F) << 7 * i
+                if not part & 0x80:
+                    break
+            return number
+        _ = read_varint(sock)
+        _ = read_varint(sock)
+        length = read_varint(sock)
+        data = b''
+        while len(data) < length:
+            data += sock.recv(length - len(data))
+        sock.close()
+        resp = json.loads(data.decode('utf-8'))
+        return resp['players']['online']
+    except Exception:
         return None
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>700</width>
-    <height>500</height>
+    <width>750</width>
+    <height>550</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -100,6 +100,33 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
+      <property name="styleSheet">
+       <string notr="true">QTabWidget::pane {
+    border: 2px solid #23272e;
+    background: #23272e;
+}
+QTabBar::tab {
+    background: #2c313c;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-bottom: none;
+    padding: 8px 20px 8px 20px;
+    min-width: 80px;
+    font-weight: bold;
+}
+QTabBar::tab:selected {
+    background: #23272e;
+    color: #fff;
+    border-bottom: 2px solid #2E8B57;
+}
+QTabBar::tab:!selected {
+    margin-top: 2px;
+}
+QTabBar::tab:hover {
+    background: #3a3f4b;
+}
+</string>
+      </property>
       <widget class="QWidget" name="tabGame">
        <attribute name="title">
         <string>Игра</string>
@@ -114,6 +141,9 @@
             <weight>75</weight>
             <bold>true</bold>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"></string>
           </property>
           <property name="title">
            <string>Никнейм</string>
@@ -168,6 +198,9 @@ QLineEdit:focus {
             <bold>true</bold>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true"></string>
+          </property>
           <property name="title">
            <string>Версия игры</string>
           </property>
@@ -197,9 +230,16 @@ QLineEdit:focus {
     padding: 2px;
     border: 2px solid #ccc;
     border-radius: 4px;
-    background: white;
+    background: #23272e;
+    color: #e0e0e0;
     min-height: 23px;
     font-size: 8pt;
+}
+QComboBox QAbstractItemView {
+    background: #23272e;
+    color: #e0e0e0;
+    selection-background-color: #2E8B57;
+    selection-color: #fff;
 }
 QComboBox::drop-down {
     border: none;
@@ -241,9 +281,16 @@ QComboBox:hover {
     padding: 2px;
     border: 2px solid #ccc;
     border-radius: 4px;
-    background: white;
+    background: #23272e;
+    color: #e0e0e0;
     min-height: 23px;
     font-size: 8pt;
+}
+QComboBox QAbstractItemView {
+    background: #23272e;
+    color: #e0e0e0;
+    selection-background-color: #2E8B57;
+    selection-color: #fff;
 }
 QComboBox::drop-down {
     border: none;
@@ -266,20 +313,7 @@ QComboBox:hover {
         <item>
          <widget class="QGroupBox" name="path_group">
           <property name="styleSheet">
-           <string notr="true">QGroupBox {
-    font-size: 10pt;
-    font-weight: bold;
-    border: 2px solid #cccccc;
-    border-radius: 6px;
-    margin-top: 1ex;
-    padding: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 5px;
-}
-</string>
+           <string notr="true"></string>
           </property>
           <property name="title">
            <string>Путь установки</string>
@@ -445,6 +479,34 @@ QPushButton:disabled {
           </property>
           <property name="text">
            <string>Установить</string>
+          </property>
+         </widget>
+        </item>
+        <item alignment="Qt::AlignHCenter">
+         <widget class="QLabel" name="players_online_label">
+          <property name="maximumSize">
+           <size>
+            <width>300</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>9</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QLabel {
+    color: #666666;
+    font-size: 9pt;
+    padding: 2px;
+}</string>
+          </property>
+          <property name="text">
+           <string>Игроков онлайн: ...</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
           </property>
          </widget>
         </item>
@@ -663,7 +725,8 @@ QGroupBox::title {
     padding: 5px;
     border: 2px solid #ccc;
     border-radius: 4px;
-    background: white;
+    background: #23272e;
+    color: #e0e0e0;
     font-size: 9pt;
 }
 QPlainTextEdit:focus {
@@ -676,6 +739,64 @@ QPlainTextEdit:focus {
             </widget>
            </item>
           </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="theme_group">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QGroupBox {
+    font-size: 10pt;
+    font-weight: bold;
+    border: 2px solid #cccccc;
+    border-radius: 6px;
+    margin-top: 1ex;
+    padding: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px;
+}</string>
+          </property>
+          <property name="title">
+           <string>Тема интерфейса</string>
+          </property>
+          <layout class="QHBoxLayout" name="theme_layout">
+           <item>
+            <widget class="QRadioButton" name="light_theme_radio">
+             <property name="text">
+              <string>Светлая</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="dark_theme_radio">
+             <property name="text">
+              <string>Тёмная</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="close_launcher_checkbox">
+          <property name="text">
+           <string>Закрывать лаунчер после запуска игры</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QCheckBox { background: transparent; }</string>
+          </property>
          </widget>
         </item>
         <item>
@@ -780,7 +901,7 @@ QPushButton:hover {
        <widget class="QLabel" name="version_label">
         <property name="maximumSize">
          <size>
-          <width>16777215</width>
+          <width>300</width>
           <height>20</height>
          </size>
         </property>

@@ -2,7 +2,7 @@ import requests
 import re
 
 def get_version():
-    return "1.0.8.0"  # Версия по умолчанию
+    return "1.0.8.1"  # Версия по умолчанию
 
 def generate_version_info():
     version = get_version()

@@ -1,11 +1,11 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.8.0
+# IB Launcher v1.0.8.1
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
 
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
-## Текущая версия: 1.0.8.0
+## Текущая версия: 1.0.8.1
 
 ### Основные возможности:
 - Установка и запуск Minecraft с поддержкой Forge
@@ -14,6 +14,8 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - Настройка параметров запуска
 - Поддержка различных версий Java
 - Удобный интерфейс
+- Отображение количества онлайн-игроков на сервере
+- Корректное закрытие лаунчера после запуска игры
 
 ### Системные требования:
 - Windows 10/11 или macOS
@@ -55,8 +57,17 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
+## Версия 1.0.8.1
+- Исправлено: все настройки и путь установки корректно сохраняются и загружаются на macOS
+- Добавлен скрипт update_launcher_version.py для автоматического обновления версии во всех файлах проекта
+- Улучшено запоминание выбранных версий Minecraft и Forge между запусками
+- Исправлены стили и поведение тем (светлая/тёмная)
+- Мелкие улучшения и исправления интерфейса
+- Добавлен индикатор онлайн-игроков сервера прямо в лаунчере
+- Улучшено: лаунчер закрывается только после успешного запуска игры (с задержкой), что удобно для медленных ПК
+
 ## Версия 1.0.8.0
-- Обновлена версия лаунчера до 1.0.8.0
+- Обновлена версия лаунчера до 1.0.8.1
 - Исправлены пути установки для macOS
 - Улучшена работа с конфигурацией на macOS
 - Исправлена проблема с зависанием при установке Java
@@ -97,32 +108,6 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Улучшена система обновления модов
 - Оптимизирована работа с памятью
 
-## Что нового
-- **Исправлена проблема с командными окнами**: Устранена проблема появления командных окон при запуске Minecraft
-- **Улучшена стабильность лаунчера**: Исправлена проблема зависания лаунчера при запуске игры
-- **Улучшена совместимость**: Добавлена поддержка различных версий библиотеки minecraft_launcher_lib
-- **Исправлена ошибка установки**: Устранена проблема при установке Minecraft после обновления
-- **Оптимизирована работа с файловой системой**: Улучшена эффективность работы с файлами
-- **Расширенная поддержка Windows и macOS**: Добавлены специфичные улучшения для обеих операционных систем
-- **Альтернативный метод запуска**: Добавлен резервный метод запуска игры для сложных случаев
-- Добавлена возможность удаления установленных версий игры через кнопку "Удалить"
-- Улучшена работа с путями установки:
-  - Исправлена проблема с дублированием папки IBLauncher
-  - Добавлена очистка путей от лишних вложений
-  - Оптимизирована логика формирования путей для разных версий
-- Оптимизирована загрузка версий Forge:
-  - Улучшена производительность при переключении версий
-  - Добавлено автоматическое обновление списка версий
-  - Исправлена проблема с пустыми комбобоксами
-
-## Технические изменения
-- Улучшен метод запуска процессов в Windows с использованием WinAPI
-- Добавлена гибкая система определения путей к библиотекам
-- Улучшена обработка ошибок при установке компонентов
-- Оптимизированы спецификации для PyInstaller
-- Добавлен скрипт прямого запуска игры (direct_launch.py)
-- Упрощен и оптимизирован код запуска игры
-- Минимизирована зависимость от внешних компонентов
 
 ## Примечания
 Эта версия в основном фокусируется на исправлении ошибок и улучшении стабильности лаунчера. Особое внимание было уделено устранению проблемы с появлением командных окон и зависанием лаунчера при запуске игры. Также улучшена совместимость с различными версиями библиотек, чтобы обеспечить бесперебойную работу на разных системах.
@@ -143,8 +128,8 @@ Copyright © 2024 IB Launcher. Все права защищены.
 4. Лаунчер автоматически скачает и установит все необходимые компоненты
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.1/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.1/IB-Launcher.dmg) - macOS 
 
 
 ### Обратная связь
@@ -169,6 +154,15 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Automatic launcher updates
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
+
+## Version 1.0.8.1
+- Fixed: all settings and installation path are now correctly saved and loaded on macOS
+- Added script update_launcher_version.py for automatic version updating in all project files
+- Improved remembering of selected Minecraft and Forge versions between launches
+- Fixed styles and theme behavior (light/dark)
+- Minor improvements and interface fixes
+- Added server online players indicator directly in the launcher
+- Improved: the launcher now closes only after the game has actually started (with a delay), which is convenient for slow PCs
 
 ## Version 1.0.8.0
 - Updated launcher version to 1.0.8.0
@@ -210,32 +204,6 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Improved mod update system
 - Optimized memory handling
 
-## What's New
-- **Fixed Command Window Issue**: Resolved the problem with command windows appearing when launching Minecraft
-- **Improved Launcher Stability**: Fixed launcher hanging issues when starting the game
-- **Enhanced Compatibility**: Added support for various versions of minecraft_launcher_lib
-- **Fixed Installation Error**: Resolved installation issues after updates
-- **Optimized File System Operations**: Improved file handling efficiency
-- **Extended Windows and macOS Support**: Added platform-specific improvements for both operating systems
-- **Alternative Launch Method**: Added fallback game launch method for complex cases
-- **Game Version Management**: Added ability to remove installed game versions via "Delete" button
-- **Improved Installation Path Handling**:
-  - Fixed IBLauncher folder duplication issue
-  - Added cleanup of unnecessary path nesting
-  - Optimized path logic for different versions
-- **Optimized Forge Version Loading**:
-  - Improved performance when switching versions
-  - Added automatic version list updates
-  - Fixed empty combobox issues
-
-## Technical Changes
-- Improved Windows process launching using WinAPI
-- Added flexible library path detection system
-- Enhanced component installation error handling
-- Optimized PyInstaller specifications
-- Added direct game launch script (direct_launch.py)
-- Simplified and optimized game launch code
-- Minimized external component dependencies
 
 ## Notes
 This version primarily focuses on bug fixes and launcher stability improvements. Special attention was paid to resolving command window issues and launcher hanging when starting the game. Compatibility with various library versions has also been improved to ensure smooth operation across different systems.
@@ -255,8 +223,8 @@ This version primarily focuses on bug fixes and launcher stability improvements.
 4. The launcher will automatically download and install all required components
 
 ### Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.0/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.1/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.1/IB-Launcher.dmg) - macOS
 
 ### Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
