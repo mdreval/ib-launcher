@@ -40,6 +40,7 @@ import struct
 import binascii
 import ctypes
 import shutil
+import stat
 
 # Для Windows, импортируем модули WinAPI
 if platform.system() == "Windows":
@@ -1324,13 +1325,13 @@ class InstallThread(QThread):
             minecraft_version = self.minecraft_version.currentText()
             forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
             install_path = self.install_path.text().strip()
-            
+
             # Определяем, какую версию нужно удалить
             if forge_version == "Не устанавливать" or forge_version is None:
                 version_to_remove = minecraft_version
             else:
                 version_to_remove = forge_version
-            
+
             # Спрашиваем подтверждение
             reply = QMessageBox.question(
                 self,
@@ -1338,21 +1339,30 @@ class InstallThread(QThread):
                 f"Вы уверены, что хотите удалить версию {version_to_remove} и все связанные файлы?",
                 QMessageBox.Yes | QMessageBox.No
             )
-            
+
             if reply == QMessageBox.No:
                 return
-            
+
+            # Функция для обработки ошибок при удалении защищённых файлов
+            def on_rm_error(func, path, exc_info):
+                import stat
+                try:
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                except Exception:
+                    pass
+
             # Удаляем всю папку установки
             if os.path.exists(install_path):
                 import shutil
                 try:
-                    # Удаляем всю папку установки
-                    shutil.rmtree(install_path)
+                    # Удаляем всю папку установки с обработчиком ошибок
+                    shutil.rmtree(install_path, onerror=on_rm_error)
                     logging.info(f"Удалена папка установки: {install_path}")
-                    
+
                     # Обновляем состояние кнопок
                     self.check_game_installed()
-                    
+
                     # Показываем сообщение об успешном удалении
                     QMessageBox.information(
                         self,
@@ -1369,7 +1379,7 @@ class InstallThread(QThread):
                     "Предупреждение",
                     "Папка установки не найдена."
                 )
-            
+
         except Exception as e:
             logging.error(f"Ошибка при удалении версии: {str(e)}", exc_info=True)
             QMessageBox.critical(
@@ -1767,7 +1777,6 @@ class MainWindow(QMainWindow):
     def load_config(self):
         """Загружает конфигурацию из файла"""
         try:
-            config_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "IBLauncher-config", "launcher_config.json")
             config_path = CONFIG_FILE
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -1813,6 +1822,9 @@ class MainWindow(QMainWindow):
                     
                     # Нормализуем путь
                     new_path = os.path.normpath(new_path)
+                    # Исправление: если macOS и путь не начинается с '/', добавить слеш
+                    if platform.system() == "Darwin" and not new_path.startswith("/"):
+                        new_path = "/" + new_path
                     
                     self.install_path.setText(new_path)
                     self.install_path_str = new_path
@@ -1838,6 +1850,7 @@ class MainWindow(QMainWindow):
                 # Загружаем настройку автообновления модов
                 if 'auto_update_mods' in config:
                     self.auto_update_mods = config['auto_update_mods']
+                    self.mods_update_switch = config['auto_update_mods']  # Синхронизация с переменной, используемой в логике
                     self.check_updates_button.setText(
                         "Отключить обновление модов" if self.auto_update_mods else "Включить обновление модов"
                     )
@@ -2668,7 +2681,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.2"
+            current_version = "1.0.8.3"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2705,7 +2718,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.2"
+            current_version = "1.0.8.3"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3431,13 +3444,13 @@ class MainWindow(QMainWindow):
             minecraft_version = self.minecraft_version.currentText()
             forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
             install_path = self.install_path.text().strip()
-            
+
             # Определяем, какую версию нужно удалить
             if forge_version == "Не устанавливать" or forge_version is None:
                 version_to_remove = minecraft_version
             else:
                 version_to_remove = forge_version
-            
+
             # Спрашиваем подтверждение
             reply = QMessageBox.question(
                 self,
@@ -3445,21 +3458,30 @@ class MainWindow(QMainWindow):
                 f"Вы уверены, что хотите удалить версию {version_to_remove} и все связанные файлы?",
                 QMessageBox.Yes | QMessageBox.No
             )
-            
+
             if reply == QMessageBox.No:
                 return
-            
+
+            # Функция для обработки ошибок при удалении защищённых файлов
+            def on_rm_error(func, path, exc_info):
+                import stat
+                try:
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                except Exception:
+                    pass
+
             # Удаляем всю папку установки
             if os.path.exists(install_path):
                 import shutil
                 try:
-                    # Удаляем всю папку установки
-                    shutil.rmtree(install_path)
+                    # Удаляем всю папку установки с обработчиком ошибок
+                    shutil.rmtree(install_path, onerror=on_rm_error)
                     logging.info(f"Удалена папка установки: {install_path}")
-                    
+
                     # Обновляем состояние кнопок
                     self.check_game_installed()
-                    
+
                     # Показываем сообщение об успешном удалении
                     QMessageBox.information(
                         self,
@@ -3476,7 +3498,7 @@ class MainWindow(QMainWindow):
                     "Предупреждение",
                     "Папка установки не найдена."
                 )
-            
+
         except Exception as e:
             logging.error(f"Ошибка при удалении версии: {str(e)}", exc_info=True)
             QMessageBox.critical(
@@ -3675,6 +3697,14 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def apply_theme(self):
+        # Смена логотипа в зависимости от темы
+        logo_label = self.findChild(QLabel, "logo")
+        if self.dark_theme_radio.isChecked():
+            if logo_label:
+                logo_label.setPixmap(QPixmap(resource_path(os.path.join("assets", "title2.png"))))
+        else:
+            if logo_label:
+                logo_label.setPixmap(QPixmap(resource_path(os.path.join("assets", "title.png"))))
         if self.dark_theme_radio.isChecked():
             self.setStyleSheet("""
                 QWidget { background-color: #23272e; color: #e0e0e0; }

@@ -12,8 +12,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>700</width>
-    <height>500</height>
+    <width>750</width>
+    <height>550</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -97,9 +97,6 @@
         <pointsize>8</pointsize>
        </font>
       </property>
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
       <property name="styleSheet">
        <string notr="true">QTabWidget::pane {
     border: 2px solid #23272e;
@@ -127,6 +124,9 @@ QTabBar::tab:hover {
 }
 </string>
       </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
       <widget class="QWidget" name="tabGame">
        <attribute name="title">
         <string>Игра</string>
@@ -143,7 +143,7 @@ QTabBar::tab:hover {
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true"></string>
+           <string notr="true"/>
           </property>
           <property name="title">
            <string>Никнейм</string>
@@ -199,7 +199,7 @@ QLineEdit:focus {
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true"></string>
+           <string notr="true"/>
           </property>
           <property name="title">
            <string>Версия игры</string>
@@ -313,7 +313,7 @@ QComboBox:hover {
         <item>
          <widget class="QGroupBox" name="path_group">
           <property name="styleSheet">
-           <string notr="true"></string>
+           <string notr="true"/>
           </property>
           <property name="title">
            <string>Путь установки</string>
@@ -371,9 +371,6 @@ QComboBox:hover {
                <height>23</height>
               </size>
              </property>
-             <property name="text">
-              <string>Удалить</string>
-             </property>
              <property name="styleSheet">
               <string notr="true">QPushButton {
     background-color: #DC143C;
@@ -388,6 +385,9 @@ QPushButton:hover {
 QPushButton:disabled {
     background-color: #CCCCCC;
 }</string>
+             </property>
+             <property name="text">
+              <string>Удалить</string>
              </property>
             </widget>
            </item>
@@ -429,6 +429,9 @@ QPushButton:disabled {
             <width>16777215</width>
             <height>23</height>
            </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
           </property>
          </widget>
         </item>
@@ -791,11 +794,11 @@ QGroupBox::title {
         </item>
         <item>
          <widget class="QCheckBox" name="close_launcher_checkbox">
-          <property name="text">
-           <string>Закрывать лаунчер после запуска игры</string>
-          </property>
           <property name="styleSheet">
            <string notr="true">QCheckBox { background: transparent; }</string>
+          </property>
+          <property name="text">
+           <string>Закрывать лаунчер после запуска игры</string>
           </property>
          </widget>
         </item>

@@ -1,11 +1,11 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.8.2
+# IB Launcher v1.0.8.3
 ![Screenshot_1](https://github.com/user-attachments/assets/7474a540-a7ac-4a11-8d19-bd406c685e61)
 
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
-## Текущая версия: 1.0.8.2
+## Текущая версия: 1.0.8.3
 
 ### Основные возможности:
 - Установка и запуск Minecraft с поддержкой Forge
@@ -57,7 +57,7 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Умный подбор версии Java в зависимости от версии Minecraft
 - Создание отдельных папок для разных версий Minecraft
 
-## Версия 1.0.8.2
+## Версия 1.0.8.3
 - Исправлено: все настройки и путь установки корректно сохраняются и загружаются на macOS
 - Добавлен скрипт update_launcher_version.py для автоматического обновления версии во всех файлах проекта
 - Улучшено запоминание выбранных версий Minecraft и Forge между запусками
@@ -65,9 +65,10 @@ Copyright © 2024 IB Launcher. Все права защищены.
 - Мелкие улучшения и исправления интерфейса
 - Добавлен индикатор онлайн-игроков сервера прямо в лаунчере
 - Улучшено: лаунчер закрывается только после успешного запуска игры (с задержкой), что удобно для медленных ПК
+- Добавлена автоматическая смена логотипа в зависимости от выбранной темы (светлая/тёмная)
 
 ## Версия 1.0.8.0
-- Обновлена версия лаунчера до 1.0.8.2
+- Обновлена версия лаунчера до 1.0.8.0
 - Исправлены пути установки для macOS
 - Улучшена работа с конфигурацией на macOS
 - Исправлена проблема с зависанием при установке Java
@@ -128,8 +129,8 @@ Copyright © 2024 IB Launcher. Все права защищены.
 4. Лаунчер автоматически скачает и установит все необходимые компоненты
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.2/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.2/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.dmg) - macOS 
 
 
 ### Обратная связь
@@ -155,7 +156,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Smart Java version detection based on Minecraft version
 - Separate folders for different Minecraft versions
 
-## Version 1.0.8.2
+## Version 1.0.8.3
 - Fixed: all settings and installation path are now correctly saved and loaded on macOS
 - Added script update_launcher_version.py for automatic version updating in all project files
 - Improved remembering of selected Minecraft and Forge versions between launches
@@ -163,6 +164,7 @@ IB-Launcher is a cross-platform Minecraft launcher for IGROBAR server with mod s
 - Minor improvements and interface fixes
 - Added server online players indicator directly in the launcher
 - Improved: the launcher now closes only after the game has actually started (with a delay), which is convenient for slow PCs
+- Added automatic logo switching depending on the selected theme (light/dark)
 
 ## Version 1.0.8.0
 - Updated launcher version to 1.0.8.0
@@ -223,8 +225,8 @@ This version primarily focuses on bug fixes and launcher stability improvements.
 4. The launcher will automatically download and install all required components
 
 ### Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.2/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.2/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.3/IB-Launcher.dmg) - macOS
 
 ### Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
