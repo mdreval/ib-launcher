@@ -94,7 +94,7 @@
       <property name="font">
        <font>
         <family>MS Shell Dlg 2</family>
-        <pointsize>8</pointsize>
+        <pointsize>7</pointsize>
        </font>
       </property>
       <property name="styleSheet">
@@ -324,7 +324,7 @@ QComboBox:hover {
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>23</height>
+               <height>27</height>
               </size>
              </property>
              <property name="maximumSize">
@@ -332,6 +332,18 @@ QComboBox:hover {
                <width>16777215</width>
                <height>23</height>
               </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QLineEdit {
+    padding: 0px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 8pt;
+    min-height: 23px;
+}
+QLineEdit:focus {
+    border-color: #2E8B57;
+}</string>
              </property>
              <property name="placeholderText">
               <string>Путь установки</string>
@@ -342,15 +354,30 @@ QComboBox:hover {
             <widget class="QPushButton" name="browse_button">
              <property name="minimumSize">
               <size>
-               <width>100</width>
-               <height>23</height>
+               <width>106</width>
+               <height>0</height>
               </size>
              </property>
              <property name="maximumSize">
               <size>
-               <width>16777215</width>
+               <width>106</width>
                <height>23</height>
               </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
+    background-color: #2E8B57;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px;
+}
+QPushButton:hover {
+    background-color: #3CB371;
+}
+QPushButton:disabled {
+    background-color: #CCCCCC;
+}</string>
              </property>
              <property name="text">
               <string>Обзор</string>
@@ -361,13 +388,13 @@ QComboBox:hover {
             <widget class="QPushButton" name="remove_version_button">
              <property name="minimumSize">
               <size>
-               <width>100</width>
+               <width>107</width>
                <height>23</height>
               </size>
              </property>
              <property name="maximumSize">
               <size>
-               <width>16777215</width>
+               <width>107</width>
                <height>23</height>
               </size>
              </property>
@@ -745,16 +772,18 @@ QPlainTextEdit:focus {
          </widget>
         </item>
         <item>
-         <widget class="QGroupBox" name="theme_group">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QGroupBox {
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QGroupBox" name="theme_group">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QGroupBox {
     font-size: 10pt;
     font-weight: bold;
     border: 2px solid #cccccc;
@@ -767,30 +796,87 @@ QGroupBox::title {
     left: 10px;
     padding: 0 5px;
 }</string>
-          </property>
-          <property name="title">
-           <string>Тема интерфейса</string>
-          </property>
-          <layout class="QHBoxLayout" name="theme_layout">
-           <item>
-            <widget class="QRadioButton" name="light_theme_radio">
-             <property name="text">
-              <string>Светлая</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="dark_theme_radio">
-             <property name="text">
-              <string>Тёмная</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
+            </property>
+            <property name="title">
+             <string>Тема интерфейса</string>
+            </property>
+            <layout class="QHBoxLayout" name="theme_layout">
+             <item>
+              <widget class="QRadioButton" name="light_theme_radio">
+               <property name="text">
+                <string>Светлая</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="dark_theme_radio">
+               <property name="text">
+                <string>Тёмная</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="language_group">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QGroupBox {
+    font-size: 10pt;
+    font-weight: bold;
+    border: 2px solid #cccccc;
+    border-radius: 6px;
+    margin-top: 1ex;
+    padding: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px;
+}</string>
+            </property>
+            <property name="title">
+             <string>Язык лаунчера</string>
+            </property>
+            <layout class="QHBoxLayout" name="language_layout">
+             <item>
+              <widget class="QRadioButton" name="ru_language_radio">
+               <property name="text">
+                <string>RU</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="en_language_radio">
+               <property name="text">
+                <string>EN</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="uk_language_radio">
+               <property name="text">
+                <string>UA</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
          <widget class="QCheckBox" name="close_launcher_checkbox">

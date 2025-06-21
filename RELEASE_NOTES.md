@@ -1,39 +1,50 @@
 # Release Notes
-![Screenshot_1](https://github.com/user-attachments/assets/650ba267-636d-44f9-ab20-f384e661017e)
+![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
-## Версия 1.0.8.4
+## Версия 1.0.8.5
 
 ### Что нового
-- Добавлен индикатор онлайн-игроков сервера прямо в лаунчере
-- Улучшено: лаунчер закрывается только после успешного запуска игры (с задержкой), что удобно для медленных ПК
-- Улучшено запоминание выбранных версий Minecraft и Forge между запусками
-- Исправлены стили и поведение тем (светлая/тёмная)
-- Все настройки и путь установки теперь корректно сохраняются и загружаются на macOS
-- Добавлена автоматическая смена логотипа в зависимости от выбранной темы (светлая/тёмная)
+- Добавлена поддержка нескольких языков: Русский, Украинский, Английский.
+- Появилась возможность смены языка интерфейса в настройках.
+- Улучшен дизайн настроек: выбор языка теперь реализован через переключатели для большего удобства.
+- Исправлен ряд ошибок и улучшена стабильность интерфейса в процессе добавления нового функционала.
 
 ### Технические изменения
-- Добавлен универсальный скрипт update_launcher_version.py для автоматического обновления версии во всех файлах проекта
-- Исправлено формирование путей и сохранение конфигов на macOS
-- Оптимизировано сохранение и загрузка пользовательских настроек
-- Улучшена обработка сигналов запуска игры и закрытия лаунчера
-- Мелкие улучшения и рефакторинг кода
+- Реализована полноценная система интернационализации (i18n).
+- Проведен значительный рефакторинг кода, отвечающего за работу с элементами интерфейса.
+- Улучшены таблицы стилей (CSS) для корректного отображения новых элементов.
 
-## Version 1.0.8.4
+---
+
+## Версія 1.0.8.5
+
+### Що нового
+- Додано підтримку декількох мов: Російська, Українська, Англійська.
+- З'явилася можливість зміни мови інтерфейсу в налаштуваннях.
+- Покращено дизайн налаштувань: вибір мови тепер реалізований через перемикачі для більшої зручності.
+- Виправлено низку помилок та покращено стабільність інтерфейсу в процесі додавання нового функціоналу.
+
+### Технічні зміни
+- Реалізовано повноцінну систему інтернаціоналізації (i18n).
+- Проведено значний рефакторинг коду, що відповідає за роботу з елементами інтерфейсу.
+- Покращено таблиці стилів (CSS) для коректного відображення нових елементів.
+
+---
+
+## Version 1.0.8.5
 
 ### What's new
-- Added server online players indicator directly in the launcher
-- Improved: the launcher now closes only after the game has actually started (with a delay), which is convenient for slow PCs
-- Improved remembering of selected Minecraft and Forge versions between launches
-- Fixed styles and theme behavior (light/dark)
-- All settings and installation path are now correctly saved and loaded on macOS
-- Added automatic logo switching depending on the selected theme (light/dark)
+- Added multi-language support: Russian, Ukrainian, English.
+- Added the ability to change the interface language in the settings.
+- Improved settings design: language selection is now implemented via radio buttons for better usability.
+- Fixed a number of bugs and improved UI stability during the implementation of new functionality.
 
 ### Technical changes
-- Added universal script update_launcher_version.py for automatic version updating in all project files
-- Fixed path formation and config saving on macOS
-- Optimized saving and loading of user settings
-- Improved handling of game launch and launcher closing signals
-- Minor improvements and code refactoring
+- Implemented a full-fledged internationalization (i18n) system.
+- Conducted significant refactoring of the code responsible for handling UI elements.
+- Improved stylesheets (CSS) for the correct display of new elements.
+
+---
 
 ## Примечания
 Эта версия в основном фокусируется на исправлении ошибок и улучшении стабильности лаунчера. Особое внимание было уделено устранению проблемы с появлением командных окон и зависанием лаунчера при запуске игры. Также улучшена совместимость с различными версиями библиотек, чтобы обеспечить бесперебойную работу на разных системах.
@@ -42,5 +53,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.4/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.4/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.5/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.5/IB-Launcher.dmg) - macOS

@@ -42,6 +42,202 @@ import ctypes
 import shutil
 import stat
 
+TRANSLATIONS = {
+    'ru': {
+        # Main Window
+        'window_title': 'IB Launcher',
+        # Tabs
+        'tab_game': 'Игра',
+        'tab_mods': 'Моды',
+        'tab_settings': 'Настройки',
+        # Game Tab
+        'username_group': 'Никнейм',
+        'username_placeholder': 'Введите имя игрока',
+        'version_group': 'Версия игры',
+        'install_path_group': 'Путь установки',
+        'browse_button': 'Обзор',
+        'remove_version_button': 'Удалить',
+        'status_label_ready': 'Готов к запуску',
+        'start_button_install': 'Установить',
+        'start_button_play': 'Играть',
+        'players_online_label': 'Игроков онлайн: ',
+        'server_offline': 'Сервер Offline',
+        # Mods Tab
+        'add_mod_button': 'Добавить моды',
+        'remove_mod_button': 'Удалить выбранные',
+        'check_updates_button_on': 'Отключить обновление модов',
+        'check_updates_button_off': 'Включить обновление модов',
+        'mods_found': 'Найдено модов: {count}',
+        'mods_error': 'Ошибка загрузки модов',
+        'select_mods_to_remove': 'Выберите моды для удаления',
+        'confirm_remove_mods_title': 'Удаление модов',
+        'confirm_remove_mods_text': 'Вы уверены, что хотите удалить {count} мод(ов)?',
+        'add_mods_title': 'Выберите моды',
+        'mods_filter': 'Minecraft Mods (*.jar)',
+        # Settings Tab
+        'memory_group': 'Настройки памяти',
+        'memory_title': 'Выделенная память:',
+        'memory_label_gb': '{value} ГБ',
+        'launch_flags_group': 'Настройка запуска (Флаги)',
+        'launch_flags_title': 'Дополнительные параметры запуска:',
+        'launch_flags_placeholder': 'Введите дополнительные параметры запуска Java (каждый параметр с новой строки)',
+        'theme_group': 'Тема интерфейса',
+        'light_theme_radio': 'Светлая',
+        'dark_theme_radio': 'Тёмная',
+        'language_group': 'Язык лаунчера',
+        'close_launcher_checkbox': 'Закрывать лаунчер после запуска игры',
+        # Bottom info
+        'telegram_tooltip': 'Наш Telegram канал',
+        'youtube_tooltip': 'Наш YouTube канал',
+        'version_label': 'Версия: ',
+        'update_available': 'Версия: {current} (Доступно обновление: {latest})',
+        # Messages & Statuses
+        'error': 'Ошибка',
+        'info': 'Информация',
+        'warning': 'Предупреждение',
+        'confirm_delete_version_title': 'Подтверждение удаления',
+        'confirm_delete_version_text': 'Вы уверены, что хотите удалить версию {version} и все связанные файлы?',
+        'delete_finished_title': 'Удаление завершено',
+        'delete_finished_text': 'Версия {version} и все связанные файлы успешно удалены.',
+        'path_not_found': 'Папка установки не найдена.',
+        'no_internet_title': 'Нет подключения',
+        'no_internet_text': 'Вы без доступа в интернет, будет запускаться только установленная версия.',
+        'game_launching_text': 'Игра запускается, лаунчер закроется через 20 секунд...',
+        'select_minecraft_version': 'Выберите версию Minecraft!',
+        'enter_username': 'Введите имя игрока!',
+        'no_write_permission': 'Нет прав на запись в выбранную папку!',
+        'failed_to_create_dir': 'Не удалось создать директорию установки: {error}',
+        'failed_to_install': 'Не удалось установить игру: {error}',
+        'java_version_error_title': 'Ошибка Java',
+        'java_install_error_text': 'Java не установлена или версия ниже 17!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
+        'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.'
+    },
+    'en': {
+        'window_title': 'IB Launcher',
+        'tab_game': 'Game',
+        'tab_mods': 'Mods',
+        'tab_settings': 'Settings',
+        'username_group': 'Nickname',
+        'username_placeholder': 'Enter player name',
+        'version_group': 'Game Version',
+        'install_path_group': 'Installation Path',
+        'browse_button': 'Browse',
+        'remove_version_button': 'Remove',
+        'status_label_ready': 'Ready to launch',
+        'start_button_install': 'Install',
+        'start_button_play': 'Play',
+        'players_online_label': 'Players online: ',
+        'server_offline': 'Server Offline',
+        'add_mod_button': 'Add Mods',
+        'remove_mod_button': 'Remove Selected',
+        'check_updates_button_on': 'Disable mods auto-update',
+        'check_updates_button_off': 'Enable mods auto-update',
+        'mods_found': 'Mods found: {count}',
+        'mods_error': 'Error loading mods',
+        'select_mods_to_remove': 'Select mods to remove',
+        'confirm_remove_mods_title': 'Remove Mods',
+        'confirm_remove_mods_text': 'Are you sure you want to remove {count} mod(s)?',
+        'add_mods_title': 'Select Mods',
+        'mods_filter': 'Minecraft Mods (*.jar)',
+        'memory_group': 'Memory Settings',
+        'memory_title': 'Allocated Memory:',
+        'memory_label_gb': '{value} GB',
+        'launch_flags_group': 'Launch Settings (Flags)',
+        'launch_flags_title': 'Additional launch parameters:',
+        'launch_flags_placeholder': 'Enter additional Java launch parameters (one per line)',
+        'theme_group': 'Interface Theme',
+        'light_theme_radio': 'Light',
+        'dark_theme_radio': 'Dark',
+        'language_group': 'Launcher Language',
+        'close_launcher_checkbox': 'Close launcher after starting the game',
+        'telegram_tooltip': 'Our Telegram channel',
+        'youtube_tooltip': 'Our YouTube channel',
+        'version_label': 'Version: ',
+        'update_available': 'Version: {current} (Update available: {latest})',
+        'error': 'Error',
+        'info': 'Information',
+        'warning': 'Warning',
+        'confirm_delete_version_title': 'Confirm Deletion',
+        'confirm_delete_version_text': 'Are you sure you want to delete version {version} and all related files?',
+        'delete_finished_title': 'Deletion Complete',
+        'delete_finished_text': 'Version {version} and all related files have been successfully deleted.',
+        'path_not_found': 'Installation folder not found.',
+        'no_internet_title': 'No Connection',
+        'no_internet_text': 'You are offline. Only installed versions can be launched.',
+        'game_launching_text': 'The game is launching, the launcher will close in 20 seconds...',
+        'select_minecraft_version': 'Select a Minecraft version!',
+        'enter_username': 'Please enter a username!',
+        'no_write_permission': 'No write permission in the selected folder!',
+        'failed_to_create_dir': 'Failed to create installation directory: {error}',
+        'failed_to_install': 'Failed to install the game: {error}',
+        'java_version_error_title': 'Java Error',
+        'java_install_error_text': 'Java is not installed or version is below 17!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
+        'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.'
+    },
+    'uk': {
+        'window_title': 'IB Launcher',
+        'tab_game': 'Гра',
+        'tab_mods': 'Моди',
+        'tab_settings': 'Налаштування',
+        'username_group': 'Нікнейм',
+        'username_placeholder': 'Введіть ім\'я гравця',
+        'version_group': 'Версія гри',
+        'install_path_group': 'Шлях встановлення',
+        'browse_button': 'Огляд',
+        'remove_version_button': 'Видалити',
+        'status_label_ready': 'Готовий до запуску',
+        'start_button_install': 'Встановити',
+        'start_button_play': 'Грати',
+        'players_online_label': 'Гравців онлайн: ',
+        'server_offline': 'Сервер Offline',
+        'add_mod_button': 'Додати моди',
+        'remove_mod_button': 'Видалити обрані',
+        'check_updates_button_on': 'Вимкнути оновлення модів',
+        'check_updates_button_off': 'Увімкнути оновлення модів',
+        'mods_found': 'Знайдено модів: {count}',
+        'mods_error': 'Помилка завантаження модів',
+        'select_mods_to_remove': 'Виберіть моди для видалення',
+        'confirm_remove_mods_title': 'Видалення модів',
+        'confirm_remove_mods_text': 'Ви впевнені, що хочете видалити {count} мод(ів)?',
+        'add_mods_title': 'Виберіть моди',
+        'mods_filter': 'Minecraft Mods (*.jar)',
+        'memory_group': 'Налаштування пам\'яті',
+        'memory_title': 'Виділена пам\'ять:',
+        'memory_label_gb': '{value} ГБ',
+        'launch_flags_group': 'Налаштування запуску (Прапори)',
+        'launch_flags_title': 'Додаткові параметри запуску:',
+        'launch_flags_placeholder': 'Введіть додаткові параметри запуску Java (кожен параметр з нового рядка)',
+        'theme_group': 'Тема інтерфейсу',
+        'light_theme_radio': 'Світла',
+        'dark_theme_radio': 'Темна',
+        'language_group': 'Мова лаунчера',
+        'close_launcher_checkbox': 'Закривати лаунчер після запуску гри',
+        'telegram_tooltip': 'Наш Telegram канал',
+        'youtube_tooltip': 'Наш YouTube канал',
+        'version_label': 'Версія: ',
+        'update_available': 'Версія: {current} (Доступне оновлення: {latest})',
+        'error': 'Помилка',
+        'info': 'Інформація',
+        'warning': 'Попередження',
+        'confirm_delete_version_title': 'Підтвердження видалення',
+        'confirm_delete_version_text': 'Ви впевнені, що хочете видалити версію {version} та всі пов\'язані файли?',
+        'delete_finished_title': 'Видалення завершено',
+        'delete_finished_text': 'Версію {version} та всі пов\'язані файли успішно видалено.',
+        'path_not_found': 'Папку встановлення не знайдено.',
+        'no_internet_title': 'Немає з\'єднання',
+        'no_internet_text': 'Ви без доступу до інтернету, запускатиметься тільки встановлена версія.',
+        'game_launching_text': 'Гра запускається, лаунчер закриється через 20 секунд...',
+        'select_minecraft_version': 'Виберіть версію Minecraft!',
+        'enter_username': 'Введіть ім\'я гравця!',
+        'no_write_permission': 'Немає прав на запис у вибрану папку!',
+        'failed_to_create_dir': 'Не вдалося створити директорію встановлення: {error}',
+        'failed_to_install': 'Не вдалося встановити гру: {error}',
+        'java_version_error_title': 'Помилка Java',
+        'java_install_error_text': 'Java не встановлено або версія нижче 17!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
+        'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.'
+    }
+}
+
 # Для Windows, импортируем модули WinAPI
 if platform.system() == "Windows":
     try:
@@ -1416,6 +1612,7 @@ class MainWindow(QMainWindow):
         self.install_path_str = ""
         self.forge_cache = {}
         self.mods_update_switch = True
+        self.language = 'ru'  # Язык по умолчанию
         
         # Устанавливаем иконку для окна и панели задач с учетом платформы
         if platform.system() == "Windows":
@@ -1458,7 +1655,27 @@ class MainWindow(QMainWindow):
         self.light_theme_radio = self.findChild(QRadioButton, "light_theme_radio")
         self.dark_theme_radio = self.findChild(QRadioButton, "dark_theme_radio")
         self.close_launcher_checkbox = self.findChild(QCheckBox, "close_launcher_checkbox")
+        self.version_label = self.findChild(QLabel, "version_label")
+        self.status_label = self.findChild(QLabel, "status_label")
+        self.progress_bar = self.findChild(QProgressBar, "progress_bar")
+        self.tabWidget = self.findChild(QTabWidget, "tabWidget")
+
+        # Дополнительные виджеты для перевода
+        self.username_group = self.findChild(QGroupBox, "username_group")
+        self.version_group = self.findChild(QGroupBox, "versions_group")
+        self.path_group = self.findChild(QGroupBox, "path_group")
+        self.memory_group = self.findChild(QGroupBox, "memory_group")
+        self.memory_title = self.findChild(QLabel, "memory_title")
+        self.launch_flags_group = self.findChild(QGroupBox, "launch_flags_group")
+        self.launch_flags_title = self.findChild(QLabel, "launch_flags_title")
+        self.theme_group = self.findChild(QGroupBox, "theme_group")
+        self.language_group = self.findChild(QGroupBox, "language_group")
         
+        # Элементы для выбора языка
+        self.ru_language_radio = self.findChild(QRadioButton, "ru_language_radio")
+        self.en_language_radio = self.findChild(QRadioButton, "en_language_radio")
+        self.uk_language_radio = self.findChild(QRadioButton, "uk_language_radio")
+
         # Подключаем сигналы для модов
         self.add_mod_button.clicked.connect(self.add_mods)
         self.remove_mod_button.clicked.connect(self.remove_selected_mods)
@@ -1469,6 +1686,11 @@ class MainWindow(QMainWindow):
         self.light_theme_radio.toggled.connect(self.on_theme_changed)
         self.dark_theme_radio.toggled.connect(self.on_theme_changed)
         self.close_launcher_checkbox.toggled.connect(self.save_config)
+        
+        # Подключаем обработчик смены языка
+        if self.ru_language_radio: self.ru_language_radio.toggled.connect(self.on_language_changed)
+        if self.en_language_radio: self.en_language_radio.toggled.connect(self.on_language_changed)
+        if self.uk_language_radio: self.uk_language_radio.toggled.connect(self.on_language_changed)
         
         # Проверяем Java
         self.check_java()
@@ -1512,8 +1734,82 @@ class MainWindow(QMainWindow):
         self.online_timer.start(30000)
         # Применяем тему при запуске
         self.apply_theme()
+        
+        self.retranslate_ui()
 
         self.is_loading = False
+
+    def retranslate_ui(self):
+        """Переводит все тексты в интерфейсе"""
+        try:
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+            
+            # Main Window
+            self.setWindowTitle(translations['window_title'])
+            
+            # Tabs
+            if self.tabWidget:
+                self.tabWidget.setTabText(0, translations['tab_game'])
+                self.tabWidget.setTabText(1, translations['tab_mods'])
+                self.tabWidget.setTabText(2, translations['tab_settings'])
+
+            # Game Tab
+            if self.username_group: self.username_group.setTitle(translations['username_group'])
+            if self.username: self.username.setPlaceholderText(translations['username_placeholder'])
+            if self.version_group: self.version_group.setTitle(translations['version_group'])
+            if self.path_group: self.path_group.setTitle(translations['install_path_group'])
+            if self.browse_button: self.browse_button.setText(translations['browse_button'])
+            if self.remove_version_button: self.remove_version_button.setText(translations['remove_version_button'])
+            if self.status_label: self.status_label.setText(translations['status_label_ready'])
+            self.check_game_installed() # Обновляем текст кнопки Играть/Установить
+
+            # Mods Tab
+            if self.add_mod_button: self.add_mod_button.setText(translations['add_mod_button'])
+            if self.remove_mod_button: self.remove_mod_button.setText(translations['remove_mod_button'])
+            if self.check_updates_button:
+                if self.mods_update_switch:
+                    self.check_updates_button.setText(translations['check_updates_button_on'])
+                else:
+                    self.check_updates_button.setText(translations['check_updates_button_off'])
+
+            # Settings Tab
+            if self.memory_group: self.memory_group.setTitle(translations['memory_group'])
+            if self.memory_title: self.memory_title.setText(translations['memory_title'])
+            if self.memory_label and self.memory_slider: self.memory_label.setText(translations['memory_label_gb'].format(value=self.memory_slider.value()))
+            if self.launch_flags_group: self.launch_flags_group.setTitle(translations['launch_flags_group'])
+            if self.launch_flags_title: self.launch_flags_title.setText(translations['launch_flags_title'])
+            if self.launch_flags_input: self.launch_flags_input.setPlaceholderText(translations['launch_flags_placeholder'])
+            if self.theme_group: self.theme_group.setTitle(translations['theme_group'])
+            if self.light_theme_radio: self.light_theme_radio.setText(translations['light_theme_radio'])
+            if self.dark_theme_radio: self.dark_theme_radio.setText(translations['dark_theme_radio'])
+            if self.language_group: self.language_group.setTitle(translations['language_group'])
+            if self.close_launcher_checkbox: self.close_launcher_checkbox.setText(translations['close_launcher_checkbox'])
+
+            # Bottom info
+            if self.telegram_button: self.telegram_button.setToolTip(translations['telegram_tooltip'])
+            if self.youtube_button: self.youtube_button.setToolTip(translations['youtube_tooltip'])
+            self.update_version_label() # Обновляем текст версии
+            self.update_players_online() # Обновляем онлайн
+
+        except Exception as e:
+            logging.error(f"Ошибка перевода интерфейса: {str(e)}", exc_info=True)
+
+    def on_language_changed(self):
+        """Обработчик смены языка"""
+        if hasattr(self, 'is_loading') and self.is_loading:
+            return
+            
+        new_language = 'ru' # По умолчанию
+        if self.en_language_radio and self.en_language_radio.isChecked():
+            new_language = 'en'
+        elif self.uk_language_radio and self.uk_language_radio.isChecked():
+            new_language = 'uk'
+
+        if new_language and new_language != self.language:
+            self.language = new_language
+            logging.info(f"Язык изменен на: {self.language}")
+            self.retranslate_ui()
+            self.save_config()
 
     def clean_path(self, path):
         """
@@ -1660,6 +1956,9 @@ class MainWindow(QMainWindow):
                 self.install_path.setText(new_path)
                 self.install_path_str = new_path
                 
+                # Сохраняем конфиг
+                self.save_config()
+
                 # Проверяем установку игры
                 self.check_game_installed()
                 
@@ -1789,6 +2088,16 @@ class MainWindow(QMainWindow):
                 if 'username' in config:
                     self.username_input.setText(config['username'])
                 
+                # Загружаем язык
+                if 'language' in config:
+                    self.language = config.get('language', 'ru')
+                    if self.language == 'en' and self.en_language_radio:
+                        self.en_language_radio.setChecked(True)
+                    elif self.language == 'uk' and self.uk_language_radio:
+                        self.uk_language_radio.setChecked(True)
+                    elif self.ru_language_radio:
+                        self.ru_language_radio.setChecked(True)
+
                 # Загружаем выделенную память
                 if 'memory' in config:
                     memory = config['memory']
@@ -1891,7 +2200,8 @@ class MainWindow(QMainWindow):
                 'launch_flags': self.launch_flags_input.toPlainText(),
                 'auto_update_mods': self.mods_update_switch,
                 'theme': 'dark' if self.dark_theme_radio.isChecked() else 'light',
-                'close_launcher': self.close_launcher_checkbox.isChecked()
+                'close_launcher': self.close_launcher_checkbox.isChecked(),
+                'language': self.language
             }
             
             # Создаём директорию конфига, если она не существует
@@ -1922,10 +2232,11 @@ class MainWindow(QMainWindow):
             has_internet = self.check_internet_connection()
             if not has_internet:
                 logging.warning("Нет подключения к интернету")
+                translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
                 QMessageBox.warning(
                     self,
-                    "Нет подключения",
-                    "Вы без доступа в интернет, будет запускаться только установленная версия."
+                    translations['no_internet_title'],
+                    translations['no_internet_text']
                 )
                 
                 # Загружаем сохраненные версии из кеша
@@ -2295,7 +2606,8 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(current)
 
     def show_error(self, message):
-        QMessageBox.critical(self, "Ошибка", message)
+        translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+        QMessageBox.critical(self, translations['error'], message)
         self.toggle_ui_elements(True)
 
     def check_game_installed(self):
@@ -2375,11 +2687,13 @@ class MainWindow(QMainWindow):
             # Находим кнопку удаления
             remove_button = self.findChild(QPushButton, "remove_version_button")
             
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+
             if is_installed:
                 logging.info("Меняем текст кнопки на 'Играть'")
-                self.start_button.setText("Играть")
-                if not self.start_button.text() == "Играть":
-                    logging.error("Не удалось изменить текст кнопки на 'Играть'")
+                self.start_button.setText(translations['start_button_play'])
+                if not self.start_button.text() == translations['start_button_play']:
+                    logging.error(f"Не удалось изменить текст кнопки на '{translations['start_button_play']}'")
                 logging.info(f"Версия {version_to_check} найдена")
                 # Включаем кнопку удаления
                 if remove_button:
@@ -2398,9 +2712,9 @@ class MainWindow(QMainWindow):
                     """)
             else:
                 logging.info("Меняем текст кнопки на 'Установить'")
-                self.start_button.setText("Установить")
-                if not self.start_button.text() == "Установить":
-                    logging.error("Не удалось изменить текст кнопки на 'Установить'")
+                self.start_button.setText(translations['start_button_install'])
+                if not self.start_button.text() == translations['start_button_install']:
+                    logging.error(f"Не удалось изменить текст кнопки на '{translations['start_button_install']}'")
                 logging.info(f"Версия {version_to_check} не найдена")
                 # Отключаем кнопку удаления
                 if remove_button:
@@ -2686,7 +3000,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.4"
+            current_version = "1.0.8.5"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2723,7 +3037,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.4"
+            current_version = "1.0.8.5"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2732,20 +3046,22 @@ class MainWindow(QMainWindow):
             latest_release = response.json()
             latest_version = latest_release['tag_name'].lstrip('v')
             
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Сравниваем версии
             if latest_version > current_version:
                 # Если доступна новая версия, показываем обе
-                self.version_label.setText(f"Версия: {current_version} (Доступно обновление: {latest_version})")
+                self.version_label.setText(translations['update_available'].format(current=current_version, latest=latest_version))
                 self.version_label.setStyleSheet("QLabel { color: #ff6b6b; }")  # Красный цвет для уведомления
             else:
                 # Если версия актуальная
-                self.version_label.setText(f"Версия: {current_version}")
+                self.version_label.setText(f"{translations['version_label']}{current_version}")
                 self.version_label.setStyleSheet("QLabel { color: #666666; }")  # Возвращаем обычный цвет
             
         except Exception as e:
             logging.error(f"Ошибка получения версии: {str(e)}")
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # При ошибке показываем только текущую версию
-            self.version_label.setText(f"Версия: {current_version}")
+            self.version_label.setText(f"{translations['version_label']}{current_version}")
 
     def on_tab_changed(self, index):
         """Обработчик смены вкладки"""
@@ -2768,22 +3084,25 @@ class MainWindow(QMainWindow):
                     mod_name = file[:-4]
                     mod_name = mod_name.replace('-', ' ').replace('_', ' ').title()
                     self.mods_list.addItem(mod_name)
-                    
+            
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Обновляем статус
-            self.status_label.setText(f"Найдено модов: {self.mods_list.count()}")
+            self.status_label.setText(translations['mods_found'].format(count=self.mods_list.count()))
             
         except Exception as e:
             logging.error(f"Ошибка обновления списка модов: {str(e)}")
-            self.status_label.setText("Ошибка загрузки модов")
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+            self.status_label.setText(translations['mods_error'])
     
     def add_mods(self):
         """Добавляет новые моды"""
         try:
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             files, _ = QFileDialog.getOpenFileNames(
                 self,
-                "Выберите моды",
+                translations['add_mods_title'],
                 "",
-                "Minecraft Mods (*.jar)"
+                translations['mods_filter']
             )
             
             if not files:
@@ -2811,16 +3130,17 @@ class MainWindow(QMainWindow):
         try:
             # Получаем выбранные моды
             selected_items = self.mods_list.selectedItems()
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             
             if not selected_items:
-                QMessageBox.information(self, "Информация", "Выберите моды для удаления")
+                QMessageBox.information(self, translations['info'], translations['select_mods_to_remove'])
                 return
             
             # Спрашиваем подтверждение
             response = QMessageBox.question(
                 self,
-                "Удаление модов",
-                f"Вы уверены, что хотите удалить {len(selected_items)} мод(ов)?",
+                translations['confirm_remove_mods_title'],
+                translations['confirm_remove_mods_text'].format(count=len(selected_items)),
                 QMessageBox.Yes | QMessageBox.No
             )
             
@@ -2849,8 +3169,9 @@ class MainWindow(QMainWindow):
     def toggle_auto_updates(self):
         """Включает/выключает автообновление модов"""
         try:
-            if self.check_updates_button.text() == "Отключить обновление модов":
-                self.check_updates_button.setText("Включить обновление модов")
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+            if self.check_updates_button.text() == translations['check_updates_button_on']:
+                self.check_updates_button.setText(translations['check_updates_button_off'])
                 # Сохраняем настройку
                 config = {}
                 if os.path.exists(CONFIG_FILE):
@@ -2863,7 +3184,7 @@ class MainWindow(QMainWindow):
                 self.check_updates_button.setStyleSheet("background-color: red; color:white; font-weight:bold;");
 
             else:
-                self.check_updates_button.setText("Отключить обновление модов")
+                self.check_updates_button.setText(translations['check_updates_button_on'])
                 # Сохраняем настройку
                 config = {}
                 if os.path.exists(CONFIG_FILE):
@@ -2920,11 +3241,12 @@ class MainWindow(QMainWindow):
             java_version = self._get_java_version(java_path)
             logging.info(f"Найдена Java версии {java_version}")
             
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Проверяем соответствие версии
             if requires_java21 and java_version < 21:
                 result = QMessageBox.critical(
                     self, 
-                    "Ошибка Java", 
+                    translations['java_version_error_title'], 
                     f"Для Minecraft {minecraft_version} требуется Java 21 или выше.\n"
                     f"Установлена версия: {java_version}\n"
                     f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
@@ -2935,7 +3257,7 @@ class MainWindow(QMainWindow):
             elif not requires_java21 and java_version < 17:
                 result = QMessageBox.critical(
                     self, 
-                    "Ошибка Java", 
+                    translations['java_version_error_title'], 
                     f"Для Minecraft {minecraft_version} требуется Java 17 или выше.\n"
                     f"Установлена версия: {java_version}\n"
                     f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
@@ -2946,11 +3268,12 @@ class MainWindow(QMainWindow):
             else:
                 return True
         else:
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Java не найдена
             if requires_java21:
                 result = QMessageBox.critical(
                     self, 
-                    "Ошибка Java", 
+                    translations['java_version_error_title'],
                     f"Для Minecraft {minecraft_version} требуется Java 21, но она не найдена.\n"
                     f"Пожалуйста, установите Java 21 с сайта Oracle:\n"
                     f"https://www.oracle.com/java/technologies/downloads/#jdk21"
@@ -2960,7 +3283,7 @@ class MainWindow(QMainWindow):
             else:
                 result = QMessageBox.critical(
                     self, 
-                    "Ошибка Java", 
+                    translations['java_version_error_title'], 
                     f"Для Minecraft {minecraft_version} требуется Java 17, но она не найдена.\n"
                     f"Пожалуйста, установите Java 17 с сайта Oracle:\n"
                     f"https://www.oracle.com/java/technologies/downloads/#jdk17"
@@ -3692,10 +4015,11 @@ class MainWindow(QMainWindow):
         ip = "135.181.237.56"
         port = 25970
         online = get_minecraft_online(ip, port)
+        translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
         if online is None:
-            self.players_online_label.setText('<span style="color:#DC143C;font-weight:bold;">Сервер Offline</span>')
+            self.players_online_label.setText(f'<span style="color:#DC143C;font-weight:bold;">{translations["server_offline"]}</span>')
         else:
-            self.players_online_label.setText(f'Игроков онлайн: <span style="color:#2E8B57;font-weight:bold;">{online}</span>')
+            self.players_online_label.setText(f'{translations["players_online_label"]}<span style="color:#2E8B57;font-weight:bold;">{online}</span>')
 
     def on_theme_changed(self):
         self.apply_theme()
@@ -3796,6 +4120,7 @@ class MainWindow(QMainWindow):
                     color: #fff;
                 }
                 QProgressBar { background: #23272e; color: #fff; border: 1px solid #444; }
+                QLabel#memory_title, QLabel#launch_flags_title { background-color: transparent; }
             """)
         else:
             self.setStyleSheet("""
@@ -3883,6 +4208,7 @@ class MainWindow(QMainWindow):
                     color: #fff;
                 }
                 QProgressBar { background: #f5f5f5; color: #23272e; border: 1px solid #ccc; }
+                QLabel#memory_title, QLabel#launch_flags_title { background-color: transparent; }
             """)
             # Сбросить стили для QTabWidget, QTabBar, QComboBox, QPlainTextEdit, чтобы они были светлыми
             self.tabWidget.setStyleSheet("")
@@ -3897,8 +4223,9 @@ class MainWindow(QMainWindow):
             import logging
             logging.info('on_game_started called, setting status and starting timer')
             label = self.findChild(QLabel, 'status_label')
+            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             if label:
-                label.setText("Игра запускается, лаунчер закроется через 20 секунд...")
+                label.setText(translations['game_launching_text'])
             else:
                 print('status_label not found!')
             QTimer.singleShot(20000, self.close)
