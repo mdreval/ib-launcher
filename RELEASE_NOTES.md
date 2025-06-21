@@ -1,7 +1,7 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
-## Версия 1.0.8.7
+## Версия 1.0.8.8
 
 ### Что нового
 - Добавлена поддержка нескольких языков: Русский, Украинский, Английский.
@@ -16,7 +16,7 @@
 
 ---
 
-## Версія 1.0.8.7
+## Версія 1.0.8.8
 
 ### Що нового
 - Додано підтримку декількох мов: Російська, Українська, Англійська.
@@ -31,7 +31,7 @@
 
 ---
 
-## Version 1.0.8.7
+## Version 1.0.8.8
 
 ### What's new
 - Added multi-language support: Russian, Ukrainian, English.
@@ -53,5 +53,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.7/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.7/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.8/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.8.8/IB-Launcher.dmg) - macOS

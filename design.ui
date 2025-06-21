@@ -125,7 +125,7 @@ QTabBar::tab:hover {
 </string>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabGame">
        <attribute name="title">
@@ -134,6 +134,12 @@ QTabBar::tab:hover {
        <layout class="QVBoxLayout" name="game_layout">
         <item>
          <widget class="QGroupBox" name="username_group">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>80</height>
+           </size>
+          </property>
           <property name="font">
            <font>
             <family>MS Shell Dlg 2</family>
@@ -195,6 +201,12 @@ QLineEdit:focus {
         </item>
         <item>
          <widget class="QGroupBox" name="versions_group">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>80</height>
+           </size>
+          </property>
           <property name="font">
            <font>
             <family>MS Shell Dlg 2</family>
@@ -316,6 +328,12 @@ QComboBox:hover {
         </item>
         <item>
          <widget class="QGroupBox" name="path_group">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>80</height>
+           </size>
+          </property>
           <property name="styleSheet">
            <string notr="true"/>
           </property>
@@ -706,6 +724,12 @@ QGroupBox::title {
         </item>
         <item>
          <widget class="QGroupBox" name="launch_flags_group">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>134</height>
+           </size>
+          </property>
           <property name="font">
            <font>
             <pointsize>10</pointsize>
