@@ -125,7 +125,7 @@ QTabBar::tab:hover {
 </string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tabGame">
        <attribute name="title">
@@ -148,8 +148,14 @@ QTabBar::tab:hover {
            <string>Никнейм</string>
           </property>
           <layout class="QVBoxLayout" name="username_layout">
-           <item alignment="Qt::AlignTop">
+           <item>
             <widget class="QLineEdit" name="username_input">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
@@ -169,11 +175,11 @@ QTabBar::tab:hover {
              </property>
              <property name="styleSheet">
               <string notr="true">QLineEdit {
+    margin-top: 1px;
     padding: 2px;
     border: 2px solid #ccc;
     border-radius: 4px;
     font-size: 8pt;
-    min-height: 23px;
 }
 QLineEdit:focus {
     border-color: #2E8B57;
@@ -225,12 +231,12 @@ QLineEdit:focus {
              </property>
              <property name="styleSheet">
               <string notr="true">QComboBox {
+    margin-top: 0px;
     padding: 2px;
     border: 2px solid #ccc;
     border-radius: 4px;
     background: #23272e;
     color: #e0e0e0;
-    min-height: 23px;
     font-size: 8pt;
 }
 QComboBox QAbstractItemView {
@@ -276,12 +282,12 @@ QComboBox:hover {
              </property>
              <property name="styleSheet">
               <string notr="true">QComboBox {
+    margin-top: 0px;
     padding: 2px;
     border: 2px solid #ccc;
     border-radius: 4px;
     background: #23272e;
     color: #e0e0e0;
-    min-height: 23px;
     font-size: 8pt;
 }
 QComboBox QAbstractItemView {
@@ -337,7 +343,6 @@ QComboBox:hover {
     border: 2px solid #ccc;
     border-radius: 4px;
     font-size: 8pt;
-    min-height: 23px;
 }
 QLineEdit:focus {
     border-color: #2E8B57;
@@ -745,13 +750,13 @@ QGroupBox::title {
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>100</height>
+               <height>70</height>
               </size>
              </property>
              <property name="maximumSize">
               <size>
                <width>16777215</width>
-               <height>100</height>
+               <height>70</height>
               </size>
              </property>
              <property name="font">
@@ -762,6 +767,7 @@ QGroupBox::title {
              </property>
              <property name="styleSheet">
               <string notr="true">QPlainTextEdit {
+    margin: 0px;
     padding: 5px;
     border: 2px solid #ccc;
     border-radius: 4px;
