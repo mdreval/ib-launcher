@@ -1041,17 +1041,17 @@ class InstallThread(QThread):
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Ошибка запуска игры: {str(e)}")
 
-    def find_java_path(self, requires_java21=False):
+    def find_java_path(self, requires_java24=True):
         """
         Находит путь к Java на системе.
         
         Args:
-            requires_java21 (bool): Если True, ищет Java 21+, иначе ищет Java 17+
+            requires_java24 (bool): Если True, ищет Java 24+, иначе ищет Java 24+
         
         Returns:
             str: Путь к Java или None, если не найден
         """
-        min_version = 21 if requires_java21 else 17
+        min_version = 24  # Всегда ищем Java 24+
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -1096,45 +1096,7 @@ class InstallThread(QThread):
                 logging.info(f"Выбран Java {version} ({path})")
                 return path
         
-        # Если не нашлось подходящей версии, но есть хоть какой-то Java
-        if found_java_paths:
-            best_path, best_version = found_java_paths[0]
-            logging.warning(f"Не найден Java {min_version}+. Лучшая найденная версия: Java {best_version}")
-            
-            # Показываем сообщение о несоответствии версии
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("Требуется Java " + str(min_version))
-            
-            if min_version == 21:
-                msg.setText(f"Для запуска этой версии Minecraft требуется Java 21.\nУ вас установлен Java {best_version}.")
-            else:
-                msg.setText(f"Для запуска этой версии Minecraft требуется Java 17 или выше.\nУ вас установлен Java {best_version}.")
-            
-            msg.setInformativeText("Вы хотите загрузить правильную версию Java?")
-            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            
-            if msg.exec_() == QMessageBox.Yes:
-                # Открываем ссылку для скачивания Java в зависимости от ОС
-                system = platform.system()
-                if system == "Windows":
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html")
-                elif system == "Darwin":  # macOS
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-mac")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-mac")
-                else:  # Linux
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-linux")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-linux")
-            
-            return None
-        
+
         # Если Java не найден вообще
         logging.error(f"Java не найден на системе")
         
@@ -1142,10 +1104,7 @@ class InstallThread(QThread):
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Java не найден")
         
-        if min_version == 21:
-            msg.setText("Для запуска этой версии Minecraft требуется Java 21.\nJava не найден на вашей системе.")
-        else:
-            msg.setText("Для запуска Minecraft требуется Java 17 или выше.\nJava не найден на вашей системе.")
+        msg.setText("Для запуска этой версии Minecraft требуется Java 24.\nJava не найден на вашей системе.")
         
         msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -1154,20 +1113,11 @@ class InstallThread(QThread):
             # Открываем ссылку для скачивания Java в зависимости от ОС
             system = platform.system()
             if system == "Windows":
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
             elif system == "Darwin":  # macOS
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-mac")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-mac")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
             else:  # Linux
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-linux")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-linux")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
         
         return None
 
@@ -3000,7 +2950,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.8"
+            current_version = "1.0.8.9"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3037,7 +2987,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.8"
+            current_version = "1.0.8.9"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3205,36 +3155,19 @@ class MainWindow(QMainWindow):
         logging.info(f"Проверка Java для версии {minecraft_version}")
         
         # Определяем требуемую версию Java для разных версий Minecraft
-        requires_java21 = False
+        requires_java24 = True  # Всегда используем Java 24
         
         # Анализируем версию Minecraft
         try:
-            # Проверяем конкретные версии для особой обработки
-            if minecraft_version == "1.21.4":
-                requires_java21 = True
-                logging.info(f"Для версии {minecraft_version} требуется Java 21+")
-            # Проверяем общий случай версии 1.21.x
-            elif minecraft_version.startswith('1.21'):
-                requires_java21 = True
-                logging.info(f"Для версии {minecraft_version} требуется Java 21+")
-            # Проверяем версию 1.20.2+
-            elif minecraft_version.startswith('1.20.'):
-                # Разбиваем версию на компоненты
-                version_parts = minecraft_version.split('.')
-                if len(version_parts) > 2 and int(version_parts[2]) >= 2:
-                    requires_java21 = True
-                    logging.info(f"Для версии {minecraft_version} требуется Java 21+")
-                else:
-                    logging.info(f"Для версии {minecraft_version} требуется Java 17+")
-            else:
-                logging.info(f"Для версии {minecraft_version} требуется Java 17+")
+            # Для всех версий Minecraft теперь требуется Java 24
+            logging.info(f"Для версии {minecraft_version} требуется Java 24+")
         except Exception as e:
             logging.error(f"Ошибка анализа версии Minecraft: {str(e)}")
-            # По умолчанию предполагаем, что требуется Java 17
-            logging.info("По умолчанию используем Java 17")
+            # По умолчанию предполагаем, что требуется Java 24
+            logging.info("По умолчанию используем Java 24")
         
         # Находим путь к Java
-        java_path = self.find_java_path(requires_java21)
+        java_path = self.find_java_path(requires_java24)
         
         if java_path:
             # Получаем версию Java
@@ -3243,66 +3176,44 @@ class MainWindow(QMainWindow):
             
             translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Проверяем соответствие версии
-            if requires_java21 and java_version < 21:
+            if java_version < 24:
                 result = QMessageBox.critical(
                     self, 
                     translations['java_version_error_title'], 
-                    f"Для Minecraft {minecraft_version} требуется Java 21 или выше.\n"
+                    f"Для Minecraft {minecraft_version} требуется Java 24 или выше.\n"
                     f"Установлена версия: {java_version}\n"
                     f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk21"
+                    f"https://www.oracle.com/java/technologies/downloads/#jdk24"
                 )
                 if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"))
-            elif not requires_java21 and java_version < 17:
-                result = QMessageBox.critical(
-                    self, 
-                    translations['java_version_error_title'], 
-                    f"Для Minecraft {minecraft_version} требуется Java 17 или выше.\n"
-                    f"Установлена версия: {java_version}\n"
-                    f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk17"
-                )
-                if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java24"))
             else:
                 return True
         else:
             translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Java не найдена
-            if requires_java21:
-                result = QMessageBox.critical(
-                    self, 
-                    translations['java_version_error_title'],
-                    f"Для Minecraft {minecraft_version} требуется Java 21, но она не найдена.\n"
-                    f"Пожалуйста, установите Java 21 с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk21"
-                )
-                if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"))
-            else:
-                result = QMessageBox.critical(
-                    self, 
-                    translations['java_version_error_title'], 
-                    f"Для Minecraft {minecraft_version} требуется Java 17, но она не найдена.\n"
-                    f"Пожалуйста, установите Java 17 с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk17"
-                )
-                if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+            result = QMessageBox.critical(
+                self, 
+                translations['java_version_error_title'],
+                f"Для Minecraft {minecraft_version} требуется Java 24, но она не найдена.\n"
+                f"Пожалуйста, установите Java 24 с сайта Oracle:\n"
+                f"https://www.oracle.com/java/technologies/downloads/#jdk24"
+            )
+            if result == QMessageBox.Ok:
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java24"))
             return False
 
-    def find_java_path(self, requires_java21=False):
+    def find_java_path(self, requires_java24=True):
         """
         Находит путь к Java на системе.
         
         Args:
-            requires_java21 (bool): Если True, ищет Java 21+, иначе ищет Java 17+
+            requires_java24 (bool): Если True, ищет Java 24+, иначе ищет Java 24+
         
         Returns:
             str: Путь к Java или None, если не найден
         """
-        min_version = 21 if requires_java21 else 17
+        min_version = 24  # Всегда ищем Java 24+
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -3351,39 +3262,6 @@ class MainWindow(QMainWindow):
         if found_java_paths:
             best_path, best_version = found_java_paths[0]
             logging.warning(f"Не найден Java {min_version}+. Лучшая найденная версия: Java {best_version}")
-            
-            # Показываем сообщение о несоответствии версии
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("Требуется Java " + str(min_version))
-            
-            if min_version == 21:
-                msg.setText(f"Для запуска этой версии Minecraft требуется Java 21.\nУ вас установлен Java {best_version}.")
-            else:
-                msg.setText(f"Для запуска этой версии Minecraft требуется Java 17 или выше.\nУ вас установлен Java {best_version}.")
-            
-            msg.setInformativeText("Вы хотите загрузить правильную версию Java?")
-            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            
-            if msg.exec_() == QMessageBox.Yes:
-                # Открываем ссылку для скачивания Java в зависимости от ОС
-                system = platform.system()
-                if system == "Windows":
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html")
-                elif system == "Darwin":  # macOS
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-mac")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-mac")
-                else:  # Linux
-                    if min_version == 21:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-linux")
-                    else:
-                        webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-linux")
-            
             return None
         
         # Если Java не найден вообще
@@ -3393,10 +3271,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Java не найден")
         
-        if min_version == 21:
-            msg.setText("Для запуска этой версии Minecraft требуется Java 21.\nJava не найден на вашей системе.")
-        else:
-            msg.setText("Для запуска Minecraft требуется Java 17 или выше.\nJava не найден на вашей системе.")
+        msg.setText("Для запуска этой версии Minecraft требуется Java 24.\nJava не найден на вашей системе.")
         
         msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -3405,20 +3280,11 @@ class MainWindow(QMainWindow):
             # Открываем ссылку для скачивания Java в зависимости от ОС
             system = platform.system()
             if system == "Windows":
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
             elif system == "Darwin":  # macOS
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-mac")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-mac")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
             else:  # Linux
-                if min_version == 21:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk21-linux")
-                else:
-                    webbrowser.open("https://www.oracle.com/java/technologies/downloads/#jdk17-linux")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
         
         return None
 
@@ -3687,9 +3553,9 @@ class MainWindow(QMainWindow):
                 return
             
             # Проверяем наличие Java в зависимости от выбранной версии
-            if not self.check_java_for_version(selected_version):
-                QMessageBox.warning(self, "Ошибка", f"Требуется соответствующая версия Java для Minecraft {selected_version}")
-                return
+            #if not self.check_java_for_version(selected_version):
+            #    QMessageBox.warning(self, "Ошибка", f"Требуется соответствующая версия Java для Minecraft {selected_version}")
+            #    return
             
             # Проверка Forge
             forge_selected = (
