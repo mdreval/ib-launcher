@@ -109,7 +109,7 @@ TRANSLATIONS = {
         'failed_to_create_dir': 'Не удалось создать директорию установки: {error}',
         'failed_to_install': 'Не удалось установить игру: {error}',
         'java_version_error_title': 'Ошибка Java',
-        'java_install_error_text': 'Java не установлена или версия ниже 17!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
+        'java_install_error_text': 'Java не установлена или версия ниже 25!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
         'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.'
     },
     'en': {
@@ -171,7 +171,7 @@ TRANSLATIONS = {
         'failed_to_create_dir': 'Failed to create installation directory: {error}',
         'failed_to_install': 'Failed to install the game: {error}',
         'java_version_error_title': 'Java Error',
-        'java_install_error_text': 'Java is not installed or version is below 17!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
+        'java_install_error_text': 'Java is not installed or version is below 25!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
         'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.'
     },
     'uk': {
@@ -233,7 +233,7 @@ TRANSLATIONS = {
         'failed_to_create_dir': 'Не вдалося створити директорію встановлення: {error}',
         'failed_to_install': 'Не вдалося встановити гру: {error}',
         'java_version_error_title': 'Помилка Java',
-        'java_install_error_text': 'Java не встановлено або версія нижче 17!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
+        'java_install_error_text': 'Java не встановлено або версія нижче 25!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
         'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.'
     }
 }
@@ -408,8 +408,8 @@ class JavaInstaller(QDialog):
         self.install_thread = None
 
         layout = QVBoxLayout()
-        self.status_label = QLabel("Для работы требуется Java 17+. Установить сейчас?")
-        self.install_button = QPushButton("Установить Java 17")
+        self.status_label = QLabel("Для работы требуется Java 25+. Установить сейчас?")
+        self.install_button = QPushButton("Установить Java 25")
         self.cancel_button = QPushButton("Отмена")
 
         layout.addWidget(self.status_label)
@@ -459,8 +459,8 @@ class JavaInstallThread(QThread):
             
             # Обновленные URL для скачивания Java
             java_urls = {
-                "Windows": "https://download.oracle.com/java/17/archive/jdk-17.0.10_windows-x64_bin.exe",
-                "Darwin": "https://download.oracle.com/java/17/archive/jdk-17.0.10_macos-aarch64_bin.dmg"
+                "Windows": "https://download.oracle.com/java/25/archive/jdk-25.0.0_windows-x64_bin.exe",
+                "Darwin": "https://download.oracle.com/java/25/archive/jdk-25.0.0_macos-aarch64_bin.dmg"
             }
             
             if os_type not in java_urls:
@@ -475,7 +475,7 @@ class JavaInstallThread(QThread):
             temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
             os.makedirs(temp_dir, exist_ok=True)
             
-            installer_name = "jdk-17.exe" if os_type == "Windows" else "jdk-17.dmg"
+            installer_name = "jdk-25.exe" if os_type == "Windows" else "jdk-25.dmg"
             installer_path = os.path.join(temp_dir, installer_name)
             
             # Скачиваем установщик
@@ -588,8 +588,8 @@ class InstallThread(QThread):
                         logging.info(f"Запуск установки Minecraft версии: {self.version}")
                         self._install_minecraft()
 
-            # Устанавливаем модпак только для версии 1.20.1 если нужно
-            if self.version == "1.20.1" or self.version.startswith("1.20.1-"):
+            # Устанавливаем модпак если включено автообновление
+            if self.mods_update_switch:
                 self._install_modpack()
                 
             # Запускаем игру
@@ -1041,17 +1041,17 @@ class InstallThread(QThread):
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Ошибка запуска игры: {str(e)}")
 
-    def find_java_path(self, requires_java24=True):
+    def find_java_path(self, requires_java25=True):
         """
         Находит путь к Java на системе.
         
         Args:
-            requires_java24 (bool): Если True, ищет Java 24+, иначе ищет Java 24+
+            requires_java25 (bool): Если True, ищет Java 25+, иначе ищет Java 25+
         
         Returns:
             str: Путь к Java или None, если не найден
         """
-        min_version = 24  # Всегда ищем Java 24+
+        min_version = 25  # Всегда ищем Java 25+
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -1104,7 +1104,7 @@ class InstallThread(QThread):
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Java не найден")
         
-        msg.setText("Для запуска этой версии Minecraft требуется Java 24.\nJava не найден на вашей системе.")
+        msg.setText("Для запуска этой версии Minecraft требуется Java 25.\nJava не найден на вашей системе.")
         
         msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -1113,11 +1113,11 @@ class InstallThread(QThread):
             # Открываем ссылку для скачивания Java в зависимости от ОС
             system = platform.system()
             if system == "Windows":
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
             elif system == "Darwin":  # macOS
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
             else:  # Linux
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
         
         return None
 
@@ -1315,7 +1315,7 @@ class InstallThread(QThread):
             logging.info(f"Вывод команды java -version: {version_output}")
 
             # Извлекаем версию Java
-            # Формат может быть "1.8.0_301" (Java 8) или "11.0.2" (Java 11+) или просто "17" (Java 17)
+            # Формат может быть "1.8.0_301" (Java 8) или "11.0.2" (Java 11+) или просто "25" (Java 25)
             version_pattern = r'version "([^"]+)"'
             match = re.search(version_pattern, version_output)
             
@@ -1428,7 +1428,7 @@ class InstallThread(QThread):
                 self.add_to_forge_cache(selected_version, forge_version_id)
                 
                 # Для 1.20.1 с Forge устанавливаем модпак
-                if selected_version == "1.20.1" and self.mods_update_checkbox.isChecked():
+                if self.mods_update_checkbox.isChecked():
                     self.install_modpack()
             else:
                 # Установка только Minecraft без Forge
@@ -1924,9 +1924,9 @@ class MainWindow(QMainWindow):
                 'javaw.exe',  # Проверяем в PATH
                 'java.exe',   # Альтернативный вариант
                 r'\usr\bin\java',
-                r'C:\Program Files\Java\jdk-24\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-24.0.1\bin\javaw.exe',
-                r'C:\Program Files\Eclipse Adoptium\jdk-24\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-25\bin\javaw.exe',
+                r'C:\Program Files\Java\jdk-25.0.0\bin\javaw.exe',
+                r'C:\Program Files\Eclipse Adoptium\jdk-25\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-21\bin\javaw.exe',
                 r'C:\Program Files\Java\jdk-21.0.2\bin\javaw.exe',
                 r'C:\Program Files\Eclipse Adoptium\jdk-21\bin\javaw.exe',
@@ -1990,7 +1990,7 @@ class MainWindow(QMainWindow):
                     logging.info(f"Found Java version: {version_string}")
                     
                     # Проверяем версию
-                    if any(str(v) in version_string for v in range(17, 25)):
+                    if any(str(v) in version_string for v in range(25, 26)):
                         logging.info("Java version is compatible")
                         return java_path
             
@@ -1999,7 +1999,7 @@ class MainWindow(QMainWindow):
             response = QMessageBox.critical(
                 self,
                 "Ошибка",
-                "Java не установлена или версия ниже 17!\n\n" +
+                "Java не установлена или версия ниже 25!\n\n" +
                 "Сейчас откроется страница загрузки Oracle Java.\n" +
                 "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
                 "Для Windows рекомендуется Windows x64 Installer.",
@@ -2007,7 +2007,7 @@ class MainWindow(QMainWindow):
             )
             
             if response == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
             return False
 
         except Exception as e:
@@ -2023,7 +2023,7 @@ class MainWindow(QMainWindow):
             )
             
             if response == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"))
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
             return False
 
     def load_config(self):
@@ -2724,25 +2724,17 @@ class MainWindow(QMainWindow):
     def check_mods_update(self):
         """Проверяет обновления модов"""
         try:
-            # Проверяем, что выбрана версия 1.20.1
             selected_version = self.minecraft_version.currentText()
-            if selected_version != "1.20.1":
-                logging.info(f"Проверка обновлений модов пропущена: версия {selected_version} не 1.20.1")
-                return False
-
-            # Проверяем, включено ли автообновление модов
+            # Удалена проверка на 1.20.1, теперь работает для любой версии
             if not self.mods_update_checkbox.isChecked():
                 logging.info("Автообновление модов отключено")
                 return False
-            
             logging.info("Начало проверки обновлений модов")
-            
             # Проверяем наличие папки модов
             mods_path = os.path.join(self.install_path_str, "mods")
             if not os.path.exists(mods_path):
                 os.makedirs(mods_path)
                 logging.info(f"Создана папка модов: {mods_path}")
-            
             # Получаем список доступных модов с GitHub
             try:
                 api_url = "https://api.github.com/repos/IGROBAR/ib-launcher-modpack/contents/mods"
@@ -2950,7 +2942,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.9"
+            current_version = "1.0.9.0"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2987,7 +2979,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.8.9"
+            current_version = "1.0.9.0"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3155,19 +3147,19 @@ class MainWindow(QMainWindow):
         logging.info(f"Проверка Java для версии {minecraft_version}")
         
         # Определяем требуемую версию Java для разных версий Minecraft
-        requires_java24 = True  # Всегда используем Java 24
+        requires_java25 = True  # Всегда используем Java 25
         
         # Анализируем версию Minecraft
         try:
-            # Для всех версий Minecraft теперь требуется Java 24
-            logging.info(f"Для версии {minecraft_version} требуется Java 24+")
+            # Для всех версий Minecraft теперь требуется Java 25
+            logging.info(f"Для версии {minecraft_version} требуется Java 25+")
         except Exception as e:
             logging.error(f"Ошибка анализа версии Minecraft: {str(e)}")
-            # По умолчанию предполагаем, что требуется Java 24
-            logging.info("По умолчанию используем Java 24")
+            # По умолчанию предполагаем, что требуется Java 25
+            logging.info("По умолчанию используем Java 25")
         
         # Находим путь к Java
-        java_path = self.find_java_path(requires_java24)
+        java_path = self.find_java_path(requires_java25)
         
         if java_path:
             # Получаем версию Java
@@ -3176,17 +3168,17 @@ class MainWindow(QMainWindow):
             
             translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
             # Проверяем соответствие версии
-            if java_version < 24:
+            if java_version < 25:
                 result = QMessageBox.critical(
                     self, 
                     translations['java_version_error_title'], 
-                    f"Для Minecraft {minecraft_version} требуется Java 24 или выше.\n"
+                    f"Для Minecraft {minecraft_version} требуется Java 25 или выше.\n"
                     f"Установлена версия: {java_version}\n"
                     f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk24"
+                    f"https://www.oracle.com/java/technologies/downloads/#jdk25"
                 )
                 if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java24"))
+                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
             else:
                 return True
         else:
@@ -3195,25 +3187,25 @@ class MainWindow(QMainWindow):
             result = QMessageBox.critical(
                 self, 
                 translations['java_version_error_title'],
-                f"Для Minecraft {minecraft_version} требуется Java 24, но она не найдена.\n"
-                f"Пожалуйста, установите Java 24 с сайта Oracle:\n"
-                f"https://www.oracle.com/java/technologies/downloads/#jdk24"
+                f"Для Minecraft {minecraft_version} требуется Java 25, но она не найдена.\n"
+                f"Пожалуйста, установите Java 25 с сайта Oracle:\n"
+                f"https://www.oracle.com/java/technologies/downloads/#jdk25"
             )
             if result == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java24"))
+                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
             return False
 
-    def find_java_path(self, requires_java24=True):
+    def find_java_path(self, requires_java25=True):
         """
         Находит путь к Java на системе.
         
         Args:
-            requires_java24 (bool): Если True, ищет Java 24+, иначе ищет Java 24+
+            requires_java25 (bool): Если True, ищет Java 25+, иначе ищет Java 25+
         
         Returns:
             str: Путь к Java или None, если не найден
         """
-        min_version = 24  # Всегда ищем Java 24+
+        min_version = 25  # Всегда ищем Java 25+
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -3271,7 +3263,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Java не найден")
         
-        msg.setText("Для запуска этой версии Minecraft требуется Java 24.\nJava не найден на вашей системе.")
+        msg.setText("Для запуска этой версии Minecraft требуется Java 25.\nJava не найден на вашей системе.")
         
         msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -3280,11 +3272,11 @@ class MainWindow(QMainWindow):
             # Открываем ссылку для скачивания Java в зависимости от ОС
             system = platform.system()
             if system == "Windows":
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
             elif system == "Darwin":  # macOS
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
             else:  # Linux
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java24")
+                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
         
         return None
 
@@ -3595,7 +3587,7 @@ class MainWindow(QMainWindow):
                 self.add_to_forge_cache(selected_version, forge_version_id)
                 
                 # Для 1.20.1 с Forge устанавливаем модпак
-                if selected_version == "1.20.1" and self.mods_update_checkbox.isChecked():
+                if self.mods_update_checkbox.isChecked():
                     self.install_modpack()
             else:
                 # Установка только Minecraft без Forge

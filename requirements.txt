@@ -18,3 +18,4 @@ pyinstaller-hooks-contrib==2024.0
 
 # Для работы с файлами и системой
 psutil==5.9.8
+
