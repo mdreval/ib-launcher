@@ -1,6 +1,6 @@
 # GUI и основные компоненты
 PyQt5>=5.15.9
-PyQtWebEngine>=5.15.9
+PyQtWebEngine>=5.15.7,<5.16
 
 # Windows-специфичные зависимости
 pywin32>=306; platform_system == "Windows"

@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.9.1
+# IB Launcher v1.0.9.2
 ![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
 ---
@@ -27,7 +27,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
-#### Версия 1.0.9.1
+#### Версия 1.0.9.2
 - Добавлена новая вкладка «Карта» в лаунчере.
 - Вкладка открывает веб‑карту сервера (Dynmap): https://igrobar.dynmap.xyz/.
 
@@ -68,7 +68,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Історія версій
 
-#### Версія 1.0.9.1
+#### Версія 1.0.9.2
 - Додано нову вкладку «Карта» в лаунчері.
 - Вкладка відкриває веб‑карту сервера (Dynmap): https://igrobar.dynmap.xyz/.
 
@@ -109,7 +109,7 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
-#### Version 1.0.9.1
+#### Version 1.0.9.2
 - Added a new **Map** tab to the launcher.
 - The tab opens the server Dynmap in an embedded browser: https://igrobar.dynmap.xyz/.
 
@@ -129,8 +129,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.2/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.2/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

@@ -1,7 +1,7 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
-## Версия 1.0.9.1
+## Версия 1.0.9.2
 
 ### Что нового
 - Добавлена новая вкладка «Карта» в лаунчере.
@@ -13,7 +13,7 @@
 
 ---
 
-## Версія 1.0.9.1
+## Версія 1.0.9.2
 
 ### Що нового
 - Додано нову вкладку «Карта» в лаунчері.
@@ -25,7 +25,7 @@
 
 ---
 
-## Version 1.0.9.1
+## Version 1.0.9.2
 
 ### What's new
 - Added a new **Map** tab to the launcher.
@@ -44,5 +44,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.2/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.2/IB-Launcher.dmg) - macOS
