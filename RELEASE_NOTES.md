@@ -1,48 +1,39 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
-## Версия 1.0.9.0
+## Версия 1.0.9.1
 
 ### Что нового
-- Добавлена поддержка нескольких языков: Русский, Украинский, Английский.
-- Появилась возможность смены языка интерфейса в настройках.
-- Улучшен дизайн настроек: выбор языка теперь реализован через переключатели для большего удобства.
-- Исправлен ряд ошибок и улучшена стабильность интерфейса в процессе добавления нового функционала.
+- Добавлена новая вкладка «Карта» в лаунчере.
+- Во вкладке открывается веб‑карта сервера (Dynmap): https://igrobar.dynmap.xyz/.
 
 ### Технические изменения
-- Реализована полноценная система интернационализации (i18n).
-- Проведен значительный рефакторинг кода, отвечающего за работу с элементами интерфейса.
-- Улучшены таблицы стилей (CSS) для корректного отображения новых элементов.
+- Добавлена зависимость PyQtWebEngine для отображения встроенного браузера.
+- Обновлена разметка интерфейса и стили вкладок.
 
 ---
 
-## Версія 1.0.9.0
+## Версія 1.0.9.1
 
 ### Що нового
-- Додано підтримку декількох мов: Російська, Українська, Англійська.
-- З'явилася можливість зміни мови інтерфейсу в налаштуваннях.
-- Покращено дизайн налаштувань: вибір мови тепер реалізований через перемикачі для більшої зручності.
-- Виправлено низку помилок та покращено стабільність інтерфейсу в процесі додавання нового функціоналу.
+- Додано нову вкладку «Карта» в лаунчері.
+- У вкладці відкривається веб‑карта сервера (Dynmap): https://igrobar.dynmap.xyz/.
 
 ### Технічні зміни
-- Реалізовано повноцінну систему інтернаціоналізації (i18n).
-- Проведено значний рефакторинг коду, що відповідає за роботу з елементами інтерфейсу.
-- Покращено таблиці стилів (CSS) для коректного відображення нових елементів.
+- Додано залежність PyQtWebEngine для відображення вбудованого браузера.
+- Оновлено розмітку інтерфейсу та стилі вкладок.
 
 ---
 
-## Version 1.0.9.0
+## Version 1.0.9.1
 
 ### What's new
-- Added multi-language support: Russian, Ukrainian, English.
-- Added the ability to change the interface language in the settings.
-- Improved settings design: language selection is now implemented via radio buttons for better usability.
-- Fixed a number of bugs and improved UI stability during the implementation of new functionality.
+- Added a new **Map** tab to the launcher.
+- The tab opens the server Dynmap in an embedded browser: https://igrobar.dynmap.xyz/.
 
 ### Technical changes
-- Implemented a full-fledged internationalization (i18n) system.
-- Conducted significant refactoring of the code responsible for handling UI elements.
-- Improved stylesheets (CSS) for the correct display of new elements.
+- Added PyQtWebEngine dependency for embedded browser support.
+- Updated UI layout and tab styles to support the new map tab.
 
 ---
 
@@ -53,5 +44,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.0/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.0/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.1/IB-Launcher.dmg) - macOS

@@ -625,6 +625,28 @@ QPushButton:disabled {
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="tabMap">
+       <attribute name="title">
+        <string>Карта</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="map_layout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tabSettings">
        <attribute name="title">
         <string>Настройки</string>

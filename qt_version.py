@@ -19,6 +19,12 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QUrl
 from PyQt5.QtGui import QIcon, QPixmap, QFont, QDesktopServices
 from PyQt5 import uic
+
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView
+    HAS_WEBENGINE = True
+except ImportError:
+    HAS_WEBENGINE = False
 import requests
 import zipfile
 import tempfile
@@ -50,6 +56,7 @@ TRANSLATIONS = {
         'tab_game': 'Игра',
         'tab_mods': 'Моды',
         'tab_settings': 'Настройки',
+        'tab_map': 'Карта',
         # Game Tab
         'username_group': 'Никнейм',
         'username_placeholder': 'Введите имя игрока',
@@ -117,6 +124,7 @@ TRANSLATIONS = {
         'tab_game': 'Game',
         'tab_mods': 'Mods',
         'tab_settings': 'Settings',
+        'tab_map': 'Map',
         'username_group': 'Nickname',
         'username_placeholder': 'Enter player name',
         'version_group': 'Game Version',
@@ -179,6 +187,7 @@ TRANSLATIONS = {
         'tab_game': 'Гра',
         'tab_mods': 'Моди',
         'tab_settings': 'Налаштування',
+        'tab_map': 'Карта',
         'username_group': 'Нікнейм',
         'username_placeholder': 'Введіть ім\'я гравця',
         'version_group': 'Версія гри',
@@ -1610,6 +1619,22 @@ class MainWindow(QMainWindow):
         self.progress_bar = self.findChild(QProgressBar, "progress_bar")
         self.tabWidget = self.findChild(QTabWidget, "tabWidget")
 
+        # Вкладка карты (Dynmap)
+        self.tab_map = self.findChild(QWidget, "tabMap")
+        self.map_view = None
+        if self.tab_map is not None and HAS_WEBENGINE:
+            try:
+                self.map_view = QWebEngineView(self.tab_map)
+                self.map_view.setUrl(QUrl("https://igrobar.dynmap.xyz/"))
+                layout = self.tab_map.layout()
+                if layout is None:
+                    layout = QVBoxLayout(self.tab_map)
+                layout.setContentsMargins(0, 0, 0, 0)
+                layout.setSpacing(0)
+                layout.addWidget(self.map_view, 1)
+            except Exception as e:
+                logging.error(f"Не удалось инициализировать вкладку карты: {e}")
+
         # Дополнительные виджеты для перевода
         self.username_group = self.findChild(QGroupBox, "username_group")
         self.version_group = self.findChild(QGroupBox, "versions_group")
@@ -1701,7 +1726,11 @@ class MainWindow(QMainWindow):
             if self.tabWidget:
                 self.tabWidget.setTabText(0, translations['tab_game'])
                 self.tabWidget.setTabText(1, translations['tab_mods'])
-                self.tabWidget.setTabText(2, translations['tab_settings'])
+                if self.tabWidget.count() > 3:
+                    self.tabWidget.setTabText(2, translations.get('tab_map', 'Карта'))
+                    self.tabWidget.setTabText(3, translations['tab_settings'])
+                else:
+                    self.tabWidget.setTabText(2, translations['tab_settings'])
 
             # Game Tab
             if self.username_group: self.username_group.setTitle(translations['username_group'])
@@ -2942,7 +2971,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.0"
+            current_version = "1.0.9.1"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -2979,7 +3008,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.0"
+            current_version = "1.0.9.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
