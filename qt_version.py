@@ -117,7 +117,15 @@ TRANSLATIONS = {
         'failed_to_install': 'Не удалось установить игру: {error}',
         'java_version_error_title': 'Ошибка Java',
         'java_install_error_text': 'Java не установлена или версия ниже 25!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
-        'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.'
+        'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
+        'java_need_higher_body': 'Для Minecraft {mc} требуется Java {need}+.\nУстановлена версия: {have}.\n\nОткрыть страницу загрузки Java?',
+        'java_not_found_body': 'Для Minecraft {mc} требуется Java {need}+.\nПодходящая Java не найдена.\n\nОткрыть страницу загрузки Java?',
+        'java_download_hint_windows': 'Для Windows выберите x64 Installer.',
+        'java_download_hint_mac': 'Для macOS выберите установщик под ваш чип (ARM64 или x64).',
+        'java_download_hint_linux': 'Для Linux выберите пакет под вашу архитектуру на странице загрузки.',
+        'fabric_latest_label': 'Fabric (последняя)',
+        'fabric_loader_label': 'Fabric {loader}',
+        'loader_selected_status': 'Лоадер: {name}',
     },
     'en': {
         'window_title': 'IB Launcher',
@@ -180,7 +188,15 @@ TRANSLATIONS = {
         'failed_to_install': 'Failed to install the game: {error}',
         'java_version_error_title': 'Java Error',
         'java_install_error_text': 'Java is not installed or version is below 25!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
-        'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.'
+        'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
+        'java_need_higher_body': 'Minecraft {mc} requires Java {need}+.\nInstalled version: {have}.\n\nOpen the Java download page?',
+        'java_not_found_body': 'Minecraft {mc} requires Java {need}+.\nNo suitable Java was found.\n\nOpen the Java download page?',
+        'java_download_hint_windows': 'On Windows, choose the x64 Installer.',
+        'java_download_hint_mac': 'On macOS, choose the installer for your chip (ARM64 or x64).',
+        'java_download_hint_linux': 'On Linux, choose the archive or package for your architecture.',
+        'fabric_latest_label': 'Fabric (latest)',
+        'fabric_loader_label': 'Fabric {loader}',
+        'loader_selected_status': 'Loader: {name}',
     },
     'uk': {
         'window_title': 'IB Launcher',
@@ -243,7 +259,15 @@ TRANSLATIONS = {
         'failed_to_install': 'Не вдалося встановити гру: {error}',
         'java_version_error_title': 'Помилка Java',
         'java_install_error_text': 'Java не встановлено або версія нижче 25!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
-        'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.'
+        'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
+        'java_need_higher_body': 'Для Minecraft {mc} потрібна Java {need}+.\nВстановлена версія: {have}.\n\nВідкрити сторінку завантаження Java?',
+        'java_not_found_body': 'Для Minecraft {mc} потрібна Java {need}+.\nПідходящу Java не знайдено.\n\nВідкрити сторінку завантаження Java?',
+        'java_download_hint_windows': 'Для Windows оберіть x64 Installer.',
+        'java_download_hint_mac': 'Для macOS оберіть інсталятор під ваш чіп (ARM64 або x64).',
+        'java_download_hint_linux': 'Для Linux оберіть пакет під вашу архітектуру на сторінці завантаження.',
+        'fabric_latest_label': 'Fabric (остання)',
+        'fabric_loader_label': 'Fabric {loader}',
+        'loader_selected_status': 'Лоадер: {name}',
     }
 }
 
@@ -293,6 +317,99 @@ logging.basicConfig(
     filemode='w',
     encoding='utf-8'
 )
+
+
+def extract_base_minecraft_version(version_to_install: str) -> str:
+    """Базовая версия Minecraft из строки установки (vanilla / Forge / Fabric) — для правил Java."""
+    if not version_to_install:
+        return ""
+    s = version_to_install.strip()
+    if s.startswith("fabric-loader-"):
+        rest = s[len("fabric-loader-"):]
+        try:
+            return rest.rsplit("-", 1)[-1]
+        except (ValueError, IndexError):
+            return ""
+    m = re.match(r"^(\d+\.\d+(?:\.\d+)?)-", s)
+    if m:
+        return m.group(1)
+    if re.match(r"^\d+\.\d+", s):
+        return s.split("-", 1)[0]
+    return s
+
+
+def get_min_java_for_minecraft(minecraft_version_id: str) -> int:
+    """
+    Минимальная мажорная версия Java для выбранной версии Minecraft.
+    Матрица: 1.20.0–1.20.1 → 17; 1.20.2+ до 1.21.x → 21; 1.22+ → 25.
+    Снапшоты: год в id >= 25 → 25, иначе → 21.
+    """
+    if not minecraft_version_id:
+        return 21
+    vid = minecraft_version_id.strip()
+    snap = re.match(r"^(\d{2})w\d+[a-z]?$", vid, re.I)
+    if snap:
+        yy = int(snap.group(1))
+        return 25 if yy >= 25 else 21
+    parts = vid.split(".")
+    if len(parts) < 2:
+        return 21
+    try:
+        major = int(parts[0])
+        minor = int(parts[1])
+    except ValueError:
+        return 21
+    patch = int(parts[2]) if len(parts) > 2 and str(parts[2]).isdigit() else 0
+    if major != 1:
+        return 21
+    if minor == 20:
+        return 17 if patch <= 1 else 21
+    if minor == 21:
+        return 21
+    if minor >= 22:
+        return 25
+    return 17 if minor < 20 else 21
+
+
+def java_download_anchor_fragment(min_java_major: int) -> str:
+    """Фрагмент якоря Oracle Downloads (#java17 / #java21 / #java25)."""
+    if min_java_major <= 17:
+        return "java17"
+    if min_java_major <= 21:
+        return "java21"
+    return "java25"
+
+
+def java_download_page_url(min_java_major: int) -> str:
+    frag = java_download_anchor_fragment(min_java_major)
+    return f"https://www.oracle.com/java/technologies/downloads/#{frag}"
+
+
+def compare_mc_release_versions(version1: str, version2: str) -> int:
+    """Сравнение релизов вида 1.x.y. Нестандартные id (снапшоты) дают 0."""
+    if not re.match(r"^\d+\.\d+(?:\.\d+)?$", version1) or not re.match(r"^\d+\.\d+(?:\.\d+)?$", version2):
+        return 0
+    v1_parts = [int(x) for x in version1.split(".")]
+    v2_parts = [int(x) for x in version2.split(".")]
+    for i in range(max(len(v1_parts), len(v2_parts))):
+        p1 = v1_parts[i] if i < len(v1_parts) else 0
+        p2 = v2_parts[i] if i < len(v2_parts) else 0
+        if p1 > p2:
+            return 1
+        if p1 < p2:
+            return -1
+    return 0
+
+
+def split_fabric_loader_and_mc(fabric_version_id: str):
+    """Строка вида fabric-loader-{loader}-{minecraft_version} → (loader, mc_version)."""
+    prefix = "fabric-loader-"
+    if not fabric_version_id.startswith(prefix):
+        raise ValueError(f"Неверный id Fabric: {fabric_version_id}")
+    rest = fabric_version_id[len(prefix):]
+    loader, mc_ver = rest.rsplit("-", 1)
+    return loader, mc_ver
+
 
 def resource_path(relative_path):
     """ Получить абсолютный путь к ресурсу, работает как для разработки, так и для PyInstaller """
@@ -545,7 +662,7 @@ class InstallThread(QThread):
     error_occurred = pyqtSignal(str)
     game_started = pyqtSignal()
 
-    def __init__(self, version, username, install_path, memory=4, launch_flags_input=None, mods_update_switch=True):
+    def __init__(self, version, username, install_path, memory=4, launch_flags_input=None, mods_update_switch=True, min_java_major=21):
         super().__init__()
         self.version = version
         self.username = username
@@ -555,6 +672,7 @@ class InstallThread(QThread):
         self.stop_requested = False
         self.mods_update_switch=mods_update_switch
         self._game_started = False
+        self.min_java_major = int(min_java_major) if min_java_major else 21
 
     def run(self):
         try:
@@ -565,7 +683,15 @@ class InstallThread(QThread):
             versions_dir = os.path.join(self.install_path, "versions")
             is_installed = False
             
-            if "-" in self.version:  # Если это версия Forge
+            if self.version.startswith("fabric-loader-"):
+                fabric_dir = os.path.join(versions_dir, self.version)
+                if os.path.exists(fabric_dir) and os.listdir(fabric_dir):
+                    logging.info(f"Fabric версия {self.version} уже установлена")
+                    is_installed = True
+                else:
+                    logging.info(f"Запуск установки Fabric: {self.version}")
+                    self._install_fabric()
+            elif "-" in self.version:  # Если это версия Forge
                 # Проверяем, установлен ли Forge
                 installed_version = minecraft_launcher_lib.forge.forge_to_installed_version(self.version)
                 forge_dir = os.path.join(versions_dir, installed_version)
@@ -753,6 +879,24 @@ class InstallThread(QThread):
             logging.error(f"Ошибка установки Forge: {str(e)}", exc_info=True)
             raise
 
+    def _install_fabric(self):
+        try:
+            loader_ver, mc_ver = split_fabric_loader_and_mc(self.version)
+            logging.info(f"Установка Fabric loader={loader_ver}, minecraft={mc_ver}")
+            minecraft_launcher_lib.fabric.install_fabric(
+                mc_ver,
+                self.install_path,
+                loader_version=loader_ver,
+                callback={
+                    'setStatus': lambda text: self.status_update.emit(text),
+                    'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
+                    'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
+                }
+            )
+        except Exception as e:
+            logging.error(f"Ошибка установки Fabric: {str(e)}", exc_info=True)
+            raise
+
     def _install_modpack(self):
         """Устанавливает модпак"""
         if not self.mods_update_switch:
@@ -905,9 +1049,10 @@ class InstallThread(QThread):
             
             # Проверяем наличие ванильной или Forge версии
             versions_dir = os.path.join(self.install_path, "versions")
+            is_fabric = version_to_launch.startswith("fabric-loader-")
             
-            # Если нам нужно запустить ванильную версию (без Forge)
-            if "-" not in version_to_launch:
+            # Если нам нужно запустить ванильную версию (без Forge / Fabric)
+            if not is_fabric and "-" not in version_to_launch:
                 vanilla_dir = os.path.join(versions_dir, version_to_launch)
                 
                 # Если прямой установки ванильной версии нет, но есть Forge
@@ -919,49 +1064,52 @@ class InstallThread(QThread):
                             # Будем запускать Forge, но без модов (как ванильную версию)
                             version_to_launch = folder
                             break
-            # Если это Forge версия, форматируем её правильно
-            elif "-" in version_to_launch:
+            # Если это Forge версия, форматируем её правильно (Fabric не трогаем)
+            elif not is_fabric and "-" in version_to_launch:
                 # Проверяем, есть ли уже префикс forge
                 if "forge" not in version_to_launch.lower():
                     version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            # Формируем опции запуска с оптимизированными параметрами
+            is_forge_version = (not is_fabric) and ("forge" in version_to_launch.lower())
+            
+            jvm_args = [
+                f'-Xmx{self.memory}G',
+                '-XX:+UnlockExperimentalVMOptions',
+                '-XX:+UseG1GC',
+                '-XX:G1NewSizePercent=20',
+                '-XX:G1ReservePercent=20',
+                '-XX:MaxGCPauseMillis=50',
+                '-XX:G1HeapRegionSize=32M',
+                '-Djava.net.preferIPv4Stack=true',
+                '-Dlog4j2.formatMsgNoLookups=true',
+                '-XX:+DisableAttachMechanism',
+                '-XX:+UseStringDeduplication',
+                '-XX:+OptimizeStringConcat',
+                '-XX:+UseCompressedOops'
+            ]
+            if is_forge_version:
+                jvm_args.extend([
+                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
+                    '-Dfml.ignorePatchDiscrepancies=true',
+                ])
             options = {
                 'username': self.username,
                 'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
                 'token': '',
-                'jvmArguments': [
-                    f'-Xmx{self.memory}G',
-                    '-XX:+UnlockExperimentalVMOptions',
-                    '-XX:+UseG1GC',
-                    '-XX:G1NewSizePercent=20',
-                    '-XX:G1ReservePercent=20',
-                    '-XX:MaxGCPauseMillis=50',
-                    '-XX:G1HeapRegionSize=32M',
-                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
-                    '-Dfml.ignorePatchDiscrepancies=true',
-                    '-Djava.net.preferIPv4Stack=true',
-                    '-Dlog4j2.formatMsgNoLookups=true',
-                    '-XX:+DisableAttachMechanism',  # Ускоряет запуск
-                    '-XX:+UseStringDeduplication',  # Оптимизация памяти
-                    '-XX:+OptimizeStringConcat',    # Оптимизация строк
-                    '-XX:+UseCompressedOops'        # Оптимизация указателей
-                ],
-                'launchTarget': 'fmlclient',
-                'executablePath': self.find_java_path(True),
+                'jvmArguments': jvm_args,
+                'executablePath': self.find_java_path(),
                 'gameDirectory': os.path.abspath(self.install_path)
             }
+            if is_forge_version:
+                options['launchTarget'] = 'fmlclient'
 
             # Добавляем специальные аргументы для macOS
             if platform.system() == "Darwin":
                 options['jvmArguments'].insert(0, '-XstartOnFirstThread')
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
-
-            # Проверяем, является ли версия новым Forge
-            is_forge_version = "forge" in version_to_launch.lower()
             
             try:
                 if is_forge_version:
@@ -1050,17 +1198,9 @@ class InstallThread(QThread):
             logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
             self.error_occurred.emit(f"Ошибка запуска игры: {str(e)}")
 
-    def find_java_path(self, requires_java25=True):
-        """
-        Находит путь к Java на системе.
-        
-        Args:
-            requires_java25 (bool): Если True, ищет Java 25+, иначе ищет Java 25+
-        
-        Returns:
-            str: Путь к Java или None, если не найден
-        """
-        min_version = 25  # Всегда ищем Java 25+
+    def find_java_path(self, min_java_major=None):
+        """Находит Java с мажорной версией >= min_java_major (по умолчанию self.min_java_major)."""
+        min_version = int(min_java_major) if min_java_major is not None else getattr(self, "min_java_major", 21)
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -1104,30 +1244,12 @@ class InstallThread(QThread):
             if version >= min_version:
                 logging.info(f"Выбран Java {version} ({path})")
                 return path
-        
 
-        # Если Java не найден вообще
-        logging.error(f"Java не найден на системе")
-        
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Critical)
-        msg.setWindowTitle("Java не найден")
-        
-        msg.setText("Для запуска этой версии Minecraft требуется Java 25.\nJava не найден на вашей системе.")
-        
-        msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        
-        if msg.exec_() == QMessageBox.Yes:
-            # Открываем ссылку для скачивания Java в зависимости от ОС
-            system = platform.system()
-            if system == "Windows":
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-            elif system == "Darwin":  # macOS
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-            else:  # Linux
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-        
+        if found_java_paths:
+            best_path, best_version = found_java_paths[0]
+            logging.warning(f"Нет Java {min_version}+; лучшая найденная: Java {best_version} ({best_path})")
+        else:
+            logging.error("Java не найдена на системе (поток установки)")
         return None
 
     def _scan_java_directories(self):
@@ -1667,8 +1789,6 @@ class MainWindow(QMainWindow):
         if self.en_language_radio: self.en_language_radio.toggled.connect(self.on_language_changed)
         if self.uk_language_radio: self.uk_language_radio.toggled.connect(self.on_language_changed)
         
-        # Проверяем Java
-        self.check_java()
         self.check_dependencies()
         
         # Загружаем конфигурацию
@@ -1946,114 +2066,8 @@ class MainWindow(QMainWindow):
             self.show_error(f"Ошибка при выборе пути установки: {str(e)}")
 
     def check_java(self):
-        """Проверяет наличие Java"""
-        try:
-            # Ищем путь к Java так же, как и при запуске
-            possible_paths = [
-                'javaw.exe',  # Проверяем в PATH
-                'java.exe',   # Альтернативный вариант
-                r'\usr\bin\java',
-                r'C:\Program Files\Java\jdk-25\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-25.0.0\bin\javaw.exe',
-                r'C:\Program Files\Eclipse Adoptium\jdk-25\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-21\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-21.0.2\bin\javaw.exe',
-                r'C:\Program Files\Eclipse Adoptium\jdk-21\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-17.0.10\bin\javaw.exe',
-                r'C:\Program Files\Java\jdk-17\bin\javaw.exe',
-                r'C:\Program Files\Eclipse Adoptium\jdk-17\bin\javaw.exe',
-                os.path.join(os.environ.get('JAVA_HOME', ''), 'bin', 'javaw.exe'),
-            ]
-
-            java_path = None
-            
-            # Сначала проверяем через where
-            try:
-                system = platform.system()
-                logging.info(f"System: {system}")
-                if system=="Darwin":
-                    result = subprocess.run(['which', 'java'], 
-                                        capture_output=True, 
-                                        text=True)
-                else:
-                    result = subprocess.run(['where', 'javaw'], 
-                                        capture_output=True, 
-                text=True,
-                                        creationflags=subprocess.CREATE_NO_WINDOW)
-                if result.returncode == 0:
-                    java_paths = result.stdout.strip().split('\n')
-                    if java_paths:
-                        java_path = java_paths[0]
-                        logging.info(f"Java найдена через where: {java_path}")
-            except Exception as e:
-                logging.warning(f"Не удалось найти Java через where: {e}")
-
-            # Если where не нашел, проверяем другие пути
-            if not java_path:
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        java_path = path
-                        logging.info(f"Java найдена по пути: {java_path}")
-                        break
-
-            if java_path:
-                # Проверяем версию найденной Java
-                java_exe = java_path.replace('javaw.exe', 'java.exe')
-                result = subprocess.run(
-                    [java_exe, '-version'], 
-                    capture_output=True,  # Используем только capture_output
-                    #reationflags=subprocess.CREATE_NO_WINDOW,
-                    text=True
-                )
-                
-                version_output = result.stderr
-                logging.info(f"Java version check output: {version_output}")
-                
-                # Проверяем версию через регулярное выражение
-                import re
-                version_pattern = r'version "([^"]+)"'
-                match = re.search(version_pattern, version_output)
-                
-                if match:
-                    version_string = match.group(1)
-                    logging.info(f"Found Java version: {version_string}")
-                    
-                    # Проверяем версию
-                    if any(str(v) in version_string for v in range(25, 26)):
-                        logging.info("Java version is compatible")
-                        return java_path
-            
-            # Если Java не найдена или версия не подходит
-            logging.warning("Java version is not compatible or not found")
-            response = QMessageBox.critical(
-                self,
-                "Ошибка",
-                "Java не установлена или версия ниже 25!\n\n" +
-                "Сейчас откроется страница загрузки Oracle Java.\n" +
-                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
-                "Для Windows рекомендуется Windows x64 Installer.",
-                QMessageBox.Ok | QMessageBox.Cancel
-            )
-            
-            if response == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
-            return False
-
-        except Exception as e:
-            logging.error(f"Ошибка проверки Java: {str(e)}", exc_info=True)
-            response = QMessageBox.critical(
-                self,
-                "Ошибка",
-                "Java не найдена!\n\n" +
-                "Сейчас откроется страница загрузки Oracle Java.\n" +
-                "На сайте выберите версию для вашей системы (Windows, macOS или Linux).\n" +
-                "Для Windows рекомендуется Windows x64 Installer.",
-                QMessageBox.Ok | QMessageBox.Cancel
-            )
-            
-            if response == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
-            return False
+        """Java больше не проверяется при старте — только перед «Установить» / «Играть»."""
+        return True
 
     def load_config(self):
         """Загружает конфигурацию из файла"""
@@ -2064,8 +2078,8 @@ class MainWindow(QMainWindow):
                     config = json.load(f)
                     
                 # Загружаем имя пользователя
-                if 'username' in config:
-                    self.username_input.setText(config['username'])
+                if 'username' in config and self.username:
+                    self.username.setText(config['username'])
                 
                 # Загружаем язык
                 if 'language' in config:
@@ -2202,6 +2216,67 @@ class MainWindow(QMainWindow):
         except requests.RequestException:
             return False
 
+    def _append_fabric_loader_items(self, mc_version: str):
+        """Добавляет в комбобокс лоадера пункты Fabric (последняя + стабильные версии)."""
+        translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+        try:
+            if not minecraft_launcher_lib.fabric.is_minecraft_version_supported(mc_version):
+                return
+            self.forge_version.addItem(translations['fabric_latest_label'], "fabric:latest")
+            loaders = minecraft_launcher_lib.fabric.get_all_loader_versions()
+            n = 0
+            for entry in loaders:
+                if not entry.get('stable'):
+                    continue
+                lv = entry['version']
+                self.forge_version.addItem(
+                    translations['fabric_loader_label'].format(loader=lv),
+                    f"fabric-loader-{lv}-{mc_version}"
+                )
+                n += 1
+                if n >= 25:
+                    break
+        except Exception as e:
+            logging.warning(f"Не удалось добавить список Fabric для {mc_version}: {e}")
+
+    def _loader_install_id_from_combo(self, minecraft_version: str):
+        """
+        Внутренний id для InstallThread: None = ванилла, иначе id Forge или fabric-loader-...
+        """
+        if not self.forge_version.count():
+            return None
+        text = self.forge_version.currentText()
+        if not text or text == "Не устанавливать":
+            return None
+        data = self.forge_version.currentData()
+        if data == "fabric:latest":
+            try:
+                lv = minecraft_launcher_lib.fabric.get_latest_loader_version()
+                return f"fabric-loader-{lv}-{minecraft_version}"
+            except Exception as e:
+                logging.error(f"fabric:latest: {e}")
+                return None
+        if isinstance(data, str) and data.startswith("fabric-loader-"):
+            return data
+        if data and isinstance(data, str) and not data.startswith("fabric"):
+            return data
+        if "forge" in text.lower() and "-forge-" in text:
+            parts = text.split("-forge-", 1)
+            if len(parts) == 2:
+                return f"{minecraft_version}-{parts[1]}"
+        return None
+
+    def _versions_folder_name_for_selection(self, minecraft_version: str) -> str:
+        """Имя подпапки в versions/ для текущего выбора лоадера."""
+        iid = self._loader_install_id_from_combo(minecraft_version)
+        if iid is None:
+            return minecraft_version
+        if iid.startswith("fabric-loader-"):
+            return iid
+        if "forge" in iid.lower():
+            return iid
+        return iid.replace("-", "-forge-", 1)
+
     def load_versions(self):
         logging.info("Начало загрузки версий")
         self.minecraft_version.clear()
@@ -2258,25 +2333,27 @@ class MainWindow(QMainWindow):
                                         self.forge_version.setCurrentIndex(0)
                 return
 
-            # Загружаем версии Minecraft
-            versions = []
-            for v in minecraft_launcher_lib.utils.get_version_list():
+            # Релизы >= 1.20.1 (кроме 1.20.5) + снапшоты с даты релиза 1.20.1 и новее
+            version_list = minecraft_launcher_lib.utils.get_version_list()
+            t1201 = next((v.get('releaseTime') for v in version_list if v['id'] == '1.20.1'), None)
+            combined = []
+            for v in version_list:
                 version_id = v['id']
-                if (v['type'] == 'release' and 
-                    version_id != '1.20.5' and
-                    self._compare_versions(version_id, '1.20.1') >= 0):
-                    versions.append(version_id)
+                rt = v.get('releaseTime') or ''
+                if v['type'] == 'release' and version_id != '1.20.5' and self._compare_versions(version_id, '1.20.1') >= 0:
+                    combined.append((rt, 0, version_id))
+                elif v['type'] == 'snapshot' and t1201 is not None and rt >= t1201:
+                    combined.append((rt, 1, version_id))
+            combined.sort(key=lambda x: (x[0], x[1]), reverse=True)
+            versions = [c[2] for c in combined]
 
-            logging.info(f"Получены версии Minecraft: {versions}")
+            logging.info(f"Получены версии Minecraft (релизы + снапшоты): {len(versions)} шт.")
 
-            # Сортируем версии в порядке убывания, но 1.20.1 всегда первая
+            # 1.20.1 всегда первая в списке
             if '1.20.1' in versions:
                 versions.remove('1.20.1')
-                versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
                 versions.insert(0, '1.20.1')
                 logging.info("Версия 1.20.1 перемещена в начало списка")
-            else:
-                versions.sort(key=lambda x: [int(i) for i in x.split('.')], reverse=True)
 
             for version in versions:
                 self.minecraft_version.addItem(version)
@@ -2382,7 +2459,7 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка сохранения кеша Forge: {str(e)}", exc_info=True)
 
     def update_forge_versions(self):
-        """Обновляет список версий Forge для текущей версии Minecraft"""
+        """Обновляет список версий Forge и Fabric для текущей версии Minecraft"""
         try:
             selected_version = self.minecraft_version.currentText()
             if selected_version == "1.20.1":
@@ -2397,22 +2474,21 @@ class MainWindow(QMainWindow):
                 if version.startswith(selected_version):
                     available_versions.append(version)
             
+            self.forge_version.clear()
+            self.forge_version.addItem("Не устанавливать", None)
+
             if available_versions:
-                # Очищаем текущий список
-                self.forge_version.clear()
-                self.forge_version.addItem("Не устанавливать")
-                
-                # Добавляем новые версии
                 for version in available_versions:
                     forge_display_version = f"{selected_version}-forge-{version.split('-')[1]}"
-                    self.forge_version.addItem(forge_display_version)
-                    # Сохраняем в кеш
+                    self.forge_version.addItem(forge_display_version, version)
                     self.add_to_forge_cache(selected_version, version)
-                
                 self.forge_version.setEnabled(True)
                 self.status_label.setText(f"Найдено {len(available_versions)} версий Forge для {selected_version}")
             else:
+                self.forge_version.setEnabled(True)
                 self.status_label.setText(f"Не найдено версий Forge для {selected_version}")
+
+            self._append_fabric_loader_items(selected_version)
                 
         except Exception as e:
             logging.error(f"Ошибка при обновлении версий Forge: {str(e)}", exc_info=True)
@@ -2427,10 +2503,10 @@ class MainWindow(QMainWindow):
 
         # Для 1.20.1: сначала добавляем пункт "Не устанавливать", затем дефолтную версию, затем все >= 47.3.22
         if selected_version == "1.20.1":
-            self.forge_version.addItem("Не устанавливать")
+            self.forge_version.addItem("Не устанавливать", None)
             default_forge_version = "1.20.1-47.3.22"
             default_forge_display = f"1.20.1-forge-47.3.22"
-            self.forge_version.addItem(default_forge_display)
+            self.forge_version.addItem(default_forge_display, default_forge_version)
             added_versions = {default_forge_display}
             self.add_to_forge_cache("1.20.1", default_forge_version)
             self.forge_version.setEnabled(True)
@@ -2444,16 +2520,14 @@ class MainWindow(QMainWindow):
                         if ver_tuple(forge_number) >= ver_tuple("47.3.22"):
                             forge_display = f"1.20.1-forge-{forge_number}"
                             if forge_display not in added_versions:
-                                self.forge_version.addItem(forge_display)
+                                self.forge_version.addItem(forge_display, version)
                                 added_versions.add(forge_display)
                                 self.add_to_forge_cache("1.20.1", version)
             except Exception as e:
                 logging.error(f"Ошибка получения списка версий Forge для 1.20.1: {str(e)}")
             self.forge_version.setEnabled(True)
-            self.forge_version.setCurrentIndex(1)
+            self._append_fabric_loader_items("1.20.1")
         else:
-            self.forge_version.addItem("Не устанавливать")
-            added_versions.add("Не устанавливать")
             self.update_forge_versions()
 
         self.setup_path()
@@ -2469,8 +2543,8 @@ class MainWindow(QMainWindow):
     def on_forge_version_changed(self, index):
         if index >= 0:
             forge_version = self.forge_version.currentText()
-            self.status_label.setText(f"Выбрана версия Forge: {forge_version}")
-            # Сохраняем выбранную версию Forge
+            tr = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+            self.status_label.setText(tr['loader_selected_status'].format(name=forge_version))
             self.save_config()
 
     def on_memory_changed(self, value):
@@ -2483,7 +2557,7 @@ class MainWindow(QMainWindow):
             minecraft_version = self.minecraft_version.currentText()
             forge_display_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
             
-            logging.info(f"Запуск установки/игры. Minecraft: {minecraft_version}, Forge: {forge_display_version}")
+            logging.info(f"Запуск установки/игры. Minecraft: {minecraft_version}, лоадер: {forge_display_version}")
             
             # Проверка полей формы
             if not minecraft_version:
@@ -2516,29 +2590,14 @@ class MainWindow(QMainWindow):
             memory_value = self.memory_slider.value()
             logging.info(f"Значение памяти из слайдера: {memory_value}GB")
 
-            # Проверяем наличие подходящей версии Java
-            logging.info(f"Проверка Java для версии {minecraft_version}")
+            min_java = get_min_java_for_minecraft(minecraft_version)
+            logging.info(f"Проверка Java для версии {minecraft_version} (минимум Java {min_java})")
             if not self.check_java_for_version(minecraft_version):
                 logging.warning(f"Проверка Java для версии {minecraft_version} не пройдена")
                 return
             
-            # Определяем версию для установки
-            forge_version = None
-            if forge_display_version and forge_display_version != "Не устанавливать" and "forge" in forge_display_version.lower():
-                try:
-                    if '-forge-' in forge_display_version:
-                        forge_parts = forge_display_version.split('-forge-')
-                        if len(forge_parts) == 2:
-                            forge_version = f"{minecraft_version}-{forge_parts[1]}"
-                            logging.info(f"Извлечена версия Forge: {forge_version}")
-                    else:
-                        forge_version = forge_display_version
-                        logging.info(f"Используем версию Forge как есть: {forge_version}")
-                except Exception as e:
-                    logging.error(f"Ошибка извлечения версии Forge: {str(e)}")
-            
-            # Определяем, что устанавливать - Forge или Vanilla
-            version_to_install = forge_version if forge_version else minecraft_version
+            loader_id = self._loader_install_id_from_combo(minecraft_version)
+            version_to_install = loader_id if loader_id else minecraft_version
             logging.info(f"Выбрана версия для установки/запуска: {version_to_install}")
 
             # Создаем поток установки
@@ -2546,9 +2605,10 @@ class MainWindow(QMainWindow):
                 version_to_install,
                 username,
                 install_path,
-                memory_value,  # Передаем значение памяти из слайдера
+                memory_value,
                 self.launch_flags_input,
-                self.mods_update_switch
+                self.mods_update_switch,
+                min_java_major=min_java
             )
             
             # Подключаем сигналы
@@ -2609,19 +2669,10 @@ class MainWindow(QMainWindow):
             logging.info(f"Исходный путь: {raw_path}")
             logging.info(f"Путь установки (после нормализации): {install_path}")
             logging.info(f"Версия Minecraft: {minecraft_version}")
-            logging.info(f"Версия Forge: {forge_version}")
+            logging.info(f"Выбор лоадера: {forge_version}")
             
-            # Определяем, какую версию нужно проверять
-            if forge_version == "Не устанавливать" or forge_version is None:
-                # Проверяем наличие ванильной версии Minecraft
-                version_to_check = minecraft_version
-                logging.info("Проверяем ванильную версию Minecraft")
-            else:
-                # Проверяем наличие Forge версии
-                version_to_check = forge_version
-                logging.info("Проверяем версию Forge")
-            
-            logging.info(f"Версия для проверки: {version_to_check}")
+            version_to_check = self._versions_folder_name_for_selection(minecraft_version)
+            logging.info(f"Папка в versions для проверки: {version_to_check}")
             
             # Проверяем наличие конкретной версии в папке versions
             versions_path = os.path.join(install_path, "versions")
@@ -2642,8 +2693,8 @@ class MainWindow(QMainWindow):
                         is_installed = True
                         logging.info("Версия найдена в папке versions")
             
-            # Если версия не найдена и это ванильная версия, проверяем в Forge
-            if not is_installed and (forge_version == "Не устанавливать" or forge_version is None):
+            # Если не найдена прямая папка и выбрана ванилла — ищем базу внутри Forge
+            if not is_installed and version_to_check == minecraft_version:
                 logging.info("Версия не найдена напрямую, проверяем в папках Forge")
                 # Проверяем, есть ли Forge-версии, которые могли установить ванильную версию
                 if os.path.exists(versions_path):
@@ -2971,7 +3022,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.2"
+            current_version = "1.0.9.3"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3008,7 +3059,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.2"
+            current_version = "1.0.9.3"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3172,69 +3223,54 @@ class MainWindow(QMainWindow):
             self.check_updates_button.setStyleSheet("background-color: #2E8B57; color:white; font-weight:bold;");
 
     def check_java_for_version(self, minecraft_version):
-        """Проверяет соответствие Java и выбранной версии Minecraft"""
+        """Проверяет, что установлена JVM >= минимальной для выбранной версии Minecraft (можно новее)."""
         logging.info(f"Проверка Java для версии {minecraft_version}")
-        
-        # Определяем требуемую версию Java для разных версий Minecraft
-        requires_java25 = True  # Всегда используем Java 25
-        
-        # Анализируем версию Minecraft
-        try:
-            # Для всех версий Minecraft теперь требуется Java 25
-            logging.info(f"Для версии {minecraft_version} требуется Java 25+")
-        except Exception as e:
-            logging.error(f"Ошибка анализа версии Minecraft: {str(e)}")
-            # По умолчанию предполагаем, что требуется Java 25
-            logging.info("По умолчанию используем Java 25")
-        
-        # Находим путь к Java
-        java_path = self.find_java_path(requires_java25)
-        
+        min_java = get_min_java_for_minecraft(minecraft_version)
+        logging.info(f"Минимальная мажорная Java для {minecraft_version}: {min_java}")
+        java_path = self.find_java_path(min_java_major=min_java)
+        translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+        sysname = platform.system()
+        if sysname == 'Windows':
+            hint = translations['java_download_hint_windows']
+        elif sysname == 'Darwin':
+            hint = translations['java_download_hint_mac']
+        else:
+            hint = translations['java_download_hint_linux']
+        url = QUrl(java_download_page_url(min_java))
+
         if java_path:
-            # Получаем версию Java
             java_version = self._get_java_version(java_path)
             logging.info(f"Найдена Java версии {java_version}")
-            
-            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
-            # Проверяем соответствие версии
-            if java_version < 25:
-                result = QMessageBox.critical(
-                    self, 
-                    translations['java_version_error_title'], 
-                    f"Для Minecraft {minecraft_version} требуется Java 25 или выше.\n"
-                    f"Установлена версия: {java_version}\n"
-                    f"Пожалуйста, установите более новую версию Java с сайта Oracle:\n"
-                    f"https://www.oracle.com/java/technologies/downloads/#jdk25"
-                )
-                if result == QMessageBox.Ok:
-                    QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
-            else:
+            if java_version >= min_java:
                 return True
-        else:
-            translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
-            # Java не найдена
-            result = QMessageBox.critical(
-                self, 
+            body = translations['java_need_higher_body'].format(
+                mc=minecraft_version, need=min_java, have=java_version)
+            reply = QMessageBox.question(
+                self,
                 translations['java_version_error_title'],
-                f"Для Minecraft {minecraft_version} требуется Java 25, но она не найдена.\n"
-                f"Пожалуйста, установите Java 25 с сайта Oracle:\n"
-                f"https://www.oracle.com/java/technologies/downloads/#jdk25"
+                body + "\n\n" + hint,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
             )
-            if result == QMessageBox.Ok:
-                QDesktopServices.openUrl(QUrl("https://www.oracle.com/java/technologies/downloads/#java25"))
+            if reply == QMessageBox.Yes:
+                QDesktopServices.openUrl(url)
             return False
 
-    def find_java_path(self, requires_java25=True):
-        """
-        Находит путь к Java на системе.
-        
-        Args:
-            requires_java25 (bool): Если True, ищет Java 25+, иначе ищет Java 25+
-        
-        Returns:
-            str: Путь к Java или None, если не найден
-        """
-        min_version = 25  # Всегда ищем Java 25+
+        body = translations['java_not_found_body'].format(mc=minecraft_version, need=min_java)
+        reply = QMessageBox.question(
+            self,
+            translations['java_version_error_title'],
+            body + "\n\n" + hint,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+        if reply == QMessageBox.Yes:
+            QDesktopServices.openUrl(url)
+        return False
+
+    def find_java_path(self, min_java_major=21):
+        """Находит Java с мажорной версией >= min_java_major (более новая подходит)."""
+        min_version = int(min_java_major) if min_java_major else 21
         logging.info(f"Поиск Java {min_version}+ на системе...")
         
         found_java_paths = []
@@ -3284,29 +3320,8 @@ class MainWindow(QMainWindow):
             best_path, best_version = found_java_paths[0]
             logging.warning(f"Не найден Java {min_version}+. Лучшая найденная версия: Java {best_version}")
             return None
-        
-        # Если Java не найден вообще
-        logging.error(f"Java не найден на системе")
-        
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Critical)
-        msg.setWindowTitle("Java не найден")
-        
-        msg.setText("Для запуска этой версии Minecraft требуется Java 25.\nJava не найден на вашей системе.")
-        
-        msg.setInformativeText("Хотите перейти на страницу загрузки Java?")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        
-        if msg.exec_() == QMessageBox.Yes:
-            # Открываем ссылку для скачивания Java в зависимости от ОС
-            system = platform.system()
-            if system == "Windows":
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-            elif system == "Darwin":  # macOS
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-            else:  # Linux
-                webbrowser.open("https://www.oracle.com/java/technologies/downloads/#java25")
-        
+
+        logging.error("Java не найдена на системе")
         return None
 
     def _scan_java_directories(self):
@@ -3753,9 +3768,10 @@ class MainWindow(QMainWindow):
             
             # Проверяем наличие ванильной или Forge версии
             versions_dir = os.path.join(self.install_path, "versions")
+            is_fabric = version_to_launch.startswith("fabric-loader-")
             
-            # Если нам нужно запустить ванильную версию (без Forge)
-            if "-" not in version_to_launch:
+            # Если нам нужно запустить ванильную версию (без Forge / Fabric)
+            if not is_fabric and "-" not in version_to_launch:
                 vanilla_dir = os.path.join(versions_dir, version_to_launch)
                 
                 # Если прямой установки ванильной версии нет, но есть Forge
@@ -3767,49 +3783,52 @@ class MainWindow(QMainWindow):
                             # Будем запускать Forge, но без модов (как ванильную версию)
                             version_to_launch = folder
                             break
-            # Если это Forge версия, форматируем её правильно
-            elif "-" in version_to_launch:
+            # Если это Forge версия, форматируем её правильно (Fabric не трогаем)
+            elif not is_fabric and "-" in version_to_launch:
                 # Проверяем, есть ли уже префикс forge
                 if "forge" not in version_to_launch.lower():
                     version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            # Формируем опции запуска с оптимизированными параметрами
+            is_forge_version = (not is_fabric) and ("forge" in version_to_launch.lower())
+            
+            jvm_args = [
+                f'-Xmx{self.memory}G',
+                '-XX:+UnlockExperimentalVMOptions',
+                '-XX:+UseG1GC',
+                '-XX:G1NewSizePercent=20',
+                '-XX:G1ReservePercent=20',
+                '-XX:MaxGCPauseMillis=50',
+                '-XX:G1HeapRegionSize=32M',
+                '-Djava.net.preferIPv4Stack=true',
+                '-Dlog4j2.formatMsgNoLookups=true',
+                '-XX:+DisableAttachMechanism',
+                '-XX:+UseStringDeduplication',
+                '-XX:+OptimizeStringConcat',
+                '-XX:+UseCompressedOops'
+            ]
+            if is_forge_version:
+                jvm_args.extend([
+                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
+                    '-Dfml.ignorePatchDiscrepancies=true',
+                ])
             options = {
                 'username': self.username,
                 'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
                 'token': '',
-                'jvmArguments': [
-                    f'-Xmx{self.memory}G',
-                    '-XX:+UnlockExperimentalVMOptions',
-                    '-XX:+UseG1GC',
-                    '-XX:G1NewSizePercent=20',
-                    '-XX:G1ReservePercent=20',
-                    '-XX:MaxGCPauseMillis=50',
-                    '-XX:G1HeapRegionSize=32M',
-                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
-                    '-Dfml.ignorePatchDiscrepancies=true',
-                    '-Djava.net.preferIPv4Stack=true',
-                    '-Dlog4j2.formatMsgNoLookups=true',
-                    '-XX:+DisableAttachMechanism',  # Ускоряет запуск
-                    '-XX:+UseStringDeduplication',  # Оптимизация памяти
-                    '-XX:+OptimizeStringConcat',    # Оптимизация строк
-                    '-XX:+UseCompressedOops'        # Оптимизация указателей
-                ],
-                'launchTarget': 'fmlclient',
-                'executablePath': self.find_java_path(True),
+                'jvmArguments': jvm_args,
+                'executablePath': self.find_java_path(),
                 'gameDirectory': os.path.abspath(self.install_path)
             }
+            if is_forge_version:
+                options['launchTarget'] = 'fmlclient'
 
             # Добавляем специальные аргументы для macOS
             if platform.system() == "Darwin":
                 options['jvmArguments'].insert(0, '-XstartOnFirstThread')
                 if platform.machine() == 'arm64':
                     options['jvmArguments'].append('-Dos.arch=aarch64')
-
-            # Проверяем, является ли версия новым Forge
-            is_forge_version = "forge" in version_to_launch.lower()
             
             try:
                 if is_forge_version:
