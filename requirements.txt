@@ -11,6 +11,8 @@ nbtlib==2.0.4
 
 # Сетевые запросы и утилиты
 requests==2.31.0
+# Без mypyc-сборок PyInstaller не подхватывает хеш-модули (*_mypyc); <3.4 — стабильная чистая Python/старые колёса
+charset-normalizer>=2.0,<3.4
 random-username==1.0.2
 
 # Для сборки

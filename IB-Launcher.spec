@@ -1,19 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 import platform
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
+
+# requests → charset_normalizer; в новых версиях есть нативные подмодули mypyc (*_mypyc), без этого exe падает при старте
+_cn_datas, _cn_binaries, _cn_hidden = collect_all('charset_normalizer')
 
 a = Analysis(
     ['qt_version.py'],
     pathex=[],
-    binaries=[],
+    binaries=list(_cn_binaries),
     datas=[
         ('design.ui', '.'),
         ('assets/*', 'assets/'),
-    ],
-    hiddenimports=['psutil', 'win32gui', 'win32api', 'win32con', 'win32process', 'platform', 'subprocess', 'logging', 
-                 'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 'minecraft_launcher_lib.minecraft', 
-                 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types'],
+    ] + list(_cn_datas),
+    hiddenimports=list(_cn_hidden) + [
+                 'psutil', 'win32gui', 'win32api', 'win32con', 'win32process', 'platform', 'subprocess', 'logging',
+                 'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 'minecraft_launcher_lib.minecraft',
+                 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types', 'minecraft_launcher_lib.forge',
+                 'minecraft_launcher_lib.fabric'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -87,9 +93,9 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.9.3',
-            'CFBundleVersion': '1.0.9.3',
+            'CFBundleShortVersionString': '1.0.9.4',
+            'CFBundleVersion': '1.0.9.4',
             'NSHighResolutionCapable': True,
-            'NSHumanReadableCopyright': 'Copyright (c) 2024-2025 Igrobar'
+            'NSHumanReadableCopyright': 'Copyright (c) 2024-2026 Igrobar'
         }
     )

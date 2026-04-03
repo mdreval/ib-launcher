@@ -1,17 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
+
+_cn_datas, _cn_binaries, _cn_hidden = collect_all('charset_normalizer')
 
 a = Analysis(
     ['qt_version.py'],
     pathex=[],
-    binaries=[],
+    binaries=list(_cn_binaries),
     datas=[
         ('design.ui', '.'),
         ('assets/*', 'assets/'),
-    ],
-    hiddenimports=['psutil', 'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 
-                 'minecraft_launcher_lib.minecraft', 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types'],
+    ] + list(_cn_datas),
+    hiddenimports=list(_cn_hidden) + ['psutil', 'minecraft_launcher_lib', 'minecraft_launcher_lib.install',
+                 'minecraft_launcher_lib.minecraft', 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types',
+                 'minecraft_launcher_lib.forge', 'minecraft_launcher_lib.fabric'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -40,7 +44,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/icon.icns',
-    version='1.0.9.3'
+    version='1.0.9.4'
 )
 
 coll = COLLECT(
@@ -60,10 +64,10 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.0.9.3',
-        'CFBundleVersion': '1.0.9.3',
+        'CFBundleShortVersionString': '1.0.9.4',
+        'CFBundleVersion': '1.0.9.4',
         'NSHighResolutionCapable': True,
-        'NSHumanReadableCopyright': 'Copyright (c) 2024-2025 Igrobar',
+        'NSHumanReadableCopyright': 'Copyright (c) 2024-2026 Igrobar',
         'LSMinimumSystemVersion': '10.13.0',
         'NSAppleEventsUsageDescription': 'IB Launcher needs to control Minecraft for launching.',
         'NSAppleMusicUsageDescription': 'IB Launcher needs access to media for game sounds.',

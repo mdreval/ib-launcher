@@ -1,7 +1,7 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
 
-## Версия 1.0.9.3
+## Версия 1.0.9.4
 
 ### Что нового
 
@@ -17,7 +17,7 @@
 
 ---
 
-## Версія 1.0.9.3
+## Версія 1.0.9.4
 
 ### Що нового
 
@@ -33,7 +33,7 @@
 
 ---
 
-## Version 1.0.9.3
+## Version 1.0.9.4
 
 ### What's new
 
@@ -56,5 +56,5 @@
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.3/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.3/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.4/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.4/IB-Launcher.dmg) - macOS
