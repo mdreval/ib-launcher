@@ -2383,8 +2383,8 @@ class MainWindow(QMainWindow):
             if saved_forge and self.forge_version.findText(saved_forge) >= 0:
                 self.forge_version.setCurrentText(saved_forge)
             else:
-                # По умолчанию выбираем 1.20.1-forge-47.3.22, если есть
-                idx_forge = self.forge_version.findText('1.20.1-forge-47.3.22')
+                # По умолчанию выбираем 1.20.1-forge-47.4.16, если есть
+                idx_forge = self.forge_version.findText('1.20.1-forge-47.4.16')
                 if idx_forge >= 0:
                     self.forge_version.setCurrentIndex(idx_forge)
             # --- КОНЕЦ ДОБАВЛЕНИЯ ---
@@ -2504,8 +2504,8 @@ class MainWindow(QMainWindow):
         # Для 1.20.1: сначала добавляем пункт "Не устанавливать", затем дефолтную версию, затем все >= 47.3.22
         if selected_version == "1.20.1":
             self.forge_version.addItem("Не устанавливать", None)
-            default_forge_version = "1.20.1-47.3.22"
-            default_forge_display = f"1.20.1-forge-47.3.22"
+            default_forge_version = "1.20.1-47.4.16"
+            default_forge_display = f"1.20.1-forge-47.4.16"
             self.forge_version.addItem(default_forge_display, default_forge_version)
             added_versions = {default_forge_display}
             self.add_to_forge_cache("1.20.1", default_forge_version)
@@ -3022,7 +3022,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.4"
+            current_version = "1.0.9.5"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3059,7 +3059,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.4"
+            current_version = "1.0.9.5"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
