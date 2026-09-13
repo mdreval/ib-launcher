@@ -1,7 +1,7 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.9.5
-![Screenshot_1](https://github.com/user-attachments/assets/d272e853-a86d-4ead-9be0-ec16cc2df348)
+# IB Launcher v1.0.9.6
+![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
 
@@ -27,6 +27,11 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
+#### Версия 1.0.9.6
+- Для Minecraft 1.20.1 по умолчанию выбирается профиль **сервер IGROBAR**, а не строка вида `1.20.1-forge-47.4.23`.
+- В списке лоадера игрок видит **сервер IGROBAR**; внутри ставится и запускается нужная версия Forge (сейчас 47.4.23).
+
+
 #### Версия 1.0.9.5
 - Добавлена новая вкладка «Карта» в лаунчере.
 - Вкладка открывает веб‑карту сервера (Dynmap): https://igrobar.dynmap.xyz/.
@@ -34,6 +39,8 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - В списке версий Minecraft добавлены **снапшоты** (после даты релиза 1.20.1).
 - **Проверка Java** перенесена на момент нажатия «Установить» / «Играть» (при старте лаунчер не требует Java).
 - Требования к Java зависят от выбранной версии Minecraft: достаточно **минимальной** мажорной версии (17 / 21 / 25), **более новая Java подходит**; диалоги и ссылки на загрузку — с учётом языка интерфейса и ОС.
+
+![Screenshot_2](https://github.com/user-attachments/assets/dcc25734-ab1b-4b5a-878e-a09027c1096a)
 
 #### Версия 1.0.9.0
 - Добавлена поддержка нескольких языков: Русский, Украинский, Английский.
@@ -71,6 +78,10 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 - 2 ГБ вільного місця на диску
 
 ### Історія версій
+
+#### Версія 1.0.9.6
+- Для Minecraft 1.20.1 за замовчуванням обирається профіль **сервер IGROBAR**, а не рядок на кшталт `1.20.1-forge-47.4.23`.
+- У списку лоадера гравець бачить **сервер IGROBAR**; всередині встановлюється й запускається потрібна версія Forge (зараз 47.4.23).
 
 #### Версія 1.0.9.5
 - Додано нову вкладку «Карта» в лаунчері.
@@ -117,6 +128,10 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
+#### Version 1.0.9.6
+- For Minecraft 1.20.1 the default loader is **IGROBAR server**, not a string like `1.20.1-forge-47.4.23`.
+- The dropdown shows **IGROBAR server**; the matching Forge build is still installed and launched (currently 47.4.23).
+
 #### Version 1.0.9.5
 - Added a new **Map** tab to the launcher.
 - The tab opens the server Dynmap in an embedded browser: https://igrobar.dynmap.xyz/.
@@ -141,8 +156,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.5/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.5/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

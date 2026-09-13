@@ -126,6 +126,7 @@ TRANSLATIONS = {
         'fabric_latest_label': 'Fabric (последняя)',
         'fabric_loader_label': 'Fabric {loader}',
         'loader_selected_status': 'Лоадер: {name}',
+        'igrobar_server_label': 'Cервер IGROBAR',
     },
     'en': {
         'window_title': 'IB Launcher',
@@ -197,6 +198,7 @@ TRANSLATIONS = {
         'fabric_latest_label': 'Fabric (latest)',
         'fabric_loader_label': 'Fabric {loader}',
         'loader_selected_status': 'Loader: {name}',
+        'igrobar_server_label': 'IGROBAR server',
     },
     'uk': {
         'window_title': 'IB Launcher',
@@ -268,6 +270,7 @@ TRANSLATIONS = {
         'fabric_latest_label': 'Fabric (остання)',
         'fabric_loader_label': 'Fabric {loader}',
         'loader_selected_status': 'Лоадер: {name}',
+        'igrobar_server_label': 'Cервер IGROBAR',
     }
 }
 
@@ -305,6 +308,20 @@ if platform.system() == "Darwin":
 LOG_FILE = os.path.join(CONFIG_DIR, "launcher.log")
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
 FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
+
+# Профиль «сервер IGROBAR»: в списке видна эта фраза, ставится указанный Forge.
+# Чтобы сменить Forge сервера — поменяй только IGROBAR_FORGE_VERSION.
+IGROBAR_MC_VERSION = "1.20.1"
+IGROBAR_FORGE_VERSION = "47.4.23"
+
+
+def igrobar_forge_install_id():
+    return f"{IGROBAR_MC_VERSION}-{IGROBAR_FORGE_VERSION}"
+
+
+def igrobar_forge_folder_name():
+    return f"{IGROBAR_MC_VERSION}-forge-{IGROBAR_FORGE_VERSION}"
+
 
 # Создаем только директорию для конфигурации лаунчера
 os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -1889,6 +1906,7 @@ class MainWindow(QMainWindow):
             if self.youtube_button: self.youtube_button.setToolTip(translations['youtube_tooltip'])
             self.update_version_label() # Обновляем текст версии
             self.update_players_online() # Обновляем онлайн
+            self._refresh_igrobar_loader_label()
 
         except Exception as e:
             logging.error(f"Ошибка перевода интерфейса: {str(e)}", exc_info=True)
@@ -2380,13 +2398,10 @@ class MainWindow(QMainWindow):
 
             # После выбора версии — обновляем список Forge и выбираем сохранённую версию Forge
             self.on_minecraft_version_changed(self.minecraft_version.currentIndex())
-            if saved_forge and self.forge_version.findText(saved_forge) >= 0:
-                self.forge_version.setCurrentText(saved_forge)
-            else:
-                # По умолчанию выбираем 1.20.1-forge-47.4.16, если есть
-                idx_forge = self.forge_version.findText('1.20.1-forge-47.4.16')
-                if idx_forge >= 0:
-                    self.forge_version.setCurrentIndex(idx_forge)
+            if saved_forge and self._select_loader_from_saved(saved_forge):
+                pass
+            elif self.minecraft_version.currentText() == IGROBAR_MC_VERSION:
+                self._select_igrobar_loader()
             # --- КОНЕЦ ДОБАВЛЕНИЯ ---
 
         except Exception as e:
@@ -2462,8 +2477,8 @@ class MainWindow(QMainWindow):
         """Обновляет список версий Forge и Fabric для текущей версии Minecraft"""
         try:
             selected_version = self.minecraft_version.currentText()
-            if selected_version == "1.20.1":
-                return  # Для 1.20.1 используем фиксированную версию
+            if selected_version == IGROBAR_MC_VERSION:
+                return  # Список 1.20.1 собирается в on_minecraft_version_changed
             
             # Получаем все доступные версии Forge
             forge_versions = minecraft_launcher_lib.forge.list_forge_versions()
@@ -2494,6 +2509,54 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка при обновлении версий Forge: {str(e)}", exc_info=True)
             self.status_label.setText("Ошибка при обновлении версий Forge")
 
+    def _igrobar_label(self):
+        return TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])['igrobar_server_label']
+
+    def _refresh_igrobar_loader_label(self):
+        if not getattr(self, 'forge_version', None):
+            return
+        label = self._igrobar_label()
+        wanted = igrobar_forge_install_id()
+        for i in range(self.forge_version.count()):
+            if self.forge_version.itemData(i) == wanted:
+                self.forge_version.setItemText(i, label)
+
+    def _select_igrobar_loader(self):
+        idx = self.forge_version.findData(igrobar_forge_install_id())
+        if idx >= 0:
+            self.forge_version.setCurrentIndex(idx)
+            return True
+        idx = self.forge_version.findText(self._igrobar_label())
+        if idx >= 0:
+            self.forge_version.setCurrentIndex(idx)
+            return True
+        return False
+
+    def _select_loader_from_saved(self, saved_forge):
+        if not saved_forge or saved_forge in ("None", "Не устанавливать"):
+            return False
+        igrobar_aliases = {
+            self._igrobar_label(),
+            igrobar_forge_install_id(),
+            igrobar_forge_folder_name(),
+            TRANSLATIONS['ru']['igrobar_server_label'],
+            TRANSLATIONS['en']['igrobar_server_label'],
+            TRANSLATIONS['uk']['igrobar_server_label'],
+            '1.20.1-forge-47.4.23',
+        }
+        if saved_forge in igrobar_aliases:
+            if self._select_igrobar_loader():
+                return True
+        idx = self.forge_version.findText(saved_forge)
+        if idx >= 0:
+            self.forge_version.setCurrentIndex(idx)
+            return True
+        idx = self.forge_version.findData(saved_forge)
+        if idx >= 0:
+            self.forge_version.setCurrentIndex(idx)
+            return True
+        return False
+
     def on_minecraft_version_changed(self, index):
         selected_version = self.minecraft_version.currentText()
         self.forge_version.clear()
@@ -2501,41 +2564,41 @@ class MainWindow(QMainWindow):
 
         added_versions = set()
 
-        # Для 1.20.1: сначала добавляем пункт "Не устанавливать", затем дефолтную версию, затем все >= 47.3.22
-        if selected_version == "1.20.1":
+        # 1.20.1: «Не устанавливать», затем «сервер IGROBAR» (внутри IGROBAR_FORGE_VERSION), затем остальные Forge
+        if selected_version == IGROBAR_MC_VERSION:
             self.forge_version.addItem("Не устанавливать", None)
-            default_forge_version = "1.20.1-47.4.16"
-            default_forge_display = f"1.20.1-forge-47.4.16"
-            self.forge_version.addItem(default_forge_display, default_forge_version)
-            added_versions = {default_forge_display}
-            self.add_to_forge_cache("1.20.1", default_forge_version)
+            default_forge_version = igrobar_forge_install_id()
+            self.forge_version.addItem(self._igrobar_label(), default_forge_version)
+            added_versions = {igrobar_forge_folder_name(), self._igrobar_label()}
+            self.add_to_forge_cache(IGROBAR_MC_VERSION, default_forge_version)
             self.forge_version.setEnabled(True)
             try:
                 forge_versions = minecraft_launcher_lib.forge.list_forge_versions()
                 for version in forge_versions:
-                    if version.startswith("1.20.1"):
+                    if version.startswith(IGROBAR_MC_VERSION):
                         forge_number = version.split('-')[1]
                         def ver_tuple(s):
                             return tuple(int(x) for x in s.split('.'))
+                        if forge_number == IGROBAR_FORGE_VERSION:
+                            continue
                         if ver_tuple(forge_number) >= ver_tuple("47.3.22"):
-                            forge_display = f"1.20.1-forge-{forge_number}"
+                            forge_display = f"{IGROBAR_MC_VERSION}-forge-{forge_number}"
                             if forge_display not in added_versions:
                                 self.forge_version.addItem(forge_display, version)
                                 added_versions.add(forge_display)
-                                self.add_to_forge_cache("1.20.1", version)
+                                self.add_to_forge_cache(IGROBAR_MC_VERSION, version)
             except Exception as e:
-                logging.error(f"Ошибка получения списка версий Forge для 1.20.1: {str(e)}")
+                logging.error(f"Ошибка получения списка версий Forge для {IGROBAR_MC_VERSION}: {str(e)}")
             self.forge_version.setEnabled(True)
-            self._append_fabric_loader_items("1.20.1")
+            self._append_fabric_loader_items(IGROBAR_MC_VERSION)
         else:
             self.update_forge_versions()
 
         self.setup_path()
         self.status_label.setText(f"Выбрана версия Minecraft: {selected_version}")
         self.check_game_installed()
-        # Для 1.20.1 — по умолчанию дефолтная версия Forge, для других — "Не устанавливать"
-        if selected_version == "1.20.1":
-            self.forge_version.setCurrentIndex(1)
+        if selected_version == IGROBAR_MC_VERSION:
+            self._select_igrobar_loader()
         else:
             self.forge_version.setCurrentIndex(0)
         self.save_config()
@@ -3022,7 +3085,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.5"
+            current_version = "1.0.9.6"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3059,7 +3122,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.5"
+            current_version = "1.0.9.6"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
