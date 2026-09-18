@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.9.7
+# IB Launcher v1.0.9.8
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -27,7 +27,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
-#### Версия 1.0.9.7
+#### Версия 1.0.9.8
 - В списке лоадера для Minecraft **1.21 и новее** добавлен **NeoForge** (последняя сборка и список версий).
 - Установка NeoForge больше не требует официального лаунчера: создаётся `launcher_profiles.json`, сначала ставится ваниль.
 - Перед установкой Forge/NeoForge сбрасываются системные `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` (сообщение *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). Память из слайдера лаунчера на это не влияет.
@@ -85,7 +85,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Історія версій
 
-#### Версія 1.0.9.7
+#### Версія 1.0.9.8
 - У списку лоадера для Minecraft **1.21 і новіше** додано **NeoForge** (остання збірка та список версій).
 - Встановлення NeoForge більше не потребує офіційного лаунчера: створюється `launcher_profiles.json`, спочатку ставиться ваніль.
 - Перед встановленням Forge/NeoForge скидаються системні `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS`. Памʼять зі слайдера лаунчера не змінюється.
@@ -140,7 +140,7 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
-#### Version 1.0.9.7
+#### Version 1.0.9.8
 - **NeoForge** is available in the loader list for Minecraft **1.21 and newer** (latest plus recent builds).
 - NeoForge install no longer needs the official launcher: a `launcher_profiles.json` is created, vanilla is installed first.
 - System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (*Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). The launcher memory slider is unchanged.
@@ -174,8 +174,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.8/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.8/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
