@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.9.6
+# IB Launcher v1.0.9.7
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -10,7 +10,7 @@
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
 ### Основные возможности:
-- Установка и запуск Minecraft с поддержкой **Forge** и **Fabric**
+- Установка и запуск Minecraft с поддержкой **Forge**, **Fabric** и **NeoForge** (с 1.21)
 - Управление модами
 - Автоматическое обновление модов
 - Настройка параметров запуска
@@ -26,6 +26,12 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - 2 ГБ свободного места на диске
 
 ### История версий
+
+#### Версия 1.0.9.7
+- В списке лоадера для Minecraft **1.21 и новее** добавлен **NeoForge** (последняя сборка и список версий).
+- Установка NeoForge больше не требует официального лаунчера: создаётся `launcher_profiles.json`, сначала ставится ваниль.
+- Перед установкой Forge/NeoForge сбрасываются системные `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` (сообщение *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). Память из слайдера лаунчера на это не влияет.
+- **1.20.1**, Forge и Fabric работают как раньше.
 
 #### Версия 1.0.9.6
 - Для Minecraft 1.20.1 по умолчанию выбирается профиль **сервер IGROBAR**, а не строка вида `1.20.1-forge-47.4.23`.
@@ -62,7 +68,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 IB Launcher - це сучасний лаунчер для Minecraft, який дозволяє легко встановлювати та запускати різні версії гри, включаючи Forge та моди.
 
 ### Основні можливості:
-- Встановлення та запуск Minecraft з підтримкою **Forge** та **Fabric**
+- Встановлення та запуск Minecraft з підтримкою **Forge**, **Fabric** та **NeoForge** (з 1.21)
 - Управління модами
 - Автоматичне оновлення модів
 - Налаштування параметрів запуску
@@ -78,6 +84,12 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 - 2 ГБ вільного місця на диску
 
 ### Історія версій
+
+#### Версія 1.0.9.7
+- У списку лоадера для Minecraft **1.21 і новіше** додано **NeoForge** (остання збірка та список версій).
+- Встановлення NeoForge більше не потребує офіційного лаунчера: створюється `launcher_profiles.json`, спочатку ставиться ваніль.
+- Перед встановленням Forge/NeoForge скидаються системні `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS`. Памʼять зі слайдера лаунчера не змінюється.
+- **1.20.1**, Forge і Fabric працюють як раніше.
 
 #### Версія 1.0.9.6
 - Для Minecraft 1.20.1 за замовчуванням обирається профіль **сервер IGROBAR**, а не рядок на кшталт `1.20.1-forge-47.4.23`.
@@ -111,7 +123,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 IB Launcher is a modern Minecraft launcher that allows you to easily install and run various versions of the game, including Forge and mods.
 
 ### Key Features:
-- Install and run Minecraft with **Forge** and **Fabric** support
+- Install and run Minecraft with **Forge**, **Fabric**, and **NeoForge** (from 1.21)
 - Mod management
 - Automatic mod updates
 - Launch parameter customization
@@ -127,6 +139,12 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 - 2 GB of free disk space
 
 ### Version History
+
+#### Version 1.0.9.7
+- **NeoForge** is available in the loader list for Minecraft **1.21 and newer** (latest plus recent builds).
+- NeoForge install no longer needs the official launcher: a `launcher_profiles.json` is created, vanilla is installed first.
+- System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (*Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). The launcher memory slider is unchanged.
+- **1.20.1**, Forge, and Fabric still work as before.
 
 #### Version 1.0.9.6
 - For Minecraft 1.20.1 the default loader is **IGROBAR server**, not a string like `1.20.1-forge-47.4.23`.
@@ -156,8 +174,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

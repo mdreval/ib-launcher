@@ -125,6 +125,8 @@ TRANSLATIONS = {
         'java_download_hint_linux': 'Для Linux выберите пакет под вашу архитектуру на странице загрузки.',
         'fabric_latest_label': 'Fabric (последняя)',
         'fabric_loader_label': 'Fabric {loader}',
+        'neoforge_latest_label': 'NeoForge (последняя)',
+        'neoforge_loader_label': 'NeoForge {loader}',
         'loader_selected_status': 'Лоадер: {name}',
         'igrobar_server_label': 'Cервер IGROBAR',
     },
@@ -197,6 +199,8 @@ TRANSLATIONS = {
         'java_download_hint_linux': 'On Linux, choose the archive or package for your architecture.',
         'fabric_latest_label': 'Fabric (latest)',
         'fabric_loader_label': 'Fabric {loader}',
+        'neoforge_latest_label': 'NeoForge (latest)',
+        'neoforge_loader_label': 'NeoForge {loader}',
         'loader_selected_status': 'Loader: {name}',
         'igrobar_server_label': 'IGROBAR server',
     },
@@ -269,6 +273,8 @@ TRANSLATIONS = {
         'java_download_hint_linux': 'Для Linux оберіть пакет під вашу архітектуру на сторінці завантаження.',
         'fabric_latest_label': 'Fabric (остання)',
         'fabric_loader_label': 'Fabric {loader}',
+        'neoforge_latest_label': 'NeoForge (остання)',
+        'neoforge_loader_label': 'NeoForge {loader}',
         'loader_selected_status': 'Лоадер: {name}',
         'igrobar_server_label': 'Cервер IGROBAR',
     }
@@ -343,6 +349,12 @@ def extract_base_minecraft_version(version_to_install: str) -> str:
     s = version_to_install.strip()
     if s.startswith("fabric-loader-"):
         rest = s[len("fabric-loader-"):]
+        try:
+            return rest.rsplit("-", 1)[-1]
+        except (ValueError, IndexError):
+            return ""
+    if s.startswith("neoforge-loader-"):
+        rest = s[len("neoforge-loader-"):]
         try:
             return rest.rsplit("-", 1)[-1]
         except (ValueError, IndexError):
@@ -428,6 +440,111 @@ def split_fabric_loader_and_mc(fabric_version_id: str):
     return loader, mc_ver
 
 
+def split_neoforge_loader_and_mc(neoforge_version_id: str):
+    """Строка вида neoforge-loader-{loader}-{minecraft_version} → (loader, mc_version)."""
+    prefix = "neoforge-loader-"
+    if not neoforge_version_id.startswith(prefix):
+        raise ValueError(f"Неверный id NeoForge: {neoforge_version_id}")
+    rest = neoforge_version_id[len(prefix):]
+    loader, mc_ver = rest.rsplit("-", 1)
+    return loader, mc_ver
+
+
+def clear_inherited_java_options():
+    """
+    Windows/IDE часто задают _JAVA_OPTIONS=-Xmx8G -Xms512M.
+    Установщик Forge/NeoForge это подхватывает («Picked up _JAVA_OPTIONS») и падает.
+    """
+    for key in (
+        "_JAVA_OPTIONS",
+        "JAVA_OPTIONS",
+        "JAVA_TOOL_OPTIONS",
+        "_JAVA_TOOL_OPTIONS",
+        "IBM_JAVA_OPTIONS",
+    ):
+        if key in os.environ:
+            logging.info(f"Сброшена переменная окружения {key}={os.environ.get(key)}")
+            del os.environ[key]
+
+
+def minecraft_is_neoforge_range(mc_version: str) -> bool:
+    """NeoForge в лаунчере — с релиза 1.21 (снапшоты только если их знает API)."""
+    if not mc_version:
+        return False
+    if re.match(r"^\d+\.\d+(?:\.\d+)?$", mc_version):
+        return compare_mc_release_versions(mc_version, "1.21") >= 0
+    return False
+
+
+def _neoforge_maven_prefix_for_mc(mc_version: str) -> str:
+    """1.21 → 21.0. ; 1.21.1 → 21.1."""
+    parts = mc_version.split(".")
+    if len(parts) < 2 or parts[0] != "1" or not parts[1].isdigit():
+        return ""
+    patch = parts[2] if len(parts) > 2 and parts[2].isdigit() else "0"
+    return f"{parts[1]}.{patch}."
+
+
+def list_neoforge_loader_versions(mc_version: str):
+    """Версии NeoForge для выбранного Minecraft, от новых к старым."""
+    versions = []
+    try:
+        mod_loader = getattr(minecraft_launcher_lib, "mod_loader", None)
+        if mod_loader is not None:
+            nf = mod_loader.get_mod_loader("neoforge")
+            if nf.is_minecraft_version_supported(mc_version):
+                versions = list(nf.get_loader_versions(mc_version, False) or [])
+    except Exception as e:
+        logging.warning(f"mod_loader NeoForge недоступен: {e}")
+    if versions:
+        return versions
+    prefix = _neoforge_maven_prefix_for_mc(mc_version)
+    if not prefix:
+        return []
+    try:
+        url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml"
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        found = re.findall(r"<version>([^<]+)</version>", resp.text)
+        versions = [v for v in found if v.startswith(prefix)]
+        versions.reverse()
+    except Exception as e:
+        logging.warning(f"Не удалось получить список NeoForge с Maven: {e}")
+    return versions
+
+
+def neoforge_installed_version_id(mc_version: str, loader_version: str) -> str:
+    try:
+        mod_loader = getattr(minecraft_launcher_lib, "mod_loader", None)
+        if mod_loader is not None:
+            return mod_loader.get_mod_loader("neoforge").get_installed_version(mc_version, loader_version)
+    except Exception:
+        pass
+    return f"neoforge-{loader_version}"
+
+
+def find_neoforge_version_folder(versions_dir: str, mc_version: str, loader_version: str):
+    if not versions_dir or not os.path.isdir(versions_dir):
+        return None
+    candidates = [
+        neoforge_installed_version_id(mc_version, loader_version),
+        f"neoforge-{loader_version}",
+        f"{mc_version}-neoforge-{loader_version}",
+    ]
+    for name in candidates:
+        path = os.path.join(versions_dir, name)
+        if os.path.isdir(path) and os.listdir(path):
+            return name
+    needle = loader_version.lower()
+    for folder in os.listdir(versions_dir):
+        fl = folder.lower()
+        if "neoforge" in fl and needle in fl:
+            path = os.path.join(versions_dir, folder)
+            if os.path.isdir(path) and os.listdir(path):
+                return folder
+    return None
+
+
 def resource_path(relative_path):
     """ Получить абсолютный путь к ресурсу, работает как для разработки, так и для PyInstaller """
     try:
@@ -471,6 +588,42 @@ def copy_default_configs(install_path):
         
     except Exception as e:
         logging.error(f"Ошибка копирования конфигурации: {str(e)}")
+
+
+def ensure_minecraft_launcher_profiles(install_path: str):
+    """
+    Установщик NeoForge/Forge ищет launcher_profiles.json официального лаунчера.
+    Без файла: «There is no minecraft launcher profile... you need to run the launcher first!»
+    """
+    os.makedirs(install_path, exist_ok=True)
+    profiles_path = os.path.join(install_path, "launcher_profiles.json")
+    if os.path.exists(profiles_path) and os.path.getsize(profiles_path) > 2:
+        return
+    data = {
+        "profiles": {
+            "IBLauncher": {
+                "name": "IBLauncher",
+                "type": "custom",
+                "created": datetime.now().isoformat(),
+                "lastUsed": datetime.now().isoformat(),
+                "icon": "Grass",
+            }
+        },
+        "selectedProfile": "IBLauncher",
+        "clientToken": "ib-launcher",
+        "authenticationDatabase": {},
+        "launcherVersion": {
+            "name": "IB-Launcher",
+            "format": 21,
+            "profilesFormat": 2,
+        },
+        "settings": {},
+        "version": 3,
+    }
+    with open(profiles_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    logging.info(f"Создан launcher_profiles.json: {profiles_path}")
+
 
 def clean_quickplay_settings(install_path):
     """Полная очистка всех настроек быстрого старта"""
@@ -694,6 +847,7 @@ class InstallThread(QThread):
     def run(self):
         try:
             self.toggle_ui.emit(False)
+            clear_inherited_java_options()
             self._prepare_environment()
 
             # Проверяем, нужно ли устанавливать игру или она уже установлена
@@ -708,6 +862,15 @@ class InstallThread(QThread):
                 else:
                     logging.info(f"Запуск установки Fabric: {self.version}")
                     self._install_fabric()
+            elif self.version.startswith("neoforge-loader-"):
+                loader_ver, mc_ver = split_neoforge_loader_and_mc(self.version)
+                installed_name = find_neoforge_version_folder(versions_dir, mc_ver, loader_ver)
+                if installed_name:
+                    logging.info(f"NeoForge {loader_ver} уже установлен как {installed_name}")
+                    is_installed = True
+                else:
+                    logging.info(f"Запуск установки NeoForge: {self.version}")
+                    self._install_neoforge()
             elif "-" in self.version:  # Если это версия Forge
                 # Проверяем, установлен ли Forge
                 installed_version = minecraft_launcher_lib.forge.forge_to_installed_version(self.version)
@@ -775,6 +938,7 @@ class InstallThread(QThread):
             
             # Копируем файлы конфигурации только при первом запуске
             copy_default_configs(self.install_path)
+            ensure_minecraft_launcher_profiles(self.install_path)
             
         except Exception as e:
             logging.error(f"Ошибка подготовки окружения: {str(e)}")
@@ -867,6 +1031,7 @@ class InstallThread(QThread):
 
     def _install_forge(self):
         try:
+            clear_inherited_java_options()
             logging.info(f"Начало установки Forge. Версия: {self.version}")
 
             # Преобразуем формат версии
@@ -912,6 +1077,65 @@ class InstallThread(QThread):
             )
         except Exception as e:
             logging.error(f"Ошибка установки Fabric: {str(e)}", exc_info=True)
+            raise
+
+    def _install_neoforge(self):
+        try:
+            loader_ver, mc_ver = split_neoforge_loader_and_mc(self.version)
+            logging.info(f"Установка NeoForge loader={loader_ver}, minecraft={mc_ver}")
+            callback = {
+                'setStatus': lambda text: self.status_update.emit(text),
+                'setProgress': lambda val: self.progress_update.emit(val, 0, ""),
+                'setMax': lambda max_val: self.progress_update.emit(0, max_val, "")
+            }
+            java_exe = self.find_java_path() or "java"
+            clear_inherited_java_options()
+            ensure_minecraft_launcher_profiles(self.install_path)
+            self._install_minecraft(mc_ver)
+            mod_loader = getattr(minecraft_launcher_lib, "mod_loader", None)
+            if mod_loader is not None:
+                nf = mod_loader.get_mod_loader("neoforge")
+                nf.install(
+                    mc_ver,
+                    self.install_path,
+                    loader_version=loader_ver,
+                    callback=callback,
+                    java=java_exe,
+                )
+                return
+            installer_url = (
+                f"https://maven.neoforged.net/releases/net/neoforged/neoforge/"
+                f"{loader_ver}/neoforge-{loader_ver}-installer.jar"
+            )
+            self.status_update.emit(f"Загрузка установщика NeoForge {loader_ver}...")
+            temp_dir = tempfile.mkdtemp(prefix="IBLauncher-neoforge-")
+            installer_path = os.path.join(temp_dir, f"neoforge-{loader_ver}-installer.jar")
+            resp = requests.get(installer_url, stream=True, timeout=60)
+            resp.raise_for_status()
+            total = int(resp.headers.get("content-length", 0))
+            downloaded = 0
+            with open(installer_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total:
+                            self.progress_update.emit(downloaded, total, "")
+            self.status_update.emit("Установка NeoForge...")
+            result = subprocess.run(
+                [java_exe, "-jar", installer_path, "--installClient", self.install_path],
+                capture_output=True,
+                text=True,
+            )
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass
+            if result.returncode != 0:
+                err = (result.stderr or result.stdout or "").strip()
+                raise Exception(err or f"Установщик NeoForge вернул код {result.returncode}")
+        except Exception as e:
+            logging.error(f"Ошибка установки NeoForge: {str(e)}", exc_info=True)
             raise
 
     def _install_modpack(self):
@@ -1056,10 +1280,7 @@ class InstallThread(QThread):
 
             logging.info(f"Запуск игры с памятью: {self.memory}GB")
             
-            # Очищаем переменную окружения _JAVA_OPTIONS
-            if '_JAVA_OPTIONS' in os.environ:
-                del os.environ['_JAVA_OPTIONS']
-                logging.info("Очищена переменная окружения _JAVA_OPTIONS")
+            clear_inherited_java_options()
             
             # Определяем версию для запуска
             version_to_launch = self.version
@@ -1067,29 +1288,34 @@ class InstallThread(QThread):
             # Проверяем наличие ванильной или Forge версии
             versions_dir = os.path.join(self.install_path, "versions")
             is_fabric = version_to_launch.startswith("fabric-loader-")
+            is_neoforge = version_to_launch.startswith("neoforge-loader-")
             
-            # Если нам нужно запустить ванильную версию (без Forge / Fabric)
-            if not is_fabric and "-" not in version_to_launch:
+            # Если нам нужно запустить ванильную версию (без Forge / Fabric / NeoForge)
+            if not is_fabric and not is_neoforge and "-" not in version_to_launch:
                 vanilla_dir = os.path.join(versions_dir, version_to_launch)
                 
                 # Если прямой установки ванильной версии нет, но есть Forge
                 if not os.path.exists(vanilla_dir) or not os.listdir(vanilla_dir):
                     # Проверяем, установлена ли ванильная версия как часть Forge
                     for folder in os.listdir(versions_dir) if os.path.exists(versions_dir) else []:
-                        if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower():
+                        if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower() and "neoforge" not in folder.lower():
                             logging.info(f"Ванильная версия {version_to_launch} недоступна напрямую, используем версию внутри Forge")
-                            # Будем запускать Forge, но без модов (как ванильную версию)
                             version_to_launch = folder
                             break
-            # Если это Forge версия, форматируем её правильно (Fabric не трогаем)
+            elif is_neoforge:
+                loader_ver, mc_ver = split_neoforge_loader_and_mc(version_to_launch)
+                installed_name = find_neoforge_version_folder(versions_dir, mc_ver, loader_ver)
+                if installed_name:
+                    version_to_launch = installed_name
+                else:
+                    version_to_launch = neoforge_installed_version_id(mc_ver, loader_ver)
             elif not is_fabric and "-" in version_to_launch:
-                # Проверяем, есть ли уже префикс forge
                 if "forge" not in version_to_launch.lower():
                     version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            is_forge_version = (not is_fabric) and ("forge" in version_to_launch.lower())
+            is_forge_version = (not is_fabric) and (not is_neoforge) and ("forge" in version_to_launch.lower())
             
             jvm_args = [
                 f'-Xmx{self.memory}G',
@@ -1106,7 +1332,7 @@ class InstallThread(QThread):
                 '-XX:+OptimizeStringConcat',
                 '-XX:+UseCompressedOops'
             ]
-            if is_forge_version:
+            if is_forge_version or is_neoforge:
                 jvm_args.extend([
                     '-Dfml.ignoreInvalidMinecraftCertificates=true',
                     '-Dfml.ignorePatchDiscrepancies=true',
@@ -2257,6 +2483,36 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.warning(f"Не удалось добавить список Fabric для {mc_version}: {e}")
 
+    def _append_neoforge_loader_items(self, mc_version: str):
+        """NeoForge в комбобоксе — только для Minecraft 1.21+."""
+        translations = TRANSLATIONS.get(self.language, TRANSLATIONS['ru'])
+        try:
+            supported = minecraft_is_neoforge_range(mc_version)
+            if not supported:
+                try:
+                    mod_loader = getattr(minecraft_launcher_lib, "mod_loader", None)
+                    if mod_loader is not None:
+                        supported = mod_loader.get_mod_loader("neoforge").is_minecraft_version_supported(mc_version)
+                except Exception:
+                    supported = False
+            if not supported:
+                return
+            versions = list_neoforge_loader_versions(mc_version)
+            if not versions:
+                return
+            self.forge_version.addItem(translations['neoforge_latest_label'], "neoforge:latest")
+            n = 0
+            for lv in versions:
+                self.forge_version.addItem(
+                    translations['neoforge_loader_label'].format(loader=lv),
+                    f"neoforge-loader-{lv}-{mc_version}"
+                )
+                n += 1
+                if n >= 40:
+                    break
+        except Exception as e:
+            logging.warning(f"Не удалось добавить список NeoForge для {mc_version}: {e}")
+
     def _loader_install_id_from_combo(self, minecraft_version: str):
         """
         Внутренний id для InstallThread: None = ванилла, иначе id Forge или fabric-loader-...
@@ -2276,7 +2532,15 @@ class MainWindow(QMainWindow):
                 return None
         if isinstance(data, str) and data.startswith("fabric-loader-"):
             return data
-        if data and isinstance(data, str) and not data.startswith("fabric"):
+        if data == "neoforge:latest":
+            versions = list_neoforge_loader_versions(minecraft_version)
+            if not versions:
+                logging.error("neoforge:latest: список версий пуст")
+                return None
+            return f"neoforge-loader-{versions[0]}-{minecraft_version}"
+        if isinstance(data, str) and data.startswith("neoforge-loader-"):
+            return data
+        if data and isinstance(data, str) and not data.startswith("fabric") and not data.startswith("neoforge"):
             return data
         if "forge" in text.lower() and "-forge-" in text:
             parts = text.split("-forge-", 1)
@@ -2290,6 +2554,19 @@ class MainWindow(QMainWindow):
         if iid is None:
             return minecraft_version
         if iid.startswith("fabric-loader-"):
+            return iid
+        if iid.startswith("neoforge-loader-"):
+            try:
+                loader_ver, mc_ver = split_neoforge_loader_and_mc(iid)
+            except ValueError:
+                return iid
+            found = find_neoforge_version_folder(
+                os.path.join(self.install_path.text().strip(), "versions") if hasattr(self.install_path, "text") else "",
+                mc_ver,
+                loader_ver,
+            )
+            return found or neoforge_installed_version_id(mc_ver, loader_ver)
+        if "neoforge" in iid.lower():
             return iid
         if "forge" in iid.lower():
             return iid
@@ -2503,6 +2780,7 @@ class MainWindow(QMainWindow):
                 self.forge_version.setEnabled(True)
                 self.status_label.setText(f"Не найдено версий Forge для {selected_version}")
 
+            self._append_neoforge_loader_items(selected_version)
             self._append_fabric_loader_items(selected_version)
                 
         except Exception as e:
@@ -3085,7 +3363,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.6"
+            current_version = "1.0.9.7"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3122,7 +3400,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.6"
+            current_version = "1.0.9.7"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3821,10 +4099,7 @@ class MainWindow(QMainWindow):
 
             logging.info(f"Запуск игры с памятью: {self.memory}GB")
             
-            # Очищаем переменную окружения _JAVA_OPTIONS
-            if '_JAVA_OPTIONS' in os.environ:
-                del os.environ['_JAVA_OPTIONS']
-                logging.info("Очищена переменная окружения _JAVA_OPTIONS")
+            clear_inherited_java_options()
             
             # Определяем версию для запуска
             version_to_launch = self.version
@@ -3832,29 +4107,34 @@ class MainWindow(QMainWindow):
             # Проверяем наличие ванильной или Forge версии
             versions_dir = os.path.join(self.install_path, "versions")
             is_fabric = version_to_launch.startswith("fabric-loader-")
+            is_neoforge = version_to_launch.startswith("neoforge-loader-")
             
-            # Если нам нужно запустить ванильную версию (без Forge / Fabric)
-            if not is_fabric and "-" not in version_to_launch:
+            # Если нам нужно запустить ванильную версию (без Forge / Fabric / NeoForge)
+            if not is_fabric and not is_neoforge and "-" not in version_to_launch:
                 vanilla_dir = os.path.join(versions_dir, version_to_launch)
                 
                 # Если прямой установки ванильной версии нет, но есть Forge
                 if not os.path.exists(vanilla_dir) or not os.listdir(vanilla_dir):
                     # Проверяем, установлена ли ванильная версия как часть Forge
                     for folder in os.listdir(versions_dir) if os.path.exists(versions_dir) else []:
-                        if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower():
+                        if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower() and "neoforge" not in folder.lower():
                             logging.info(f"Ванильная версия {version_to_launch} недоступна напрямую, используем версию внутри Forge")
-                            # Будем запускать Forge, но без модов (как ванильную версию)
                             version_to_launch = folder
                             break
-            # Если это Forge версия, форматируем её правильно (Fabric не трогаем)
+            elif is_neoforge:
+                loader_ver, mc_ver = split_neoforge_loader_and_mc(version_to_launch)
+                installed_name = find_neoforge_version_folder(versions_dir, mc_ver, loader_ver)
+                if installed_name:
+                    version_to_launch = installed_name
+                else:
+                    version_to_launch = neoforge_installed_version_id(mc_ver, loader_ver)
             elif not is_fabric and "-" in version_to_launch:
-                # Проверяем, есть ли уже префикс forge
                 if "forge" not in version_to_launch.lower():
                     version_to_launch = version_to_launch.replace("-", "-forge-", 1)
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-            is_forge_version = (not is_fabric) and ("forge" in version_to_launch.lower())
+            is_forge_version = (not is_fabric) and (not is_neoforge) and ("forge" in version_to_launch.lower())
             
             jvm_args = [
                 f'-Xmx{self.memory}G',
@@ -3871,7 +4151,7 @@ class MainWindow(QMainWindow):
                 '-XX:+OptimizeStringConcat',
                 '-XX:+UseCompressedOops'
             ]
-            if is_forge_version:
+            if is_forge_version or is_neoforge:
                 jvm_args.extend([
                     '-Dfml.ignoreInvalidMinecraftCertificates=true',
                     '-Dfml.ignorePatchDiscrepancies=true',

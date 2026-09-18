@@ -18,8 +18,8 @@ a = Analysis(
     hiddenimports=list(_cn_hidden) + [
                  'psutil', 'win32gui', 'win32api', 'win32con', 'win32process', 'platform', 'subprocess', 'logging',
                  'minecraft_launcher_lib', 'minecraft_launcher_lib.install', 'minecraft_launcher_lib.minecraft',
-                 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types', 'minecraft_launcher_lib.forge',
-                 'minecraft_launcher_lib.fabric'],
+                 'minecraft_launcher_lib.utils', 'minecraft_launcher_lib.types',                  'minecraft_launcher_lib.forge',
+                 'minecraft_launcher_lib.fabric', 'minecraft_launcher_lib.mod_loader'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -93,8 +93,8 @@ else:  # macOS
         icon='assets/icon.icns',
         bundle_identifier='com.igrobar.launcher',
         info_plist={
-            'CFBundleShortVersionString': '1.0.9.6',
-            'CFBundleVersion': '1.0.9.6',
+            'CFBundleShortVersionString': '1.0.9.7',
+            'CFBundleVersion': '1.0.9.7',
             'NSHighResolutionCapable': True,
             'NSHumanReadableCopyright': 'Copyright (c) 2024-2026 Igrobar'
         }

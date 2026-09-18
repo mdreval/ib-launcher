@@ -1,51 +1,58 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
-## Версия 1.0.9.6
+## Версия 1.0.9.7
 
 ### Что нового
-- Для Minecraft **1.20.1** по умолчанию выбирается пункт **сервер IGROBAR**, а не номер Forge (`1.20.1-forge-47.4.23`).
-- В комбобоксе лоадера игрок видит **сервер IGROBAR**; внутри ставится и запускается нужный Forge (сейчас **47.4.23**).
-- Остальные версии Forge и Fabric по-прежнему доступны в том же списке.
+- Для Minecraft **1.21 и новее** в том же списке, что Forge и Fabric, доступен **NeoForge** (пункт «последняя» и конкретные сборки).
+- Установка NeoForge не требует официального Minecraft Launcher: лаунчер создаёт `launcher_profiles.json` и сначала ставит ванильную версию.
+- Перед установкой Forge/NeoForge сбрасываются системные переменные `_JAVA_OPTIONS`, `JAVA_OPTIONS`, `JAVA_TOOL_OPTIONS` — из‑за них установщик писал *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M* и падал.
+- Память из слайдера лаунчера (например 9 ГБ для 1.20.1) **не сбрасывается**: в игру по-прежнему уходит `-Xmx` с ползунка.
+- **1.20.1**, Forge и Fabric работают как в 1.0.9.6.
 
 ### Технические изменения
-- Подпись сервера вынесена в переводы (RU / EN / UK).
-- Версия Minecraft и Forge профиля сервера задаётся константами `IGROBAR_MC_VERSION` и `IGROBAR_FORGE_VERSION` в `qt_version.py` — для обновления Forge сервера достаточно сменить одну строку.
+- Список и установка NeoForge через `minecraft_launcher_lib.mod_loader` (если есть) или Maven NeoForged + `neoforge-*-installer.jar`.
+- Внутренний id: `neoforge-loader-{версия}-{minecraft}`; запуск через `get_minecraft_command`, не через команду Forge.
 
 ---
 
-## Версія 1.0.9.6
+## Версія 1.0.9.7
 
 ### Що нового
-- Для Minecraft **1.20.1** за замовчуванням обирається пункт **сервер IGROBAR**, а не номер Forge (`1.20.1-forge-47.4.23`).
-- У комбобоксі лоадера гравець бачить **сервер IGROBAR**; всередині встановлюється й запускається потрібний Forge (зараз **47.4.23**).
-- Інші версії Forge та Fabric як і раніше доступні в тому ж списку.
+- Для Minecraft **1.21 і новіше** у тому ж списку, що Forge і Fabric, доступний **NeoForge**.
+- Встановлення NeoForge не потребує офіційного Minecraft Launcher: створюється `launcher_profiles.json`, спочатку ставиться ваніль.
+- Перед встановленням Forge/NeoForge скидаються `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS`.
+- Памʼять зі слайдера лаунчера не змінюється.
+- **1.20.1**, Forge і Fabric працюють як у 1.0.9.6.
 
 ### Технічні зміни
-- Підпис сервера винесено в переклади (RU / EN / UK).
-- Версія Minecraft і Forge профілю сервера задається константами `IGROBAR_MC_VERSION` та `IGROBAR_FORGE_VERSION` у `qt_version.py` — щоб оновити Forge сервера, достатньо змінити один рядок.
+- NeoForge через `mod_loader` або Maven + установник JAR.
+- Запуск NeoForge як звичайної версії Minecraft, не через Forge-команду.
 
 ---
 
-## Version 1.0.9.6
+## Version 1.0.9.7
 
 ### What's new
-- For Minecraft **1.20.1**, the default loader item is **IGROBAR server**, not a Forge version string (`1.20.1-forge-47.4.23`).
-- The dropdown shows **IGROBAR server**; the matching Forge build is still installed and launched (currently **47.4.23**).
-- Other Forge and Fabric versions remain in the same list.
+- **NeoForge** is in the same loader dropdown as Forge and Fabric for Minecraft **1.21+**.
+- NeoForge install does not need the official Minecraft Launcher: a `launcher_profiles.json` is created and vanilla is installed first.
+- System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (fixes *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*).
+- The launcher memory slider (e.g. 9 GB for 1.20.1) is **unchanged**; the game still gets `-Xmx` from the slider.
+- **1.20.1**, Forge, and Fabric still work as in 1.0.9.6.
 
 ### Technical changes
-- The server label is translated (RU / EN / UK).
-- Server Minecraft and Forge versions are `IGROBAR_MC_VERSION` and `IGROBAR_FORGE_VERSION` in `qt_version.py` — bump the Forge build by changing one constant.
+- NeoForge listing/install via `minecraft_launcher_lib.mod_loader` when available, otherwise NeoForged Maven + installer JAR.
+- Launch id `neoforge-loader-…` uses `get_minecraft_command`, not the Forge launch path.
 
 ---
 
 ## Примечания
-Эта версия упрощает выбор сборки для игроков сервера IGROBAR: в интерфейсе видна понятная подпись, технический номер Forge скрыт.
+Слайдер памяти в настройках и флаги запуска лаунчера — это не системный `_JAVA_OPTIONS`. Сброс касается только переменных окружения Windows/IDE, чтобы установщик Forge/NeoForge не подхватывал чужой `-Xmx8G -Xms512M`.
 
 ## Известные проблемы
 - Некоторые антивирусы могут блокировать лаунчер при первом запуске. Это ложное срабатывание, добавьте лаунчер в исключения антивируса.
+- Для снапшотов/pre-release Minecraft Forge может отсутствовать в списке — используйте Fabric или NeoForge, если они есть под эту версию.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.6/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.7/IB-Launcher.dmg) - macOS
