@@ -16,7 +16,7 @@
 
 ---
 
-## Версія 1.0.9.8
+## Версія 1.0.9.9
 
 ### Що нового
 - Для Minecraft **1.21 і новіше** у тому ж списку, що Forge і Fabric, доступний **NeoForge**.
@@ -31,7 +31,7 @@
 
 ---
 
-## Version 1.0.9.8
+## Version 1.0.9.9
 
 ### What's new
 - **NeoForge** is in the same loader dropdown as Forge and Fabric for Minecraft **1.21+**.
@@ -54,5 +54,5 @@
 - Для снапшотов/pre-release Minecraft Forge может отсутствовать в списке — используйте Fabric или NeoForge, если они есть под эту версию.
 
 ## Скачать
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.8/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.8/IB-Launcher.dmg) - macOS
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.9/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.9/IB-Launcher.dmg) - macOS
