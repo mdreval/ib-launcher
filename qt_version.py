@@ -28,6 +28,8 @@ except ImportError:
 import requests
 import zipfile
 import tempfile
+import plistlib
+import shlex
 import threading
 import queue
 import re
@@ -118,11 +120,11 @@ TRANSLATIONS = {
         'java_version_error_title': 'Ошибка Java',
         'java_install_error_text': 'Java не установлена или версия ниже 25!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
         'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
-        'java_need_higher_body': 'Для Minecraft {mc} требуется Java {need}+.\nУстановлена версия: {have}.\n\nОткрыть страницу загрузки Java?',
-        'java_not_found_body': 'Для Minecraft {mc} требуется Java {need}+.\nПодходящая Java не найдена.\n\nОткрыть страницу загрузки Java?',
-        'java_download_hint_windows': 'Для Windows выберите x64 Installer.',
-        'java_download_hint_mac': 'Для macOS выберите установщик под ваш чип (ARM64 или x64).',
-        'java_download_hint_linux': 'Для Linux выберите пакет под вашу архитектуру на странице загрузки.',
+        'java_need_higher_body': 'Для Minecraft {mc} требуется Java {need}+.\nУстановлена версия: {have}.\n\nСкачать и установить Java 25 в систему?',
+        'java_not_found_body': 'Для Minecraft {mc} требуется Java {need}+.\nПодходящая Java не найдена.\n\nСкачать и установить Java 25 в систему?',
+        'java_download_hint_windows': 'Windows покажет стандартное подтверждение администратора (UAC).',
+        'java_download_hint_mac': 'macOS покажет стандартный запрос пароля администратора.',
+        'java_download_hint_linux': 'Автоматическая системная установка Java доступна для Windows и macOS.',
         'fabric_latest_label': 'Fabric (последняя)',
         'fabric_loader_label': 'Fabric {loader}',
         'neoforge_latest_label': 'NeoForge (последняя)',
@@ -192,11 +194,11 @@ TRANSLATIONS = {
         'java_version_error_title': 'Java Error',
         'java_install_error_text': 'Java is not installed or version is below 25!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
         'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
-        'java_need_higher_body': 'Minecraft {mc} requires Java {need}+.\nInstalled version: {have}.\n\nOpen the Java download page?',
-        'java_not_found_body': 'Minecraft {mc} requires Java {need}+.\nNo suitable Java was found.\n\nOpen the Java download page?',
-        'java_download_hint_windows': 'On Windows, choose the x64 Installer.',
-        'java_download_hint_mac': 'On macOS, choose the installer for your chip (ARM64 or x64).',
-        'java_download_hint_linux': 'On Linux, choose the archive or package for your architecture.',
+        'java_need_higher_body': 'Minecraft {mc} requires Java {need}+.\nInstalled version: {have}.\n\nDownload and install Java 25 system-wide?',
+        'java_not_found_body': 'Minecraft {mc} requires Java {need}+.\nNo suitable Java was found.\n\nDownload and install Java 25 system-wide?',
+        'java_download_hint_windows': 'Windows will show its standard administrator confirmation (UAC).',
+        'java_download_hint_mac': 'macOS will show its standard administrator password prompt.',
+        'java_download_hint_linux': 'Automatic system-wide Java installation is available on Windows and macOS.',
         'fabric_latest_label': 'Fabric (latest)',
         'fabric_loader_label': 'Fabric {loader}',
         'neoforge_latest_label': 'NeoForge (latest)',
@@ -266,11 +268,11 @@ TRANSLATIONS = {
         'java_version_error_title': 'Помилка Java',
         'java_install_error_text': 'Java не встановлено або версія нижче 25!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
         'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
-        'java_need_higher_body': 'Для Minecraft {mc} потрібна Java {need}+.\nВстановлена версія: {have}.\n\nВідкрити сторінку завантаження Java?',
-        'java_not_found_body': 'Для Minecraft {mc} потрібна Java {need}+.\nПідходящу Java не знайдено.\n\nВідкрити сторінку завантаження Java?',
-        'java_download_hint_windows': 'Для Windows оберіть x64 Installer.',
-        'java_download_hint_mac': 'Для macOS оберіть інсталятор під ваш чіп (ARM64 або x64).',
-        'java_download_hint_linux': 'Для Linux оберіть пакет під вашу архітектуру на сторінці завантаження.',
+        'java_need_higher_body': 'Для Minecraft {mc} потрібна Java {need}+.\nВстановлена версія: {have}.\n\nЗавантажити та встановити Java 25 у систему?',
+        'java_not_found_body': 'Для Minecraft {mc} потрібна Java {need}+.\nПідходящу Java не знайдено.\n\nЗавантажити та встановити Java 25 у систему?',
+        'java_download_hint_windows': 'Windows покаже стандартне підтвердження адміністратора (UAC).',
+        'java_download_hint_mac': 'macOS покаже стандартний запит пароля адміністратора.',
+        'java_download_hint_linux': 'Автоматичне системне встановлення Java доступне для Windows і macOS.',
         'fabric_latest_label': 'Fabric (остання)',
         'fabric_loader_label': 'Fabric {loader}',
         'neoforge_latest_label': 'NeoForge (остання)',
@@ -315,24 +317,31 @@ LOG_FILE = os.path.join(CONFIG_DIR, "launcher.log")
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'launcher_config.json')
 FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
 
-# Профиль «сервер IGROBAR»: в списке видна эта фраза, ставится указанный NeoForge.
-# Чтобы сменить сборку сервера — поменяй IGROBAR_MC_VERSION и IGROBAR_NEOFORGE_VERSION.
-IGROBAR_MC_VERSION = "1.21.1"
-IGROBAR_NEOFORGE_VERSION = "21.1.251"
-IGROBAR_FORGE_VERSION = IGROBAR_NEOFORGE_VERSION  # совместимость со старыми именами в коде
+# Профиль «сервер IGROBAR». Меняй только ЭТУ строку:
+# (версия Minecraft, "neoforge" или "fabric", версия выбранного лоадера)
+IGROBAR_PROFILE = ("1.21.1", "neoforge", "21.1.251")
+IGROBAR_MC_VERSION, IGROBAR_LOADER_TYPE, IGROBAR_LOADER_VERSION = IGROBAR_PROFILE
+if IGROBAR_LOADER_TYPE not in {"neoforge", "fabric"}:
+    raise ValueError("IGROBAR_PROFILE: loader must be 'neoforge' or 'fabric'")
 
 
 def igrobar_loader_install_id():
-    """Внутренний id для InstallThread: neoforge-loader-21.1.251-1.21.1"""
-    return f"neoforge-loader-{IGROBAR_NEOFORGE_VERSION}-{IGROBAR_MC_VERSION}"
+    """Внутренний id выбранного серверного лоадера для InstallThread."""
+    if IGROBAR_LOADER_TYPE == "fabric":
+        return f"fabric-loader-{IGROBAR_LOADER_VERSION}-{IGROBAR_MC_VERSION}"
+    return f"neoforge-loader-{IGROBAR_LOADER_VERSION}-{IGROBAR_MC_VERSION}"
 
 
 def igrobar_forge_install_id():
+    """Совместимое со старым именем представление id серверного лоадера."""
     return igrobar_loader_install_id()
 
 
 def igrobar_forge_folder_name():
-    return f"neoforge-{IGROBAR_NEOFORGE_VERSION}"
+    """Ожидаемое имя папки версии для сохранённых старых настроек."""
+    if IGROBAR_LOADER_TYPE == "fabric":
+        return igrobar_loader_install_id()
+    return f"neoforge-{IGROBAR_LOADER_VERSION}"
 
 
 def is_official_minecraft_release_id(version_id: str) -> bool:
@@ -407,7 +416,8 @@ def get_min_java_for_minecraft(minecraft_version_id: str) -> int:
         return 21
     patch = int(parts[2]) if len(parts) > 2 and str(parts[2]).isdigit() else 0
     if major != 1:
-        return 21
+        # Новая схема Minecraft (26.1 и новее) использует Java 25+.
+        return 25
     if minor == 20:
         return 17 if patch <= 1 else 21
     if minor == 21:
@@ -494,12 +504,15 @@ def minecraft_is_neoforge_range(mc_version: str) -> bool:
 
 
 def _neoforge_maven_prefix_for_mc(mc_version: str) -> str:
-    """1.21 → 21.0. ; 1.21.1 → 21.1."""
+    """Префикс NeoForge Maven для старых 1.x.y и новых версий 26.x."""
     parts = mc_version.split(".")
-    if len(parts) < 2 or parts[0] != "1" or not parts[1].isdigit():
+    if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
         return ""
-    patch = parts[2] if len(parts) > 2 and parts[2].isdigit() else "0"
-    return f"{parts[1]}.{patch}."
+    if parts[0] == "1":
+        patch = parts[2] if len(parts) > 2 and parts[2].isdigit() else "0"
+        return f"{parts[1]}.{patch}."
+    # Начиная с формата Minecraft 26.1 NeoForge использует тот же префикс: 26.1.*.
+    return f"{parts[0]}.{parts[1]}."
 
 
 def list_neoforge_loader_versions(mc_version: str):
@@ -714,15 +727,17 @@ def clean_quickplay_settings(install_path):
         logging.error(f"Ошибка при очистке настроек быстрого старта: {str(e)}")
 
 class JavaInstaller(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, java_major=25):
         super().__init__(parent)
+        self.java_major = int(java_major)
         self.setWindowTitle("Установка Java")
         self.setFixedSize(400, 150)
         self.install_thread = None
 
         layout = QVBoxLayout()
-        self.status_label = QLabel("Для работы требуется Java 25+. Установить сейчас?")
-        self.install_button = QPushButton("Установить Java 25")
+        self.status_label = QLabel(
+            f"Для работы требуется Java {self.java_major}+. Установить в систему сейчас?")
+        self.install_button = QPushButton(f"Установить Java {self.java_major} в систему")
         self.cancel_button = QPushButton("Отмена")
 
         layout.addWidget(self.status_label)
@@ -739,7 +754,7 @@ class JavaInstaller(QDialog):
         self.status_label.setText("Подготовка к установке...")
         QApplication.processEvents()
 
-        self.install_thread = JavaInstallThread()
+        self.install_thread = JavaInstallThread(self.java_major)
         self.install_thread.status_update.connect(self.update_status)
         self.install_thread.finished.connect(self.installation_finished)
         self.install_thread.error_occurred.connect(self.installation_error)
@@ -753,7 +768,7 @@ class JavaInstaller(QDialog):
         QMessageBox.information(
             self,
             "Успех",
-            "Java успешно установлена! Лаунчер будет перезапущен."
+            "Java успешно установлена в систему! Лаунчер будет перезапущен."
         )
         QApplication.exit(1337)
 
@@ -766,81 +781,92 @@ class JavaInstallThread(QThread):
     status_update = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
-    def run(self):
+    def __init__(self, java_major=25, parent=None):
+        super().__init__(parent)
+        self.java_major = int(java_major)
+
+    def _installer_url(self):
+        """Официальные стабильные установщики Oracle JDK для системной Java."""
+        system = platform.system()
+        if system == "Windows":
+            return f"https://download.oracle.com/java/{self.java_major}/latest/jdk-{self.java_major}_windows-x64_bin.msi"
+        if system == "Darwin":
+            machine = platform.machine().lower()
+            architecture = "aarch64" if machine in {"arm64", "aarch64"} else "x64"
+            return f"https://download.oracle.com/java/{self.java_major}/latest/jdk-{self.java_major}_macos-{architecture}_bin.dmg"
+        raise RuntimeError(f"Автоматическая системная установка Java пока поддерживается только для Windows и macOS ({system})")
+
+    @staticmethod
+    def _find_macos_package(mount_point):
+        for current_root, dirs, files in os.walk(mount_point):
+            for filename in dirs + files:
+                if filename.lower().endswith(".pkg"):
+                    return os.path.join(current_root, filename)
+        return None
+
+    def _install_windows(self, installer_path):
+        self.status_update.emit("Windows запросит подтверждение администратора...")
+        escaped_path = installer_path.replace("'", "''")
+        command = (
+            "$process = Start-Process -FilePath 'msiexec.exe' "
+            f"-ArgumentList '/i \"{escaped_path}\" /qn /norestart' "
+            "-Verb RunAs -Wait -PassThru; exit $process.ExitCode"
+        )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
+            capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "Установка Java в Windows отменена или завершилась с ошибкой")
+
+    def _install_macos(self, installer_path):
+        self.status_update.emit("macOS запросит пароль администратора...")
+        attached = subprocess.run(
+            ["hdiutil", "attach", "-nobrowse", "-readonly", "-plist", installer_path],
+            check=True, capture_output=True)
+        mount_point = None
         try:
-            os_type = platform.system()
-            
-            # Обновленные URL для скачивания Java
-            java_urls = {
-                "Windows": "https://download.oracle.com/java/25/archive/jdk-25.0.0_windows-x64_bin.exe",
-                "Darwin": "https://download.oracle.com/java/25/archive/jdk-25.0.0_macos-aarch64_bin.dmg"
-            }
-            
-            if os_type not in java_urls:
-                raise Exception(f"Неподдерживаемая операционная система: {os_type}")
-            
-            # Добавляем заголовки для скачивания с Oracle
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            
-            # Создаем временную папку для загрузки
-            temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "IBLauncher")
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            installer_name = "jdk-25.exe" if os_type == "Windows" else "jdk-25.dmg"
-            installer_path = os.path.join(temp_dir, installer_name)
-            
-            # Скачиваем установщик
-            self.status_update.emit("Загрузка Java...")
-            
-            response = requests.get(java_urls[os_type], headers=headers, stream=True, verify=True)
+            entities = plistlib.loads(attached.stdout).get("system-entities", [])
+            mount_point = next((item.get("mount-point") for item in entities if item.get("mount-point")), None)
+            if not mount_point:
+                raise RuntimeError("Не удалось подключить образ установщика Java")
+            package_path = self._find_macos_package(mount_point)
+            if not package_path:
+                raise RuntimeError("В образе Java не найден пакет установки")
+            shell_command = "/usr/sbin/installer -pkg {} -target /".format(shlex.quote(package_path))
+            script = "do shell script {} with administrator privileges".format(json.dumps(shell_command))
+            result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip() or "Установка Java в macOS отменена или завершилась с ошибкой")
+        finally:
+            if mount_point:
+                subprocess.run(["hdiutil", "detach", mount_point], capture_output=True)
+
+    def run(self):
+        temp_dir = None
+        try:
+            system = platform.system()
+            if system not in {"Windows", "Darwin"}:
+                raise RuntimeError(f"Автоматическая системная установка Java пока поддерживается только для Windows и macOS ({system})")
+            temp_dir = tempfile.mkdtemp(prefix="ib-launcher-java-")
+            suffix = ".msi" if system == "Windows" else ".dmg"
+            installer_path = os.path.join(temp_dir, f"jdk-{self.java_major}{suffix}")
+            self.status_update.emit(f"Загрузка системного установщика Java {self.java_major}...")
+            response = requests.get(self._installer_url(), stream=True, timeout=(15, 300), verify=True)
             response.raise_for_status()
-            
-            with open(installer_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            self.status_update.emit("Запуск установщика...")
-            
-            # Для Windows
-            if os_type == "Windows":
-                result = subprocess.run(
-                    f'powershell "Start-Process \'{installer_path}\' -ArgumentList \'/s\' -Verb RunAs -Wait"',
-                    shell=True,
-                    capture_output=True,
-                    text=True
-                )
-                if result.returncode != 0:
-                    raise Exception(f"Ошибка: {result.stderr}")
-            
-            # Для macOS
-            elif os_type == "Darwin":
-                mount_output = subprocess.check_output(["hdiutil", "attach", installer_path]).decode()
-                mount_point = mount_output.split("\t")[-1].strip()
-                pkg_path = os.path.join(mount_point, "JDK 17.pkg")
-                
-                install_process = subprocess.run(
-                    ["sudo", "installer", "-pkg", pkg_path, "-target", "/"],
-                    input=subprocess.getoutput("whoami").strip() + "\n",
-                    text=True,
-                    capture_output=True
-                )
-                
-                if install_process.returncode != 0:
-                    raise Exception(f"Ошибка: {install_process.stderr}")
-                
-                subprocess.run(["hdiutil", "detach", mount_point], check=True)
-            
-            # Очищаем временные файлы
-            try:
-                os.remove(installer_path)
-            except:
-                pass
-            
+            with open(installer_path, "wb") as installer:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        installer.write(chunk)
+            if system == "Windows":
+                self._install_windows(installer_path)
+            else:
+                self._install_macos(installer_path)
         except Exception as e:
-            logging.error(f"Ошибка установки Java: {str(e)}")
+            logging.error(f"Ошибка системной установки Java: {str(e)}")
             self.error_occurred.emit(str(e))
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
 class InstallThread(QThread):
     progress_update = pyqtSignal(int, int, str)
@@ -1751,189 +1777,9 @@ class InstallThread(QThread):
             logging.error(f"Ошибка получения версии Java: {str(e)}")
             return 0
 
-    def install_game(self):
-        """Установка игры"""
-        try:
-            # Проверяем, что выбрана версия Minecraft
-            selected_version = self.minecraft_version.currentText()
-            if not selected_version:
-                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft")
-                return
-            
-            # Получаем имя пользователя
-            username = self.username.text().strip()
-            if not username:
-                QMessageBox.warning(self, "Ошибка", "Введите имя пользователя")
-                return
-            
-            # Получаем путь установки
-            install_path = self.install_path.text().strip()
-            if not os.path.exists(install_path):
-                os.makedirs(install_path, exist_ok=True)
-            
-            # Проверяем доступность записи в указанный путь
-            if not os.access(install_path, os.W_OK):
-                QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
-                return
-            
-            # Проверяем наличие Java в зависимости от выбранной версии
-            if not self.check_java_for_version(selected_version):
-                QMessageBox.warning(self, "Ошибка", f"Требуется соответствующая версия Java для Minecraft {selected_version}")
-                return
-            
-            # Проверка Forge
-            forge_selected = (
-                self.forge_version.isEnabled() and 
-                self.forge_version.currentText() != "Не устанавливать"
-            )
-            
-            if forge_selected:
-                # Сначала устанавливаем базовую версию Minecraft
-                self.status_label.setText(f"Установка Minecraft {selected_version}...")
-                minecraft_launcher_lib.install.install_minecraft_version(
-                    versionid=selected_version,
-                    minecraft_directory=install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-                
-                # Затем устанавливаем Forge
-                forge_version = self.forge_version.currentText()
-                forge_version_id = forge_version.replace(f"{selected_version}-forge-", f"{selected_version}-")
-                self.status_label.setText(f"Установка Forge {forge_version_id}...")
-                
-                minecraft_launcher_lib.forge.install_forge_version(
-                    forge_version_id,
-                    install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-                
-                # Добавляем версию Forge в кеш
-                self.add_to_forge_cache(selected_version, forge_version_id)
-                
-                if self.mods_update_checkbox.isChecked() and self._is_igrobar_profile_selected():
-                    self.install_modpack()
-            else:
-                # Установка только Minecraft без Forge
-                self.status_label.setText(f"Установка Minecraft {selected_version}...")
-                minecraft_launcher_lib.install.install_minecraft_version(
-                    versionid=selected_version,
-                    minecraft_directory=install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-            
-            self.status_label.setText(f"Minecraft {selected_version} установлен")
-            self.start_button.setText("Играть")
-            
-            # Проверяем успешность установки
-            self.check_game_installed()
-            
-        except Exception as e:
-            logging.error(f"Ошибка установки игры: {str(e)}", exc_info=True)
-            QMessageBox.critical(self, "Ошибка", f"Не удалось установить игру: {str(e)}")
-            self.status_label.setText("Произошла ошибка при установке")
 
-    def on_install_path_changed(self):
-        """Обработчик изменения пути установки"""
-        try:
-            # Сохраняем новый путь в конфигурации
-            self.save_config()
-            # Проверяем установку игры
-            self.check_game_installed()
-        except Exception as e:
-            logging.error(f"Ошибка при обработке изменения пути установки: {str(e)}")
 
-    def remove_version(self):
-        """Удаляет выбранную версию игры"""
-        try:
-            # Получаем текущие версии
-            minecraft_version = self.minecraft_version.currentText()
-            forge_version = self.forge_version.currentText() if self.forge_version.isEnabled() else None
-            install_path = self.install_path.text().strip()
 
-            # Определяем, какую версию нужно удалить
-            if forge_version == "Не устанавливать" or forge_version is None:
-                version_to_remove = minecraft_version
-            else:
-                version_to_remove = forge_version
-
-            # Спрашиваем подтверждение
-            reply = QMessageBox.question(
-                self,
-                "Подтверждение удаления",
-                f"Вы уверены, что хотите удалить версию {version_to_remove} и все связанные файлы?",
-                QMessageBox.Yes | QMessageBox.No
-            )
-
-            if reply == QMessageBox.No:
-                return
-
-            # Функция для обработки ошибок при удалении защищённых файлов
-            def on_rm_error(func, path, exc_info):
-                import stat
-                try:
-                    os.chmod(path, stat.S_IWRITE)
-                    func(path)
-                except Exception:
-                    pass
-
-            # Удаляем всю папку установки
-            if os.path.exists(install_path):
-                import shutil
-                try:
-                    # Удаляем всю папку установки с обработчиком ошибок
-                    shutil.rmtree(install_path, onerror=on_rm_error)
-                    logging.info(f"Удалена папка установки: {install_path}")
-
-                    # Обновляем состояние кнопок
-                    self.check_game_installed()
-
-                    # Показываем сообщение об успешном удалении
-                    QMessageBox.information(
-                        self,
-                        "Удаление завершено",
-                        f"Версия {version_to_remove} и все связанные файлы успешно удалены."
-                    )
-                except Exception as e:
-                    logging.error(f"Ошибка при удалении папки установки: {str(e)}")
-                    raise
-            else:
-                logging.warning(f"Папка установки не найдена: {install_path}")
-                QMessageBox.warning(
-                    self,
-                    "Предупреждение",
-                    "Папка установки не найдена."
-                )
-
-        except Exception as e:
-            logging.error(f"Ошибка при удалении версии: {str(e)}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Ошибка",
-                f"Не удалось удалить версию: {str(e)}"
-            )
-
-    def get_natives_path(self):
-        """Определяет путь к нативным библиотекам в зависимости от архитектуры"""
-        if platform.system() != "Darwin":
-            return None
-            
-        arch = platform.machine()
-        if arch == 'arm64':
-            return "-natives-macos-arm64"
-        else:
-            return "-natives-macos"
 
 class MainWindow(QMainWindow):
     # Добавляем сигналы
@@ -2048,7 +1894,6 @@ class MainWindow(QMainWindow):
         if self.en_language_radio: self.en_language_radio.toggled.connect(self.on_language_changed)
         if self.uk_language_radio: self.uk_language_radio.toggled.connect(self.on_language_changed)
         
-        self.check_dependencies()
         
         # Загружаем конфигурацию
         self.load_config()
@@ -2170,24 +2015,6 @@ class MainWindow(QMainWindow):
             self.retranslate_ui()
             self.save_config()
 
-    def clean_path(self, path):
-        """
-        Очищает путь от лишних IBLauncher
-        """
-        parts = path.split(os.sep)
-        cleaned_parts = []
-        iblauncher_found = False
-        
-        for part in parts:
-            if part == "IBLauncher" and not iblauncher_found:
-                cleaned_parts.append(part)
-                iblauncher_found = True
-            elif part.startswith("IBLauncher_"):
-                cleaned_parts.append(part)
-            elif part != "IBLauncher":
-                cleaned_parts.append(part)
-        
-        return os.sep.join(cleaned_parts)
 
     def setup_path(self):
         """Настраивает путь установки в зависимости от выбранной версии"""
@@ -2230,7 +2057,7 @@ class MainWindow(QMainWindow):
                     base_path = base_path.rstrip("_")
 
             # Формируем новый путь в зависимости от версии
-            if selected_version == "1.21.1":
+            if selected_version == IGROBAR_MC_VERSION:
                 new_path = os.path.join(base_path, "IBLauncher")
             else:
                 new_path = os.path.join(base_path, f"IBLauncher_{selected_version}")
@@ -2299,7 +2126,7 @@ class MainWindow(QMainWindow):
                 selected_version = self.minecraft_version.currentText()
                 
                 # Формируем новый путь в зависимости от версии
-                if selected_version == "1.21.1":
+                if selected_version == IGROBAR_MC_VERSION:
                     new_path = os.path.join(folder_path, "IBLauncher")
                 else:
                     new_path = os.path.join(folder_path, f"IBLauncher_{selected_version}")
@@ -2325,9 +2152,6 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка при выборе пути установки: {str(e)}")
             self.show_error(f"Ошибка при выборе пути установки: {str(e)}")
 
-    def check_java(self):
-        """Java больше не проверяется при старте — только перед «Установить» / «Играть»."""
-        return True
 
     def load_config(self):
         """Загружает конфигурацию из файла"""
@@ -2380,7 +2204,7 @@ class MainWindow(QMainWindow):
                         base_path = install_path
                     
                     # Формируем новый путь
-                    if minecraft_version == "1.21.1":
+                    if minecraft_version == IGROBAR_MC_VERSION:
                         new_path = os.path.join(base_path, "IBLauncher")
                     else:
                         new_path = os.path.join(base_path, f"IBLauncher_{minecraft_version}")
@@ -2621,7 +2445,7 @@ class MainWindow(QMainWindow):
                             self.minecraft_version.setCurrentText(saved_version)
                             
                             # Если версия не 1.21.1, добавляем "Не устанавливать"
-                            if saved_version != "1.21.1":
+                            if saved_version != IGROBAR_MC_VERSION:
                                 self.forge_version.addItem("Не устанавливать")
                             
                             # Загружаем соответствующую версию Forge из кеша
@@ -2645,7 +2469,7 @@ class MainWindow(QMainWindow):
                                         self.forge_version.setCurrentIndex(0)
                                 else:
                                     # Если версия не 1.21.1, устанавливаем "Не устанавливать"
-                                    if saved_version != "1.21.1":
+                                    if saved_version != IGROBAR_MC_VERSION:
                                         self.forge_version.setCurrentIndex(0)
                 return
 
@@ -2690,7 +2514,7 @@ class MainWindow(QMainWindow):
                     saved_version = config.get('minecraft_version')
                     saved_forge = config.get('forge_version')
 
-            old_igrobar_mc = saved_version == "1.21.1"
+            old_igrobar_mc = saved_version == IGROBAR_MC_VERSION
             if saved_version and not old_igrobar_mc and self.minecraft_version.findText(saved_version) >= 0:
                 self.minecraft_version.setCurrentText(saved_version)
             else:
@@ -2736,52 +2560,8 @@ class MainWindow(QMainWindow):
                 return -1
         return 0
 
-    def check_dependencies(self):
-        """Проверяет наличие всех зависимостей"""
-        try:
-            if not self._is_igrobar_profile_selected():
-                logging.info("Пропуск проверки модпака: выбран не «сервер IGROBAR»")
-                return
-            self.status_update.emit("Проверка модов...")
-            
-            # Проверяем обновления модов
-            if self.check_mods_update():
-                logging.info("Требуется обновление модов")
-                self.status_update.emit("Обновление модов...")
-                self.install_modpack()
-                return
-            
-            logging.info("Моды актуальны")
-            
-        except Exception as e:
-            logging.error(f"Ошибка проверки зависимостей: {str(e)}")
-            raise
 
-    def load_forge_cache(self):
-        """Загрузка кеша версий Forge"""
-        logging.info("Загрузка кеша Forge")
-        try:
-            if os.path.exists(FORGE_CACHE_FILE):
-                with open(FORGE_CACHE_FILE, 'r') as f:
-                    cache = json.load(f)
-                    logging.info(f"Загружен кеш Forge: {cache}")
-                    return cache
-            logging.info("Файл кеша не найден")
-        except Exception as e:
-            logging.error(f"Ошибка загрузки кеша Forge: {str(e)}", exc_info=True)
-        return {}
 
-    def save_forge_cache(self, minecraft_version, forge_version):
-        """Сохранение версии Forge в кеш"""
-        logging.info(f"Сохранение в кеш: {minecraft_version} -> {forge_version}")
-        try:
-            cache = self.forge_cache
-            cache[minecraft_version] = forge_version
-            with open(FORGE_CACHE_FILE, 'w') as f:
-                json.dump(cache, f)
-            logging.info(f"Кеш успешно сохранен: {cache}")
-        except Exception as e:
-            logging.error(f"Ошибка сохранения кеша Forge: {str(e)}", exc_info=True)
 
     def update_forge_versions(self):
         """Обновляет список версий Forge и Fabric для текущей версии Minecraft"""
@@ -2872,12 +2652,14 @@ class MainWindow(QMainWindow):
             TRANSLATIONS['ru']['igrobar_server_label'],
             TRANSLATIONS['en']['igrobar_server_label'],
             TRANSLATIONS['uk']['igrobar_server_label'],
-            f"neoforge-loader-{IGROBAR_NEOFORGE_VERSION}-{IGROBAR_MC_VERSION}",
-            f"{IGROBAR_MC_VERSION}-neoforge-{IGROBAR_NEOFORGE_VERSION}",
-            f"NeoForge {IGROBAR_NEOFORGE_VERSION}",
-            "1.21.1-neoforge-21.1.251",
-            "1.21.1-21.1.251",
         }
+        if IGROBAR_LOADER_TYPE == "neoforge":
+            igrobar_aliases.update({
+                f"{IGROBAR_MC_VERSION}-neoforge-{IGROBAR_LOADER_VERSION}",
+                f"NeoForge {IGROBAR_LOADER_VERSION}",
+            })
+        else:
+            igrobar_aliases.add(f"Fabric {IGROBAR_LOADER_VERSION}")
         if saved_forge in igrobar_aliases:
             if self._select_igrobar_loader():
                 return True
@@ -2898,7 +2680,7 @@ class MainWindow(QMainWindow):
 
         added_versions = set()
 
-        # 1.21.1: «Не устанавливать», затем «сервер IGROBAR» (= NeoForge 21.1.251), затем Forge / остальные NeoForge / Fabric
+        # Серверный Minecraft: «Не устанавливать», затем «сервер IGROBAR», далее все доступные лоадеры.
         if selected_version == IGROBAR_MC_VERSION:
             self.forge_version.addItem("Не устанавливать", None)
             self.forge_version.addItem(self._igrobar_label(), igrobar_loader_install_id())
@@ -2918,7 +2700,12 @@ class MainWindow(QMainWindow):
                         self.add_to_forge_cache(IGROBAR_MC_VERSION, version)
             except Exception as e:
                 logging.error(f"Ошибка получения списка версий Forge для {IGROBAR_MC_VERSION}: {str(e)}")
-            self._append_neoforge_loader_items(IGROBAR_MC_VERSION, skip_loaders={IGROBAR_NEOFORGE_VERSION})
+            if IGROBAR_LOADER_TYPE == "neoforge":
+                self._append_neoforge_loader_items(
+                    IGROBAR_MC_VERSION, skip_loaders={IGROBAR_LOADER_VERSION}
+                )
+            else:
+                self._append_neoforge_loader_items(IGROBAR_MC_VERSION)
             self._append_fabric_loader_items(IGROBAR_MC_VERSION)
         else:
             self.update_forge_versions()
@@ -3424,7 +3211,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.0"
+            current_version = "1.1.0.1"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3461,7 +3248,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.0"
+            current_version = "1.1.0.1"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3638,8 +3425,6 @@ class MainWindow(QMainWindow):
             hint = translations['java_download_hint_mac']
         else:
             hint = translations['java_download_hint_linux']
-        url = QUrl(java_download_page_url(min_java))
-
         if java_path:
             java_version = self._get_java_version(java_path)
             logging.info(f"Найдена Java версии {java_version}")
@@ -3655,7 +3440,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.Yes
             )
             if reply == QMessageBox.Yes:
-                QDesktopServices.openUrl(url)
+                self._install_system_java()
             return False
 
         body = translations['java_not_found_body'].format(mc=minecraft_version, need=min_java)
@@ -3667,8 +3452,14 @@ class MainWindow(QMainWindow):
             QMessageBox.Yes
         )
         if reply == QMessageBox.Yes:
-            QDesktopServices.openUrl(url)
+            self._install_system_java()
         return False
+
+    def _install_system_java(self):
+        """Запускает системную установку Java 25 после явного подтверждения пользователя."""
+        installer = JavaInstaller(self, java_major=25)
+        QTimer.singleShot(0, installer.start_java_installation)
+        installer.exec_()
 
     def find_java_path(self, min_java_major=21):
         """Находит Java с мажорной версией >= min_java_major (более новая подходит)."""
@@ -3965,98 +3756,6 @@ class MainWindow(QMainWindow):
             logging.error(f"Ошибка получения версии Java: {str(e)}")
             return 0
 
-    def install_game(self):
-        """Установка игры"""
-        try:
-            # Проверяем, что выбрана версия Minecraft
-            selected_version = self.minecraft_version.currentText()
-            if not selected_version:
-                QMessageBox.warning(self, "Ошибка", "Выберите версию Minecraft")
-                return
-            
-            # Получаем имя пользователя
-            username = self.username.text().strip()
-            if not username:
-                QMessageBox.warning(self, "Ошибка", "Введите имя пользователя")
-                return
-            
-            # Получаем путь установки
-            install_path = self.install_path.text().strip()
-            if not os.path.exists(install_path):
-                os.makedirs(install_path, exist_ok=True)
-            
-            # Проверяем доступность записи в указанный путь
-            if not os.access(install_path, os.W_OK):
-                QMessageBox.critical(self, "Ошибка", "Нет прав на запись в выбранную папку!")
-                return
-            
-            # Проверяем наличие Java в зависимости от выбранной версии
-            #if not self.check_java_for_version(selected_version):
-            #    QMessageBox.warning(self, "Ошибка", f"Требуется соответствующая версия Java для Minecraft {selected_version}")
-            #    return
-            
-            # Проверка Forge
-            forge_selected = (
-                self.forge_version.isEnabled() and 
-                self.forge_version.currentText() != "Не устанавливать"
-            )
-            
-            if forge_selected:
-                # Сначала устанавливаем базовую версию Minecraft
-                self.status_label.setText(f"Установка Minecraft {selected_version}...")
-                minecraft_launcher_lib.install.install_minecraft_version(
-                    versionid=selected_version,
-                    minecraft_directory=install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-                
-                # Затем устанавливаем Forge
-                forge_version = self.forge_version.currentText()
-                forge_version_id = forge_version.replace(f"{selected_version}-forge-", f"{selected_version}-")
-                self.status_label.setText(f"Установка Forge {forge_version_id}...")
-                
-                minecraft_launcher_lib.forge.install_forge_version(
-                    forge_version_id,
-                    install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-                
-                # Добавляем версию Forge в кеш
-                self.add_to_forge_cache(selected_version, forge_version_id)
-                
-                if self.mods_update_checkbox.isChecked() and self._is_igrobar_profile_selected():
-                    self.install_modpack()
-            else:
-                # Установка только Minecraft без Forge
-                self.status_label.setText(f"Установка Minecraft {selected_version}...")
-                minecraft_launcher_lib.install.install_minecraft_version(
-                    versionid=selected_version,
-                    minecraft_directory=install_path,
-                    callback={
-                        'setStatus': lambda text: self.status_label.setText(text),
-                        'setProgress': lambda val: self.progress_bar.setValue(val),
-                        'setMax': lambda val: self.progress_bar.setMaximum(val)
-                    }
-                )
-            
-            self.status_label.setText(f"Minecraft {selected_version} установлен")
-            self.start_button.setText("Играть")
-            
-            # Проверяем успешность установки
-            self.check_game_installed()
-            
-        except Exception as e:
-            logging.error(f"Ошибка установки игры: {str(e)}", exc_info=True)
-            QMessageBox.critical(self, "Ошибка", f"Не удалось установить игру: {str(e)}")
-            self.status_label.setText("Произошла ошибка при установке")
 
     def on_install_path_changed(self):
         """Обработчик изменения пути установки"""
@@ -4138,187 +3837,7 @@ class MainWindow(QMainWindow):
                 f"Не удалось удалить версию: {str(e)}"
             )
 
-    def get_natives_path(self):
-        """Определяет путь к нативным библиотекам в зависимости от архитектуры"""
-        if platform.system() != "Darwin":
-            return None
-            
-        arch = platform.machine()
-        if arch == 'arm64':
-            return "-natives-macos-arm64"
-        else:
-            return "-natives-macos"
 
-    def _launch_game(self):
-        """Запускает игру"""
-        try:
-            # Проверяем наличие имени пользователя
-            if not self.username:
-                self.error_occurred.emit("Введите имя пользователя")
-                return
-
-            logging.info(f"Запуск игры с памятью: {self.memory}GB")
-            
-            clear_inherited_java_options()
-            
-            # Определяем версию для запуска
-            version_to_launch = self.version
-            
-            # Проверяем наличие ванильной или Forge версии
-            versions_dir = os.path.join(self.install_path, "versions")
-            is_fabric = version_to_launch.startswith("fabric-loader-")
-            is_neoforge = version_to_launch.startswith("neoforge-loader-")
-            
-            # Если нам нужно запустить ванильную версию (без Forge / Fabric / NeoForge)
-            if not is_fabric and not is_neoforge and "-" not in version_to_launch:
-                vanilla_dir = os.path.join(versions_dir, version_to_launch)
-                
-                # Если прямой установки ванильной версии нет, но есть Forge
-                if not os.path.exists(vanilla_dir) or not os.listdir(vanilla_dir):
-                    # Проверяем, установлена ли ванильная версия как часть Forge
-                    for folder in os.listdir(versions_dir) if os.path.exists(versions_dir) else []:
-                        if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower() and "neoforge" not in folder.lower():
-                            logging.info(f"Ванильная версия {version_to_launch} недоступна напрямую, используем версию внутри Forge")
-                            version_to_launch = folder
-                            break
-            elif is_neoforge:
-                loader_ver, mc_ver = split_neoforge_loader_and_mc(version_to_launch)
-                installed_name = find_neoforge_version_folder(versions_dir, mc_ver, loader_ver)
-                if installed_name:
-                    version_to_launch = installed_name
-                else:
-                    version_to_launch = neoforge_installed_version_id(mc_ver, loader_ver)
-            elif not is_fabric and "-" in version_to_launch:
-                if "forge" not in version_to_launch.lower():
-                    version_to_launch = version_to_launch.replace("-", "-forge-", 1)
-            
-            logging.info(f"Запуск версии: {version_to_launch}")
-            
-            is_forge_version = (not is_fabric) and (not is_neoforge) and ("forge" in version_to_launch.lower())
-            
-            jvm_args = [
-                f'-Xmx{self.memory}G',
-                '-XX:+UnlockExperimentalVMOptions',
-                '-XX:+UseG1GC',
-                '-XX:G1NewSizePercent=20',
-                '-XX:G1ReservePercent=20',
-                '-XX:MaxGCPauseMillis=50',
-                '-XX:G1HeapRegionSize=32M',
-                '-Djava.net.preferIPv4Stack=true',
-                '-Dlog4j2.formatMsgNoLookups=true',
-                '-XX:+DisableAttachMechanism',
-                '-XX:+UseStringDeduplication',
-                '-XX:+OptimizeStringConcat',
-                '-XX:+UseCompressedOops'
-            ]
-            if is_forge_version or is_neoforge:
-                jvm_args.extend([
-                    '-Dfml.ignoreInvalidMinecraftCertificates=true',
-                    '-Dfml.ignorePatchDiscrepancies=true',
-                ])
-            options = {
-                'username': self.username,
-                'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
-                'token': '',
-                'jvmArguments': jvm_args,
-                'executablePath': self.find_java_path(),
-                'gameDirectory': os.path.abspath(self.install_path)
-            }
-            if is_forge_version:
-                options['launchTarget'] = 'fmlclient'
-
-            # Добавляем специальные аргументы для macOS
-            if platform.system() == "Darwin":
-                options['jvmArguments'].insert(0, '-XstartOnFirstThread')
-                if platform.machine() == 'arm64':
-                    options['jvmArguments'].append('-Dos.arch=aarch64')
-            
-            try:
-                if is_forge_version:
-                    # Получаем команду запуска для Forge
-                    command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                    if command:
-                        process = launch_forge_with_command(command)
-                        if process:
-                            logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                            self.game_started.emit()
-                            return
-                        else:
-                            raise Exception("Не удалось запустить Forge")
-                    else:
-                        raise Exception("Не удалось сформировать команду запуска Forge")
-                else:
-                    # Запускаем ванильную версию
-                    command = get_minecraft_command(version_to_launch, self.install_path, options)
-                    
-                    if platform.system() == "Windows" and HAS_WIN32API:
-                        pid = launch_process_hidden(command, cwd=self.install_path)
-                        if pid:
-                            logging.info(f"Игра успешно запущена с PID: {pid}")
-                            self.game_started.emit()
-                            return
-                        else:
-                            logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
-                    
-                    # Создаем флаги для Windows
-                    creation_flags = 0x08000008 if platform.system() == "Windows" else 0
-                    
-                    # Запускаем процесс с оптимизированными настройками
-                    process = subprocess.Popen(
-                        command,
-                        creationflags=creation_flags,
-                        stdin=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        cwd=os.path.abspath(self.install_path),
-                        close_fds=True,
-                        start_new_session=True
-                    )
-                    
-                    if process:
-                        logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                        self.game_started.emit()
-                        return
-                    else:
-                        raise Exception("Не удалось запустить игру")
-            except minecraft_launcher_lib.exceptions.VersionNotFound as e:
-                logging.error(f"Версия {version_to_launch} не найдена. Проверяем альтернативные варианты...")
-                
-                # Пробуем найти подходящую версию
-                if is_forge_version:
-                    # Извлекаем базовую версию Minecraft
-                    base_version = version_to_launch.split("-forge-")[0]
-                    forge_version = version_to_launch.split("-forge-")[1]
-                    
-                    # Ищем установленные версии Forge
-                    forge_versions = []
-                    if os.path.exists(versions_dir):
-                        for folder in os.listdir(versions_dir):
-                            if folder.startswith(f"{base_version}-forge-"):
-                                forge_versions.append(folder)
-                    
-                    if forge_versions:
-                        # Берем последнюю установленную версию Forge
-                        version_to_launch = sorted(forge_versions)[-1]
-                        logging.info(f"Найдена альтернативная версия Forge: {version_to_launch}")
-                        
-                        # Повторяем попытку запуска с новой версией
-                        if is_forge_version:
-                            command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                        else:
-                            command = get_minecraft_command(version_to_launch, self.install_path, options)
-                        
-                        if command:
-                            process = launch_forge_with_command(command)
-                            if process:
-                                logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                                self.game_started.emit()
-                                return
-                raise Exception(f"Не удалось найти подходящую версию для запуска: {str(e)}")
-
-        except Exception as e:
-            logging.error(f"Ошибка запуска игры: {str(e)}", exc_info=True)
-            self.error_occurred.emit(f"Ошибка запуска игры: {str(e)}")
 
     def update_players_online(self):
         ip = "135.181.237.56"

@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.1.0.0
+# IB Launcher v1.1.0.1
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -21,15 +21,22 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### Системные требования:
 - Windows 10/11 или macOS
-- Python 3.8 или выше
+- Python 3.10 или выше
 - Минимум 4 ГБ оперативной памяти
 - 2 ГБ свободного места на диске
 
 ### История версий
 
+#### Версия 1.1.0.1
+- Добавлена поддержка **NeoForge** для новых версий Minecraft, где он действительно доступен, включая версии с новым форматом нумерации.
+- Профиль **сервера IGROBAR** вынесен в одно место: можно быстро изменить версию Minecraft, тип лоадера (**NeoForge** или **Fabric**) и версию лоадера.
+- Выбранный профиль IGROBAR автоматически становится первым в списке версий и подставляет нужную сборку лоадера.
+- Улучшена проверка Java: для новых версий Minecraft требуется **Java 25**, а более новые версии Java по-прежнему подходят.
+- Если подходящей Java нет, лаунчер может скачать и установить **Java 25** в систему: для Windows через стандартное подтверждение UAC, для macOS — через запрос пароля администратора.
+
 #### Версия 1.1.0.0
 - Убраны **pre-release версии** и **снапшоты** из списка доступных версий Minecraft.
-- Начиная с **Minecraft 1.21** и до последней доступной версии добавлены все **официальные релизные версии Minecraft**.
+- Начиная с **Minecraft 1.20** и до последней доступной версии добавлены все **официальные релизные версии Minecraft**.
 - **Модпак сервера IGROBAR** теперь скачивается только при выборе соответствующей версии для сервера **IGROBAR**.
 - Для остальных версий Minecraft **модпак сервера IGROBAR скачиваться не будет**.
 
@@ -85,15 +92,22 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Системні вимоги:
 - Windows 10/11 або macOS
-- Python 3.8 або вище
+- Python 3.10 або вище
 - Мінімум 4 ГБ оперативної пам'яті
 - 2 ГБ вільного місця на диску
 
 ### Історія версій
 
+#### Версія 1.1.0.1
+- Додано підтримку **NeoForge** для нових версій Minecraft, де він справді доступний, зокрема для версій із новим форматом нумерації.
+- Профіль **сервера IGROBAR** винесено в одне місце: можна швидко змінити версію Minecraft, тип лоадера (**NeoForge** або **Fabric**) і версію лоадера.
+- Обраний профіль IGROBAR автоматично стає першим у списку версій і підставляє потрібну збірку лоадера.
+- Покращено перевірку Java: для нових версій Minecraft потрібна **Java 25**, а новіші версії Java, як і раніше, підходять.
+- Якщо підходящої Java немає, лаунчер може завантажити й встановити **Java 25** у систему: для Windows через стандартне підтвердження UAC, для macOS — через запит пароля адміністратора.
+
 #### Версія 1.1.0.0
 - Прибрано **pre-release версії** та **знімки (snapshots)** зі списку доступних версій Minecraft.
-- Починаючи з **Minecraft 1.21** і до останньої доступної версії додано всі **офіційні релізні версії Minecraft**.
+- Починаючи з **Minecraft 1.20** і до останньої доступної версії додано всі **офіційні релізні версії Minecraft**.
 - **Модпак сервера IGROBAR** тепер завантажується лише при виборі відповідної версії для сервера **IGROBAR**.
 - Для інших версій Minecraft **модпак сервера IGROBAR завантажуватися не буде**.
 
@@ -146,20 +160,27 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### System Requirements:
 - Windows 10/11 or macOS
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Minimum 4 GB of RAM
 - 2 GB of free disk space
 
 ### Version History
 
+#### Version 1.1.0.1
+- Added **NeoForge** support for newer Minecraft versions where it is actually available, including versions that use the new numbering format.
+- Moved the **IGROBAR server** profile to one place: Minecraft version, loader type (**NeoForge** or **Fabric**), and loader version can now be changed quickly.
+- The selected IGROBAR profile is automatically placed first in the version list and applies the matching loader build.
+- Improved Java checks: newer Minecraft versions require **Java 25**, while newer Java versions remain supported.
+- If no suitable Java is installed, the launcher can download and install **Java 25** system-wide: through the standard UAC confirmation on Windows and the administrator-password prompt on macOS.
+
 #### Version 1.1.0.0
 - **Pre-release versions** and **snapshots** have been removed from the available Minecraft version list.
-- Starting from **Minecraft 1.21** up to the latest available version, all **official Minecraft release versions** have been added.
+- Starting from **Minecraft 1.20** up to the latest available version, all **official Minecraft release versions** have been added.
 - The **IGROBAR server modpack** is now downloaded only when the corresponding **IGROBAR server** version is selected.
 - The **IGROBAR server modpack will not be downloaded** for other Minecraft versions.
 
 #### Version 1.0.9.9
-- **NeoForge** is available in the loader list for Minecraft **1.21 and newer** (latest plus recent builds).
+- **NeoForge** is available in the loader list for Minecraft **1.20 and newer** (latest plus recent builds).
 - NeoForge install no longer needs the official launcher: a `launcher_profiles.json` is created, vanilla is installed first.
 - System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (*Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). The launcher memory slider is unchanged.
 - **1.20.1**, Forge, and Fabric still work as before.
@@ -192,11 +213,11 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.0/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.0/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
 - Telegram: [@IGROBAR](https://t.me/igrobar)
 
-Copyright (c) 2024-2026 Igrobar
+Copyright (c) 2024-2027 Igrobar
