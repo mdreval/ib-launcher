@@ -335,6 +335,17 @@ def igrobar_forge_folder_name():
     return f"neoforge-{IGROBAR_NEOFORGE_VERSION}"
 
 
+def is_official_minecraft_release_id(version_id: str) -> bool:
+    """Только релизы вида 1.20.1 / 1.21 — без снапшотов, pre, rc, experimental."""
+    vid = (version_id or "").strip()
+    if not vid or not re.match(r"^\d+\.\d+(?:\.\d+)?$", vid):
+        return False
+    low = vid.lower()
+    if any(token in low for token in ("pre", "rc", "snapshot", "exp")):
+        return False
+    return True
+
+
 # Создаем только директорию для конфигурации лаунчера
 os.makedirs(CONFIG_DIR, exist_ok=True)
 
@@ -1807,8 +1818,7 @@ class InstallThread(QThread):
                 # Добавляем версию Forge в кеш
                 self.add_to_forge_cache(selected_version, forge_version_id)
                 
-                # Для 1.21.1 с Forge устанавливаем модпак
-                if self.mods_update_checkbox.isChecked():
+                if self.mods_update_checkbox.isChecked() and self._is_igrobar_profile_selected():
                     self.install_modpack()
             else:
                 # Установка только Minecraft без Forge
@@ -2639,21 +2649,28 @@ class MainWindow(QMainWindow):
                                         self.forge_version.setCurrentIndex(0)
                 return
 
-            # Релизы >= 1.20.1 (кроме 1.20.5) + снапшоты с даты релиза 1.20.1 и новее
+            # Только официальные релизы >= 1.20.1 (без снапшотов, pre, rc)
             version_list = minecraft_launcher_lib.utils.get_version_list()
-            t1201 = next((v.get('releaseTime') for v in version_list if v['id'] == '1.21.1'), None)
             combined = []
             for v in version_list:
-                version_id = v['id']
-                rt = v.get('releaseTime') or ''
-                if v['type'] == 'release' and version_id != '1.20.5' and self._compare_versions(version_id, '1.21.1') >= 0:
-                    combined.append((rt, 0, version_id))
-                elif v['type'] == 'snapshot' and t1201 is not None and rt >= t1201:
-                    combined.append((rt, 1, version_id))
-            combined.sort(key=lambda x: (x[0], x[1]), reverse=True)
-            versions = [c[2] for c in combined]
+                version_id = v.get('id') or ''
+                vtype = (v.get('type') or '').lower()
+                if vtype != 'release':
+                    continue
+                if not is_official_minecraft_release_id(version_id):
+                    continue
+                if version_id == '1.20.5':
+                    continue
+                try:
+                    if self._compare_versions(version_id, '1.20.1') < 0:
+                        continue
+                except Exception:
+                    continue
+                combined.append((v.get('releaseTime') or '', version_id))
+            combined.sort(key=lambda x: x[0], reverse=True)
+            versions = [c[1] for c in combined]
 
-            logging.info(f"Получены версии Minecraft (релизы + снапшоты): {len(versions)} шт.")
+            logging.info(f"Получены официальные релизы Minecraft: {len(versions)} шт.")
 
             # Профиль сервера IGROBAR сверху списка
             if IGROBAR_MC_VERSION in versions:
@@ -2722,6 +2739,9 @@ class MainWindow(QMainWindow):
     def check_dependencies(self):
         """Проверяет наличие всех зависимостей"""
         try:
+            if not self._is_igrobar_profile_selected():
+                logging.info("Пропуск проверки модпака: выбран не «сервер IGROBAR»")
+                return
             self.status_update.emit("Проверка модов...")
             
             # Проверяем обновления модов
@@ -2812,6 +2832,24 @@ class MainWindow(QMainWindow):
             if self.forge_version.itemData(i) == wanted:
                 self.forge_version.setItemText(i, label)
 
+    def _is_igrobar_profile_selected(self) -> bool:
+        """Модпак сервера только если выбран пункт «сервер IGROBAR», не любой 1.20.1 + Forge/Fabric/NeoForge."""
+        if not getattr(self, "forge_version", None):
+            return False
+        if self.minecraft_version.currentText() != IGROBAR_MC_VERSION:
+            return False
+        data = self.forge_version.currentData()
+        text = self.forge_version.currentText()
+        if data == igrobar_loader_install_id():
+            return True
+        labels = {
+            self._igrobar_label(),
+            TRANSLATIONS['ru']['igrobar_server_label'],
+            TRANSLATIONS['en']['igrobar_server_label'],
+            TRANSLATIONS['uk']['igrobar_server_label'],
+        }
+        return text in labels
+
     def _select_igrobar_loader(self):
         idx = self.forge_version.findData(igrobar_loader_install_id())
         if idx >= 0:
@@ -2837,8 +2875,8 @@ class MainWindow(QMainWindow):
             f"neoforge-loader-{IGROBAR_NEOFORGE_VERSION}-{IGROBAR_MC_VERSION}",
             f"{IGROBAR_MC_VERSION}-neoforge-{IGROBAR_NEOFORGE_VERSION}",
             f"NeoForge {IGROBAR_NEOFORGE_VERSION}",
-            "1.20.1-forge-47.4.23",
-            "1.20.1-47.4.23",
+            "1.21.1-neoforge-21.1.251",
+            "1.21.1-21.1.251",
         }
         if saved_forge in igrobar_aliases:
             if self._select_igrobar_loader():
@@ -2954,6 +2992,10 @@ class MainWindow(QMainWindow):
             version_to_install = loader_id if loader_id else minecraft_version
             logging.info(f"Выбрана версия для установки/запуска: {version_to_install}")
 
+            install_modpack = bool(self.mods_update_switch) and self._is_igrobar_profile_selected()
+            if not install_modpack:
+                logging.info("Модпак не скачивается: выбран не профиль «сервер IGROBAR» или автообновление модов выключено")
+
             # Создаем поток установки
             self.thread = InstallThread(
                 version_to_install,
@@ -2961,7 +3003,7 @@ class MainWindow(QMainWindow):
                 install_path,
                 memory_value,
                 self.launch_flags_input,
-                self.mods_update_switch,
+                install_modpack,
                 min_java_major=min_java
             )
             
@@ -3158,11 +3200,14 @@ class MainWindow(QMainWindow):
     def check_mods_update(self):
         """Проверяет обновления модов"""
         try:
-            selected_version = self.minecraft_version.currentText()
-            # Удалена проверка на 1.21.1, теперь работает для любой версии
-            if not self.mods_update_checkbox.isChecked():
-                logging.info("Автообновление модов отключено")
+            if not self._is_igrobar_profile_selected():
+                logging.info("Пропуск обновления модов: выбран не «сервер IGROBAR»")
                 return False
+            if not getattr(self, "mods_update_checkbox", None) or not self.mods_update_checkbox.isChecked():
+                if not self.mods_update_switch:
+                    logging.info("Автообновление модов отключено")
+                    return False
+                # кнопка автообновления без checkbox — ориентируемся на mods_update_switch
             logging.info("Начало проверки обновлений модов")
             # Проверяем наличие папки модов
             mods_path = os.path.join(self.install_path_str, "mods")
@@ -3245,6 +3290,9 @@ class MainWindow(QMainWindow):
     def install_modpack(self):
         """Устанавливает модпак"""
         try:
+            if not self._is_igrobar_profile_selected():
+                logging.info("Установка модпака пропущена: выбран не «сервер IGROBAR»")
+                return
             self.status_update.emit("Проверка модпака...")
             
             # Подготавливаем папку mods
@@ -3376,7 +3424,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.9"
+            current_version = "1.1.0.0"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3413,7 +3461,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.0.9.9"
+            current_version = "1.1.0.0"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3984,8 +4032,7 @@ class MainWindow(QMainWindow):
                 # Добавляем версию Forge в кеш
                 self.add_to_forge_cache(selected_version, forge_version_id)
                 
-                # Для 1.21.1 с Forge устанавливаем модпак
-                if self.mods_update_checkbox.isChecked():
+                if self.mods_update_checkbox.isChecked() and self._is_igrobar_profile_selected():
                     self.install_modpack()
             else:
                 # Установка только Minecraft без Forge

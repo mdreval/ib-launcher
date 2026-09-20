@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.0.9.9
+# IB Launcher v1.1.0.0
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -27,7 +27,13 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
-#### Версия 1.0.9.8
+#### Версия 1.1.0.0
+- Убраны **pre-release версии** и **снапшоты** из списка доступных версий Minecraft.
+- Начиная с **Minecraft 1.21** и до последней доступной версии добавлены все **официальные релизные версии Minecraft**.
+- **Модпак сервера IGROBAR** теперь скачивается только при выборе соответствующей версии для сервера **IGROBAR**.
+- Для остальных версий Minecraft **модпак сервера IGROBAR скачиваться не будет**.
+
+#### Версия 1.0.9.9
 - В списке лоадера для Minecraft **1.21 и новее** добавлен **NeoForge** (последняя сборка и список версий).
 - Установка NeoForge больше не требует официального лаунчера: создаётся `launcher_profiles.json`, сначала ставится ваниль.
 - Перед установкой Forge/NeoForge сбрасываются системные `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` (сообщение *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). Память из слайдера лаунчера на это не влияет.
@@ -85,7 +91,13 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Історія версій
 
-#### Версія 1.0.9.8
+#### Версія 1.1.0.0
+- Прибрано **pre-release версії** та **знімки (snapshots)** зі списку доступних версій Minecraft.
+- Починаючи з **Minecraft 1.21** і до останньої доступної версії додано всі **офіційні релізні версії Minecraft**.
+- **Модпак сервера IGROBAR** тепер завантажується лише при виборі відповідної версії для сервера **IGROBAR**.
+- Для інших версій Minecraft **модпак сервера IGROBAR завантажуватися не буде**.
+
+#### Версія 1.0.9.9
 - У списку лоадера для Minecraft **1.21 і новіше** додано **NeoForge** (остання збірка та список версій).
 - Встановлення NeoForge більше не потребує офіційного лаунчера: створюється `launcher_profiles.json`, спочатку ставиться ваніль.
 - Перед встановленням Forge/NeoForge скидаються системні `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS`. Памʼять зі слайдера лаунчера не змінюється.
@@ -140,7 +152,13 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
-#### Version 1.0.9.8
+#### Version 1.1.0.0
+- **Pre-release versions** and **snapshots** have been removed from the available Minecraft version list.
+- Starting from **Minecraft 1.21** up to the latest available version, all **official Minecraft release versions** have been added.
+- The **IGROBAR server modpack** is now downloaded only when the corresponding **IGROBAR server** version is selected.
+- The **IGROBAR server modpack will not be downloaded** for other Minecraft versions.
+
+#### Version 1.0.9.9
 - **NeoForge** is available in the loader list for Minecraft **1.21 and newer** (latest plus recent builds).
 - NeoForge install no longer needs the official launcher: a `launcher_profiles.json` is created, vanilla is installed first.
 - System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (*Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). The launcher memory slider is unchanged.
@@ -174,8 +192,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.9/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.0.9.9/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.0/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.0/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
