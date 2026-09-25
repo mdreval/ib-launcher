@@ -1,0 +1,82 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send release to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          webhook = os.environ["DISCORD_WEBHOOK"]
+
+          release_name = os.environ.get("RELEASE_NAME") or os.environ["RELEASE_TAG"]
+          release_tag = os.environ["RELEASE_TAG"]
+          release_url = os.environ["RELEASE_URL"]
+          release_body = os.environ.get("RELEASE_BODY") or "A new release is now available."
+
+          if len(release_body) > 4000:
+              release_body = release_body[:3997] + "..."
+
+          repository_url = (
+              f"{os.environ['SERVER_URL']}/{os.environ['REPOSITORY']}"
+          )
+
+          payload = {
+              "username": "GitHub Releases",
+              "embeds": [
+                  {
+                      "title": f"🚀 {release_name}",
+                      "description": release_body,
+                      "url": release_url,
+                      "color": 5814783,
+                      "fields": [
+                          {
+                              "name": "Version",
+                              "value": f"`{release_tag}`",
+                              "inline": True
+                          },
+                          {
+                              "name": "Repository",
+                              "value": f"[GitHub]({repository_url})",
+                              "inline": True
+                          }
+                      ],
+                      "footer": {
+                          "text": "GitHub Release"
+                      }
+                  }
+              ]
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+
+          request = urllib.request.Request(
+              webhook,
+              data=data,
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "GitHub-Actions"
+              },
+              method="POST"
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print(f"Discord response: {response.status}")
+          PY
