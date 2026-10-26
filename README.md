@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.1.0.2
+# IB Launcher v1.1.0.3
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -10,7 +10,7 @@
 IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
 
 ### Основные возможности:
-- Установка и запуск Minecraft с поддержкой **Forge**, **Fabric** и **NeoForge** (с 1.21)
+- Установка и запуск Minecraft с поддержкой **Forge**, **Fabric** и **NeoForge** (с 1.20.2)
 - Управление модами
 - Автоматическое обновление модов
 - Настройка параметров запуска
@@ -26,6 +26,12 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - 2 ГБ свободного места на диске
 
 ### История версий
+
+#### Версия 1.1.0.3
+  - Реализована умная система сохранения пользовательского выбора: дефолтный серверный профиль «Игробар» устанавливается только при первом запуске, а дальше лаунчер запоминает последнюю выбранную версию и лоадер.
+  - Добавлен интерактивный мониторинг запуска игры с отображением этапов инициализации (OpenGL, моды, ресурсы) в реальном времени.
+  - Устранены зависания legacy-версий (1.12.x) в оконном режиме на Windows 11.
+  - Настроена изоляция рабочих директорий установщиков (`cwd=temp_dir`), избавившая рабочий стол от мусорных `.jar.log` файлов.
 
 #### Версия 1.1.0.2
 - Добавлена интеллектуальная система автоматического повтора скачивания (до 3 попыток) при сетевых сбоях и ошибках контрольных сумм (`Checksum`).
@@ -86,7 +92,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 IB Launcher - це сучасний лаунчер для Minecraft, який дозволяє легко встановлювати та запускати різні версії гри, включаючи Forge та моди.
 
 ### Основні можливості:
-- Встановлення та запуск Minecraft з підтримкою **Forge**, **Fabric** та **NeoForge** (з 1.21)
+- Встановлення та запуск Minecraft з підтримкою **Forge**, **Fabric** та **NeoForge** (з 1.20.2)
 - Управління модами
 - Автоматичне оновлення модів
 - Налаштування параметрів запуску
@@ -102,6 +108,12 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 - 2 ГБ вільного місця на диску
 
 ### Історія версій
+
+#### Версия 1.1.0.3
+  - Реалізовано розумну систему збереження вибору користувача: дефолтний серверний профіль «Ігробар» виставляється лише при першому запуску, а надалі лаунчер запам'ятовує останню обрану версію та лоадер.
+  - Додано інтерактивний моніторинг запуску гри з відображенням етапів ініціалізації (OpenGL, моди, ресурси) у реальному часі.
+  - Усунуто зависання legacy-версій (1.12.x) у віконному режимі на Windows 11.
+  - Налаштовано ізоляцію робочих директорій установників (`cwd=temp_dir`), що позбавило робочий стіл від сміттєвих `.jar.log` файлів.
 
 #### Версія 1.1.0.2
 - Додано інтелектуальну систему автоматичного повтору завантаження (до 3 спроб) у разі мережевих збоїв та помилок контрольних сум (`Checksum`).
@@ -160,7 +172,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 IB Launcher is a modern Minecraft launcher that allows you to easily install and run various versions of the game, including Forge and mods.
 
 ### Key Features:
-- Install and run Minecraft with **Forge**, **Fabric**, and **NeoForge** (from 1.21)
+- Install and run Minecraft with **Forge**, **Fabric**, and **NeoForge** (from 1.20.2)
 - Mod management
 - Automatic mod updates
 - Launch parameter customization
@@ -176,6 +188,12 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 - 2 GB of free disk space
 
 ### Version History
+
+#### Version 1.1.0.3
+  - Implemented smart version persistence: default server profile is selected on first run only, while user selections (versions/loaders) are remembered across sessions.
+  - Added real-time launch monitoring that displays initialization stages (OpenGL, mods, resources) in the status area.
+  - Fixed legacy version (1.12.x) windowed mode freeze issue on Windows 11.
+  - Isolated installer working directories (`cwd=temp_dir`) to prevent `.jar.log` file clutter on the desktop.
 
 #### Version 1.1.0.2
 - Added an intelligent automatic download retry system (up to 3 attempts) for network failures and Checksum errors.
@@ -230,8 +248,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.3/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.3/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

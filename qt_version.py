@@ -50,6 +50,8 @@ import binascii
 import ctypes
 import shutil
 import stat
+import subprocess
+import threading
 
 TRANSLATIONS = {
     'ru': {
@@ -1261,6 +1263,7 @@ class InstallThread(QThread):
                 [java_exe, "-jar", installer_path, "--installClient", self.install_path],
                 capture_output=True,
                 text=True,
+                cwd=temp_dir,  # <--- ИСПРАВЛЕНИЕ: файлы логов установщика останутся во временной папке, а не на рабочем столе
             )
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1431,7 +1434,6 @@ class InstallThread(QThread):
                 
                 # Если прямой установки ванильной версии нет, но есть Forge
                 if not os.path.exists(vanilla_dir) or not os.listdir(vanilla_dir):
-                    # Проверяем, установлена ли ванильная версия как часть Forge
                     for folder in os.listdir(versions_dir) if os.path.exists(versions_dir) else []:
                         if folder.startswith(f"{version_to_launch}-") and "forge" in folder.lower() and "neoforge" not in folder.lower():
                             logging.info(f"Ванильная версия {version_to_launch} недоступна напрямую, используем версию внутри Forge")
@@ -1450,7 +1452,7 @@ class InstallThread(QThread):
             
             logging.info(f"Запуск версии: {version_to_launch}")
             
-# Автоматическое определение старых версий (ниже 1.17)
+            # Автоматическое определение старых версий (ниже 1.17)
             is_legacy_version = False
             try:
                 clean_ver = version_to_launch.split('-')[0]
@@ -1460,7 +1462,6 @@ class InstallThread(QThread):
             except Exception:
                 pass
 
-            # --- ВСТАВЬ ЭТОТ БЛОК ВМЕСТО СТАРОГО `if is_legacy_version:` ---
             if is_legacy_version:
                 jvm_args = [
                     f'-Xmx{self.memory}G',
@@ -1489,30 +1490,15 @@ class InstallThread(QThread):
                     '-XX:+OptimizeStringConcat',
                     '-XX:+UseCompressedOops'
                 ]
-            # -------------------------------------------------------------
             
             is_forge_version = (not is_fabric) and (not is_neoforge) and ("forge" in version_to_launch.lower())
             
-            jvm_args = [
-                f'-Xmx{self.memory}G',
-                '-XX:+UnlockExperimentalVMOptions',
-                '-XX:+UseG1GC',
-                '-XX:G1NewSizePercent=20',
-                '-XX:G1ReservePercent=20',
-                '-XX:MaxGCPauseMillis=50',
-                '-XX:G1HeapRegionSize=32M',
-                '-Djava.net.preferIPv4Stack=true',
-                '-Dlog4j2.formatMsgNoLookups=true',
-                '-XX:+DisableAttachMechanism',
-                '-XX:+UseStringDeduplication',
-                '-XX:+OptimizeStringConcat',
-                '-XX:+UseCompressedOops'
-            ]
             if is_forge_version or is_neoforge:
                 jvm_args.extend([
                     '-Dfml.ignoreInvalidMinecraftCertificates=true',
                     '-Dfml.ignorePatchDiscrepancies=true',
                 ])
+                
             options = {
                 'username': self.username,
                 'uuid': '60a69d1e-3db8-41ae-a14b-9b5a3a8be00d',
@@ -1531,63 +1517,68 @@ class InstallThread(QThread):
                     options['jvmArguments'].append('-Dos.arch=aarch64')
             
             try:
+                # Получаем команду запуска в зависимости от версии (Forge или Ваниль/NeoForge)
                 if is_forge_version:
-                    # Получаем команду запуска для Forge
                     command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                    if command:
-                        process = launch_forge_with_command(command)
-                        if process:
-                            logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                            self.game_started.emit()
-                            return
-                        else:
-                            raise Exception("Не удалось запустить Forge")
-                    else:
+                    if not command:
                         raise Exception("Не удалось сформировать команду запуска Forge")
                 else:
-                    # Запускаем ванильную версию
                     command = get_minecraft_command(version_to_launch, self.install_path, options)
+
+                self.status_update.emit("Запуск виртуальной машины Java и инициализация...")
+                
+                # Создаем флаги для Windows (скрытие консольного окна)
+                creation_flags = 0x08000008 if platform.system() == "Windows" else 0
+                
+                # Запускаем процесс с перехватом вывода для отслеживания загрузки
+                process = subprocess.Popen(
+                    command,
+                    creationflags=creation_flags,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding='utf-8',
+                    errors='ignore',
+                    cwd=os.path.abspath(self.install_path)
+                )
+                
+                if process:
+                    logging.info(f"Игра успешно запущена с PID: {process.pid}")
+                    self.game_started.emit()
                     
-                    if platform.system() == "Windows" and HAS_WIN32API:
-                        pid = launch_process_hidden(command, cwd=self.install_path)
-                        if pid:
-                            logging.info(f"Игра успешно запущена с PID: {pid}")
-                            self.game_started.emit()
-                            return
-                        else:
-                            logging.warning("Запуск через WinAPI не удался, используем стандартный метод")
-                    
-                    # Создаем флаги для Windows
-                    creation_flags = 0x08000008 if platform.system() == "Windows" else 0
-                    
-                    # Запускаем процесс с оптимизированными настройками
-                    process = subprocess.Popen(
-                        command,
-                        creationflags=creation_flags,
-                        stdin=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        cwd=os.path.abspath(self.install_path),
-                        close_fds=True,
-                        start_new_session=True
-                    )
-                    
-                    if process:
-                        logging.info(f"Игра успешно запущена с PID: {process.pid}")
-                        self.game_started.emit()
-                        return
-                    else:
-                        raise Exception("Не удалось запустить игру")
+                    # Функция для чтения логов игры в реальном времени и вывода статусов в лаунчер
+                    def monitor_game_logs():
+                        try:
+                            while True:
+                                line = process.stdout.readline()
+                                if not line and process.poll() is not None:
+                                    break
+                                if line:
+                                    line_str = line.strip()
+                                    if "Setting up OpenGL" in line_str:
+                                        self.status_update.emit("Инициализация графики (OpenGL)...")
+                                    elif "Loading" in line_str and "mods" in line_str:
+                                        self.status_update.emit("Загрузка модификаций...")
+                                    elif "MinecraftForge" in line_str or "FML" in line_str or "NeoForge" in line_str:
+                                        self.status_update.emit("Загрузка игрового загрузчика...")
+                                    elif "Reloading ResourceManager" in line_str:
+                                        self.status_update.emit("Загрузка текстур и ресурсов игры...")
+                                    elif "Environment: authservers" in line_str:
+                                        self.status_update.emit("Инициализация окружения игры...")
+                        except Exception:
+                            pass
+
+                    # Запускаем мониторинг в фоновом потоке, чтобы не вешать интерфейс
+                    threading.Thread(target=monitor_game_logs, daemon=True).start()
+                    return
+                else:
+                    raise Exception("Не удалось запустить процесс игры")
+
             except minecraft_launcher_lib.exceptions.VersionNotFound as e:
                 logging.error(f"Версия {version_to_launch} не найдена. Проверяем альтернативные варианты...")
                 
-                # Пробуем найти подходящую версию
                 if is_forge_version:
-                    # Извлекаем базовую версию Minecraft
                     base_version = version_to_launch.split("-forge-")[0]
-                    forge_version = version_to_launch.split("-forge-")[1]
-                    
-                    # Ищем установленные версии Forge
                     forge_versions = []
                     if os.path.exists(versions_dir):
                         for folder in os.listdir(versions_dir):
@@ -1595,18 +1586,22 @@ class InstallThread(QThread):
                                 forge_versions.append(folder)
                     
                     if forge_versions:
-                        # Берем последнюю установленную версию Forge
                         version_to_launch = sorted(forge_versions)[-1]
                         logging.info(f"Найдена альтернативная версия Forge: {version_to_launch}")
                         
-                        # Повторяем попытку запуска с новой версией
-                        if is_forge_version:
-                            command = get_forge_launch_command(version_to_launch, self.install_path, options)
-                        else:
-                            command = get_minecraft_command(version_to_launch, self.install_path, options)
-                        
+                        command = get_forge_launch_command(version_to_launch, self.install_path, options)
                         if command:
-                            process = launch_forge_with_command(command)
+                            self.status_update.emit("Запуск альтернативной версии Forge...")
+                            process = subprocess.Popen(
+                                command,
+                                creationflags=0x08000008 if platform.system() == "Windows" else 0,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                                encoding='utf-8',
+                                errors='ignore',
+                                cwd=os.path.abspath(self.install_path)
+                            )
                             if process:
                                 logging.info(f"Игра успешно запущена с PID: {process.pid}")
                                 self.game_started.emit()
@@ -2857,35 +2852,43 @@ class MainWindow(QMainWindow):
             for version in versions:
                 self.minecraft_version.addItem(version)
 
-            # --- ДОБАВЛЕНО: выбираем последние сохранённые версии ---
+            # --- ИСПРАВЛЕННАЯ ЛОГИКА ВЫБОРА ВЕРСИЙ ПРИ СТАРТЕ ---
             saved_version = None
             saved_forge = None
-            if os.path.exists(CONFIG_FILE):
+            config_exists = os.path.exists(CONFIG_FILE)
+            
+            if config_exists:
                 with open(CONFIG_FILE, 'r') as f:
                     config = json.load(f)
                     saved_version = config.get('minecraft_version')
                     saved_forge = config.get('forge_version')
 
-            old_igrobar_mc = saved_version == IGROBAR_MC_VERSION
-            if saved_version and not old_igrobar_mc and self.minecraft_version.findText(saved_version) >= 0:
+            # Если конфигурационный файл существует и сохраненная версия есть в списке — выбираем её
+            if config_exists and saved_version and self.minecraft_version.findText(saved_version) >= 0:
                 self.minecraft_version.setCurrentText(saved_version)
+                logging.info(f"Загружена сохраненная версия Minecraft: {saved_version}")
             else:
+                # Самый первый запуск (нет конфига): принудительно выбираем версию сервера IGROBAR
                 idx_default = self.minecraft_version.findText(IGROBAR_MC_VERSION)
                 if idx_default >= 0:
                     self.minecraft_version.setCurrentIndex(idx_default)
+                    logging.info(f"Первый запуск: автоматически выбрана версия сервера IGROBAR ({IGROBAR_MC_VERSION})")
                 else:
                     self.minecraft_version.setCurrentIndex(0)
 
-            # После выбора версии — обновляем список лоадеров
+            # После выбора версии — обновляем список лоадеров для неё
             self.on_minecraft_version_changed(self.minecraft_version.currentIndex())
-            if old_igrobar_mc or not saved_forge:
+
+            # Восстанавливаем лоадер: при первом запуске — серверный лоадер, при повторном — то, что сохранил пользователь
+            if not config_exists:
                 if self.minecraft_version.currentText() == IGROBAR_MC_VERSION:
                     self._select_igrobar_loader()
-            elif saved_forge and self._select_loader_from_saved(saved_forge):
-                pass
-            elif self.minecraft_version.currentText() == IGROBAR_MC_VERSION:
-                self._select_igrobar_loader()
-            # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+            else:
+                if saved_forge and self._select_loader_from_saved(saved_forge):
+                    logging.info(f"Успешно восстановлен сохраненный лоадер: {saved_forge}")
+                elif self.minecraft_version.currentText() == IGROBAR_MC_VERSION and not saved_forge:
+                    self._select_igrobar_loader()
+            # ---------------------------------------------------
 
         except Exception as e:
             logging.error(f"Ошибка загрузки версий: {str(e)}", exc_info=True)
@@ -3563,7 +3566,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.2"
+            current_version = "1.1.0.3"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3600,7 +3603,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.2"
+            current_version = "1.1.0.3"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
