@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.1.0.1
+# IB Launcher v1.1.0.2
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -14,7 +14,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - Управление модами
 - Автоматическое обновление модов
 - Настройка параметров запуска
-- Поддержка различных версий Java
+- Поддержка различных версий Java (включая автоматическую загрузку Java 8 для старых версий и Java 25 для новых)
 - Удобный и многоязычный интерфейс (Русский, Украинский, Английский)
 - Отображение количества онлайн-игроков на сервере
 - Корректное закрытие лаунчера после запуска игры
@@ -26,6 +26,12 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 - 2 ГБ свободного места на диске
 
 ### История версий
+
+#### Версия 1.1.0.2
+- Добавлена интеллектуальная система автоматического повтора скачивания (до 3 попыток) при сетевых сбоях и ошибках контрольных сумм (`Checksum`).
+- Реализовано автоматическое обнаружение и удаление поврежденных или неполных файлов библиотек (`.jar`) с последующей мгновенной докачкой.
+- Исправлена логика установки ванильных версий: теперь прерванные или поврежденные загрузки корректно переустанавливаются, а не пропускаются лаунчером.
+- Добавлена поддержка автоматической загрузки **Java 8** для старых версий Minecraft, которая теперь хранится в централизованной папке конфигурации (`IBLauncher-config` / папка конфигурации «Игробар»).
 
 #### Версия 1.1.0.1
 - Добавлена поддержка **NeoForge** для новых версий Minecraft, где он действительно доступен, включая версии с новым форматом нумерации.
@@ -49,7 +55,6 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 #### Версия 1.0.9.6
 - Для Minecraft 1.20.1 по умолчанию выбирается профиль **сервер IGROBAR**, а не строка вида `1.20.1-forge-47.4.23`.
 - В списке лоадера игрок видит **сервер IGROBAR**; внутри ставится и запускается нужная версия Forge (сейчас 47.4.23).
-
 
 #### Версия 1.0.9.5
 - Добавлена новая вкладка «Карта» в лаунчере.
@@ -85,7 +90,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 - Управління модами
 - Автоматичне оновлення модів
 - Налаштування параметрів запуску
-- Підтримка різних версій Java
+- Підтримка різних версій Java (включаючи автоматичне завантаження Java 8 для старих версій та Java 25 для нових)
 - Зручний та багатомовний інтерфейс (Російська, Українська, Англійська)
 - Відображення кількості онлайн-гравців на сервері
 - Коректне закриття лаунчера після запуску гри
@@ -97,6 +102,12 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 - 2 ГБ вільного місця на диску
 
 ### Історія версій
+
+#### Версія 1.1.0.2
+- Додано інтелектуальну систему автоматичного повтору завантаження (до 3 спроб) у разі мережевих збоїв та помилок контрольних сум (`Checksum`).
+- Реалізовано автоматичне виявлення та видалення пошкоджених або неповних файлів бібліотек (`.jar`) із подальшим миттєвим докачуванням.
+- Виправлено логіку встановлення ванільних версій: тепер перервані чи пошкоджені завантаження коректно перевстановлюються, а не пропускаються лаунчером.
+- Додано підтримку автоматичного завантаження **Java 8** для старих версій Minecraft, яка тепер зберігається в централізованій папці конфігурації (`IBLauncher-config` / папка конфігурації «Ігробар»).
 
 #### Версія 1.1.0.1
 - Додано підтримку **NeoForge** для нових версій Minecraft, де він справді доступний, зокрема для версій із новим форматом нумерації.
@@ -137,7 +148,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 #### Версія 1.0.8.4
 - Додано індикатор онлайн-гравців на сервері.
-- Покращено закриття лаунчера після запуску гри.
+- Покращено закриття лаунчера після запуска гри.
 - Покращено запам'ятовування версій Minecraft та Forge.
 - Виправлено стилі та поведінку тем.
 - Дрібні поліпшення та виправлення інтерфейсу.
@@ -153,7 +164,7 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 - Mod management
 - Automatic mod updates
 - Launch parameter customization
-- Support for various Java versions
+- Support for various Java versions (including automatic download of Java 8 for older versions and Java 25 for newer versions)
 - User-friendly and multilingual interface (Russian, Ukrainian, English)
 - Display of online player count on the server
 - Proper launcher closure after game launch
@@ -165,6 +176,12 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 - 2 GB of free disk space
 
 ### Version History
+
+#### Version 1.1.0.2
+- Added an intelligent automatic download retry system (up to 3 attempts) for network failures and Checksum errors.
+- Implemented automatic detection and deletion of corrupted or partial library files (`.jar`), followed by immediate re-downloading.
+- Fixed vanilla version installation logic: interrupted or corrupted downloads are now properly repaired and re-installed rather than skipped by the launcher.
+- Added automatic downloading of **Java 8** for older Minecraft versions, stored in the centralized configuration folder (`IBLauncher-config` / Igrobar configuration folder).
 
 #### Version 1.1.0.1
 - Added **NeoForge** support for newer Minecraft versions where it is actually available, including versions that use the new numbering format.
@@ -213,8 +230,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

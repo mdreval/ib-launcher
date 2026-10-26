@@ -1,39 +1,46 @@
 # Release Notes
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
-## Версия 1.1.0.1
+## Версия 1.1.0.2
 
 ### Что нового
-- Добавлена поддержка **NeoForge** для новых версий Minecraft, где он действительно доступен, включая версии с новым форматом нумерации.
-- Профиль **сервера IGROBAR** теперь настраивается в одном месте: версия Minecraft, тип лоадера (**NeoForge** или **Fabric**) и версия лоадера.
-- Выбранный профиль IGROBAR автоматически становится первым в списке и подставляет нужную версию лоадера.
-- Улучшена проверка Java для новых версий Minecraft: требуется **Java 25**, при этом более новые версии Java поддерживаются.
-- Если подходящей Java нет, лаунчер может скачать и установить **Java 25** в систему: Windows покажет стандартное подтверждение UAC, macOS — запрос пароля администратора.
 
----
+* Добавлена интеллектуальная система автоматического повтора скачивания (до 3 попыток) при сетевых сбоях и ошибках контрольных сумм (`Checksum`).
 
-## Версія 1.1.0.1
+* Реализовано автоматическое обнаружение и удаление поврежденных или неполных файлов библиотек (`.jar`) с последующей мгновенной докачкой.
+
+* Исправлена логика установки ванильных версий: теперь прерванные или поврежденные загрузки корректно переустанавливаются, а не пропускаются лаунчером.
+
+* Добавлена поддержка автоматической загрузки **Java 8** для старых версий Minecraft, которая теперь хранится в централизованной папке конфигурации (`IBLauncher-config` / папка конфигурации «Игробар»).
+
+
+## Версія 1.1.0.2
 
 ### Що нового
-- Додано підтримку **NeoForge** для нових версій Minecraft, де він справді доступний, зокрема для версій із новим форматом нумерації.
-- Профіль **сервера IGROBAR** тепер налаштовується в одному місці: версія Minecraft, тип лоадера (**NeoForge** або **Fabric**) і версія лоадера.
-- Обраний профіль IGROBAR автоматично стає першим у списку та підставляє потрібну версію лоадера.
-- Покращено перевірку Java для нових версій Minecraft: потрібна **Java 25**, водночас новіші версії Java підтримуються.
-- Якщо підходящої Java немає, лаунчер може завантажити й встановити **Java 25** у систему: Windows покаже стандартне підтвердження UAC, macOS — запит пароля адміністратора.
 
----
+* Додано інтелектуальну систему автоматичного повтору завантаження (до 3 спроб) у разі мережевих збоїв та помилок контрольних сум (`Checksum`).
 
-## Version 1.1.0.1
+* Реалізовано автоматичне виявлення та видалення пошкоджених або неповних файлів бібліотек (`.jar`) із подальшим миттєвим докачуванням.
+
+* Виправлено логіку встановлення ванільних версій: тепер перервані чи пошкоджені завантаження коректно перевстановлюються, а не пропускаються лаунчером.
+
+* Додано підтримку автоматичного завантаження **Java 8** для старих версій Minecraft, яка тепер зберігається в централізованій папці конфігурації (`IBLauncher-config` / папка конфігурації «Ігробар»).
+
+## Version 1.1.0.2
 
 ### What's new
-- Added **NeoForge** support for newer Minecraft versions where it is actually available, including versions that use the new numbering format.
-- The **IGROBAR server** profile can now be configured in one place: Minecraft version, loader type (**NeoForge** or **Fabric**), and loader version.
-- The selected IGROBAR profile is automatically placed first in the list and applies the matching loader version.
-- Improved Java checks for newer Minecraft versions: **Java 25** is required, while newer Java versions remain supported.
-- If no suitable Java is installed, the launcher can download and install **Java 25** system-wide: Windows shows the standard UAC confirmation and macOS requests the administrator password.
 
----
+* Added an intelligent automatic download retry system (up to 3 attempts) for network failures and Checksum errors.
+
+* Implemented automatic detection and deletion of corrupted or partial library files (`.jar`), followed by immediate re-downloading.
+
+* Fixed vanilla version installation logic: interrupted or corrupted downloads are now properly repaired and re-installed rather than skipped by the launcher.
+
+* Added automatic downloading of **Java 8** for older Minecraft versions, which is now stored in the centralized configuration folder (`IBLauncher-config` / Igrobar configuration folder).
+
 
 ## Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.1/IB-Launcher.dmg) - macOS
+
+* [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.exe) - Windows
+
+* [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.2/IB-Launcher.dmg) - macOS

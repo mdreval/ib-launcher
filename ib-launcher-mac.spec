@@ -45,7 +45,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/icon.icns',
-    version='1.1.0.1'
+    version='1.1.0.2'
 )
 
 coll = COLLECT(
@@ -65,8 +65,8 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.igrobar.launcher',
     info_plist={
-        'CFBundleShortVersionString': '1.1.0.1',
-        'CFBundleVersion': '1.1.0.1',
+        'CFBundleShortVersionString': '1.1.0.2',
+        'CFBundleVersion': '1.1.0.2',
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': 'Copyright (c) 2024-2027 Igrobar',
         'LSMinimumSystemVersion': '10.13.0',
