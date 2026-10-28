@@ -1,6 +1,6 @@
 ![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
 
-# IB Launcher v1.1.0.3
+# IB Launcher v1.1.0.4
 ![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
 
 ---
@@ -27,7 +27,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
-#### Версия 1.1.0.3
+#### Версия 1.1.0.4
   - Реализована умная система сохранения пользовательского выбора: дефолтный серверный профиль «Игробар» устанавливается только при первом запуске, а дальше лаунчер запоминает последнюю выбранную версию и лоадер.
   - Добавлен интерактивный мониторинг запуска игры с отображением этапов инициализации (OpenGL, моды, ресурсы) в реальном времени.
   - Устранены зависания legacy-версий (1.12.x) в оконном режиме на Windows 11.
@@ -109,7 +109,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Історія версій
 
-#### Версия 1.1.0.3
+#### Версия 1.1.0.4
   - Реалізовано розумну систему збереження вибору користувача: дефолтний серверний профіль «Ігробар» виставляється лише при першому запуску, а надалі лаунчер запам'ятовує останню обрану версію та лоадер.
   - Додано інтерактивний моніторинг запуску гри з відображенням етапів ініціалізації (OpenGL, моди, ресурси) у реальному часі.
   - Усунуто зависання legacy-версій (1.12.x) у віконному режимі на Windows 11.
@@ -189,7 +189,7 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
-#### Version 1.1.0.3
+#### Version 1.1.0.4
   - Implemented smart version persistence: default server profile is selected on first run only, while user selections (versions/loaders) are remembered across sessions.
   - Added real-time launch monitoring that displays initialization stages (OpenGL, mods, resources) in the status area.
   - Fixed legacy version (1.12.x) windowed mode freeze issue on Windows 11.
@@ -248,8 +248,8 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 ---
 
 ### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.3/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.3/IB-Launcher.dmg) - macOS 
+- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.4/IB-Launcher.exe) - Windows
+- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.4/IB-Launcher.dmg) - macOS 
 
 ### Обратная связь / Зворотній зв'язок / Feedback
 - YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)

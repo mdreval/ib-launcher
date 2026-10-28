@@ -67,3 +67,5 @@ assets/openjdk-*
 *.rar
 *.tar.gz
 MojNovyLauncher.zip
+# Инсталлятор Inno Setup
+Output/
