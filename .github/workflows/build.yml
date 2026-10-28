@@ -112,19 +112,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # Скачиваем Windows-артефакт (он распакуется в папку windows/)
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: IB-Launcher-Windows
           path: windows
           
+      # Скачиваем macOS-артефакт (он распакуется в папку macos/)
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
           name: IB-Launcher-macOS
           path: macos
           
-      # Публикация трех файлов в Релиз
+      # Проверяем, что файлы на месте (для отладки в логах)
+      - name: Display structure of downloaded files
+        run: ls -R
+          
+      # Публикуем все три файла в Релиз
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:

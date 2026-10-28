@@ -27,7 +27,7 @@ IB Launcher - это современный лаунчер для Minecraft, к�
 
 ### История версий
 
-#### Версия 1.1.0.4
+#### Версия 1.1.0.3
   - Реализована умная система сохранения пользовательского выбора: дефолтный серверный профиль «Игробар» устанавливается только при первом запуске, а дальше лаунчер запоминает последнюю выбранную версию и лоадер.
   - Добавлен интерактивный мониторинг запуска игры с отображением этапов инициализации (OpenGL, моды, ресурсы) в реальном времени.
   - Устранены зависания legacy-версий (1.12.x) в оконном режиме на Windows 11.
@@ -109,7 +109,7 @@ IB Launcher - це сучасний лаунчер для Minecraft, який д
 
 ### Історія версій
 
-#### Версия 1.1.0.4
+#### Версия 1.1.0.3
   - Реалізовано розумну систему збереження вибору користувача: дефолтний серверний профіль «Ігробар» виставляється лише при першому запуску, а надалі лаунчер запам'ятовує останню обрану версію та лоадер.
   - Додано інтерактивний моніторинг запуску гри з відображенням етапів ініціалізації (OpenGL, моди, ресурси) у реальному часі.
   - Усунуто зависання legacy-версій (1.12.x) у віконному режимі на Windows 11.
@@ -189,7 +189,7 @@ IB Launcher is a modern Minecraft launcher that allows you to easily install and
 
 ### Version History
 
-#### Version 1.1.0.4
+#### Version 1.1.0.3
   - Implemented smart version persistence: default server profile is selected on first run only, while user selections (versions/loaders) are remembered across sessions.
   - Added real-time launch monitoring that displays initialization stages (OpenGL, mods, resources) in the status area.
   - Fixed legacy version (1.12.x) windowed mode freeze issue on Windows 11.
