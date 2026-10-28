@@ -3,7 +3,8 @@ name: Discord Release Notification
 on:
   release:
     types: [published, released, created]
-  workflow_dispatch: # <--- Добавляем эту строчку
+  workflow_dispatch: # <--- Твоя кнопка ручного запуска на месте[cite: 1]
+
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
@@ -24,19 +25,24 @@ jobs:
           import os
           import urllib.request
 
-          webhook = os.environ["DISCORD_WEBHOOK"]
+          # Безопасно проверяем секрет вебхука
+          webhook = os.environ.get("DISCORD_WEBHOOK")
+          if not webhook:
+              print("ERROR: DISCORD_WEBHOOK secret is missing!")
+              exit(1)
 
-          release_name = os.environ.get("RELEASE_NAME") or os.environ["RELEASE_TAG"]
-          release_tag = os.environ["RELEASE_TAG"]
-          release_url = os.environ["RELEASE_URL"]
-          release_body = os.environ.get("RELEASE_BODY") or "A new release is now available."
+          # Безопасно считываем параметры релиза (чтобы не было KeyError при ручном запуске)
+          release_tag = os.environ.get("RELEASE_TAG") or "Manual/No Tag"
+          release_name = os.environ.get("RELEASE_NAME") or release_tag
+          release_url = os.environ.get("RELEASE_URL") or "https://github.com"
+          release_body = os.environ.get("RELEASE_BODY") or "A new release is now available (or triggered manually)."
 
           if len(release_body) > 4000:
               release_body = release_body[:3997] + "..."
 
-          repository_url = (
-              f"{os.environ['SERVER_URL']}/{os.environ['REPOSITORY']}"
-          )
+          server_url = os.environ.get('SERVER_URL', 'https://github.com')
+          repository = os.environ.get('REPOSITORY', 'unknown/repo')
+          repository_url = f"{server_url}/{repository}"
 
           payload = {
               "username": "GitHub Releases",
@@ -59,7 +65,7 @@ jobs:
                           }
                       ],
                       "footer": {
-                          "text": "GitHub Release"
+                        "text": "GitHub Release"
                       }
                   }
               ]
@@ -77,6 +83,10 @@ jobs:
               method="POST"
           )
 
-          with urllib.request.urlopen(request) as response:
-              print(f"Discord response: {response.status}")
+          try:
+              with urllib.request.urlopen(request) as response:
+                  print(f"Discord response: {response.status}")
+          except Exception as e:
+              print(f"Failed to send Discord webhook: {e}")
+              exit(1)
           PY
