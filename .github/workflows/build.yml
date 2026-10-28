@@ -46,12 +46,11 @@ jobs:
         run: |
           pyinstaller --clean IB-Launcher.spec
           
-      # --- НОВЫЙ ШАГ: Сборка инсталлятора Inno Setup для Windows ---
+      # Сборка инсталлятора через встроенный в виртуальную машину Inno Setup
       - name: Build Windows Installer (Inno Setup)
         if: runner.os == 'Windows'
-        uses: shopware/github-action-inno-setup@v3
-        with:
-          path: installer.iss
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer.iss
           
       - name: Build macOS app
         if: runner.os == 'macOS'
@@ -86,7 +85,7 @@ jobs:
           # Снимаем атрибут карантина с DMG
           xattr -cr "dist/IB-Launcher.dmg"
           
-      # --- ОБНОВЛЕНО: Выгружаем чистый exe И готовый инсталлятор ---
+      # Выгружаем портативный exe И инсталлятор
       - name: Upload Windows artifacts
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
@@ -125,7 +124,7 @@ jobs:
           name: IB-Launcher-macOS
           path: macos
           
-      # --- ОБНОВЛЕНО: Публикуем все три файла в релизе ---
+      # Публикация трех файлов в Релиз
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:
@@ -137,5 +136,5 @@ jobs:
             macos/IB-Launcher.dmg
           draft: false
           prerelease: false
-          generate__release_notes: true
+          generate_release_notes: true
           body_path: RELEASE_NOTES.md
