@@ -1,4 +1,4 @@
-[Setup][Setup]
+[Setup]
 AppName=IB Launcher
 AppVersion=1.1.0.3
 DefaultDirName={autopf}\IBLauncher
@@ -13,7 +13,6 @@ UninstallDisplayIcon={app}\IBLauncher.exe
 
 [Files]
 ; Упаковываем ТОЛЬКО скомпилированный через PyInstaller exe-файл.
-; Папку assets больше копировать не нужно, она уже внутри файла!
 Source: "dist\IB-Launcher.exe"; DestDir: "{app}"; DestName: "IBLauncher.exe"; Flags: ignoreversion
 
 [Icons]
