@@ -13,6 +13,7 @@ TARGET_FILES = [
     'IB-Launcher.spec',
     'ib-launcher-mac.spec',
     'README.md',
+    'installer.iss',
     'RELEASE_NOTES.md',
 ]
 
