@@ -123,8 +123,8 @@ TRANSLATIONS = {
         'java_version_error_title': 'Ошибка Java',
         'java_install_error_text': 'Java не установлена или версия ниже 25!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
         'java_not_found_error_text': 'Java не найдена!\n\nСейчас откроется страница загрузки Oracle Java.\nНа сайте выберите версию для вашей системы (Windows, macOS или Linux).\nДля Windows рекомендуется Windows x64 Installer.',
-        'java_need_higher_body': 'Для Minecraft {mc} требуется Java {need}+.\nУстановлена версия: {have}.\n\nСкачать и установить Java 25 в систему?',
-        'java_not_found_body': 'Для Minecraft {mc} требуется Java {need}+.\nПодходящая Java не найдена.\n\nСкачать и установить Java 25 в систему?',
+        'java_need_higher_body': 'Для Minecraft {mc} требуется Java {need}+.\nУстановлена версия: {have}.\n\nСкачать и установить Java 26 в систему?',
+        'java_not_found_body': 'Для Minecraft {mc} требуется Java {need}+.\nПодходящая Java не найдена.\n\nСкачать и установить Java 26 в систему?',
         'java_download_hint_windows': 'Windows покажет стандартное подтверждение администратора (UAC).',
         'java_download_hint_mac': 'macOS покажет стандартный запрос пароля администратора.',
         'java_download_hint_linux': 'Автоматическая системная установка Java доступна для Windows и macOS.',
@@ -197,8 +197,8 @@ TRANSLATIONS = {
         'java_version_error_title': 'Java Error',
         'java_install_error_text': 'Java is not installed or version is below 25!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
         'java_not_found_error_text': 'Java not found!\n\nThe Oracle Java download page will now open.\nOn the website, select the version for your system (Windows, macOS, or Linux).\nFor Windows, the x64 Installer is recommended.',
-        'java_need_higher_body': 'Minecraft {mc} requires Java {need}+.\nInstalled version: {have}.\n\nDownload and install Java 25 system-wide?',
-        'java_not_found_body': 'Minecraft {mc} requires Java {need}+.\nNo suitable Java was found.\n\nDownload and install Java 25 system-wide?',
+        'java_need_higher_body': 'Minecraft {mc} requires Java {need}+.\nInstalled version: {have}.\n\nDownload and install Java 26 system-wide?',
+        'java_not_found_body': 'Minecraft {mc} requires Java {need}+.\nNo suitable Java was found.\n\nDownload and install Java 26 system-wide?',
         'java_download_hint_windows': 'Windows will show its standard administrator confirmation (UAC).',
         'java_download_hint_mac': 'macOS will show its standard administrator password prompt.',
         'java_download_hint_linux': 'Automatic system-wide Java installation is available on Windows and macOS.',
@@ -271,8 +271,8 @@ TRANSLATIONS = {
         'java_version_error_title': 'Помилка Java',
         'java_install_error_text': 'Java не встановлено або версія нижче 25!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
         'java_not_found_error_text': 'Java не знайдено!\n\nЗараз відкриється сторінка завантаження Oracle Java.\nНа сайті виберіть версію для вашої системи (Windows, macOS, або Linux).\nДля Windows рекомендується Windows x64 Installer.',
-        'java_need_higher_body': 'Для Minecraft {mc} потрібна Java {need}+.\nВстановлена версія: {have}.\n\nЗавантажити та встановити Java 25 у систему?',
-        'java_not_found_body': 'Для Minecraft {mc} потрібна Java {need}+.\nПідходящу Java не знайдено.\n\nЗавантажити та встановити Java 25 у систему?',
+        'java_need_higher_body': 'Для Minecraft {mc} потрібна Java {need}+.\nВстановлена версія: {have}.\n\nЗавантажити та встановити Java 26 у систему?',
+        'java_not_found_body': 'Для Minecraft {mc} потрібна Java {need}+.\nПідходящу Java не знайдено.\n\nЗавантажити та встановити Java 26 у систему?',
         'java_download_hint_windows': 'Windows покаже стандартне підтвердження адміністратора (UAC).',
         'java_download_hint_mac': 'macOS покаже стандартний запит пароля адміністратора.',
         'java_download_hint_linux': 'Автоматичне системне встановлення Java доступне для Windows і macOS.',
@@ -322,14 +322,14 @@ FORGE_CACHE_FILE = os.path.join(CONFIG_DIR, 'forge_cache.json')
 
 # Профиль «сервер IGROBAR». Меняй только ЭТУ строку:
 # (версия Minecraft, "neoforge" или "fabric", версия выбранного лоадера)
-IGROBAR_PROFILE = ("1.21.1", "neoforge", "21.1.251")
+IGROBAR_PROFILE = ("1.21.1", "neoforge", "21.1.265")
 IGROBAR_MC_VERSION, IGROBAR_LOADER_TYPE, IGROBAR_LOADER_VERSION = IGROBAR_PROFILE
 if IGROBAR_LOADER_TYPE not in {"neoforge", "fabric"}:
     raise ValueError("IGROBAR_PROFILE: loader must be 'neoforge' or 'fabric'")
 
 def ensure_java_runtime(java_major, status_callback=None):
     """
-    Автоматически скачивает и распаковывает изолированную JRE нужной версии (8, 17, 21, 25) 
+    Автоматически скачивает и распаковывает изолированную JRE нужной версии (8, 17, 21, 26) 
     в папку конфигурации лаунчера.
     """
     runtime_dir = os.path.join(CONFIG_DIR, "runtimes", f"java-{java_major}")
@@ -483,45 +483,49 @@ def extract_base_minecraft_version(version_to_install: str) -> str:
 
 def get_min_java_for_minecraft(minecraft_version_id: str) -> int:
     """
-    Матрица совместимости Java для всех версий Minecraft от 1.12 до актуальных:
+    Матрица Java:
     - 1.12.2 – 1.16.5 -> Java 8
     - 1.17 – 1.19.4 -> Java 17
-    - 1.20 – 1.21.x -> Java 21
-    - 1.22+ и новее -> Java 25
+    - 1.20 – 1.21.0 -> Java 21
+    - 1.21.1+ -> Java 26
     """
     if not minecraft_version_id:
         return 21
+
     vid = minecraft_version_id.strip()
-    
-    # Обработка снапшотов по году
+
+    # Обработка снапшотов
     snap = re.match(r"^(\d{2})w\d+[a-z]?$", vid, re.I)
     if snap:
         yy = int(snap.group(1))
-        return 25 if yy >= 25 else 21
-        
+        return 26 if yy >= 25 else 21
+
     parts = vid.split(".")
     if len(parts) < 2:
         return 21
+
     try:
         major = int(parts[0])
         minor = int(parts[1])
     except ValueError:
         return 21
+
     patch = int(parts[2]) if len(parts) > 2 and str(parts[2]).isdigit() else 0
-    
+
     if major != 1:
-        return 25
-        
+        return 26
+
     if minor <= 16:
-        return 8    # Для 1.12.2 и старых версий нужна Java 8
+        return 8
     if minor <= 19:
-        return 17   # Для 1.17 – 1.19.4 нужна Java 17
+        return 17
     if minor == 20:
-        return 17 if patch <= 1 else 21 # 1.20 - 1.20.1 на Java 17, далее на Java 21
+        return 17 if patch <= 1 else 21
     if minor == 21:
-        return 21   # 1.21.x работает на Java 21
+        return 21 if patch == 0 else 26
     if minor >= 22:
-        return 25   # Новые версии на Java 25+
+        return 26
+
     return 17
 
 
@@ -531,7 +535,7 @@ def java_download_anchor_fragment(min_java_major: int) -> str:
         return "java17"
     if min_java_major <= 21:
         return "java21"
-    return "java25"
+    return "java26"
 
 
 def java_download_page_url(min_java_major: int) -> str:
@@ -825,7 +829,7 @@ def clean_quickplay_settings(install_path):
         logging.error(f"Ошибка при очистке настроек быстрого старта: {str(e)}")
 
 class JavaInstaller(QDialog):
-    def __init__(self, parent=None, java_major=25):
+    def __init__(self, parent=None, java_major=26):
         super().__init__(parent)
         self.java_major = int(java_major)
         self.setWindowTitle("Установка Java")
@@ -879,7 +883,7 @@ class JavaInstallThread(QThread):
     status_update = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
-    def __init__(self, java_major=25, parent=None):
+    def __init__(self, java_major=26, parent=None):
         super().__init__(parent)
         self.java_major = int(java_major)
 
@@ -1940,7 +1944,7 @@ class InstallThread(QThread):
             logging.info(f"Вывод команды java -version: {version_output}")
 
             # Извлекаем версию Java
-            # Формат может быть "1.8.0_301" (Java 8) или "11.0.2" (Java 11+) или просто "25" (Java 25)
+            # Формат может быть "1.8.0_301" (Java 8) или "11.0.2" (Java 11+) или просто "26" (Java 26)
             version_pattern = r'version "([^"]+)"'
             match = re.search(version_pattern, version_output)
             
@@ -3566,7 +3570,7 @@ class MainWindow(QMainWindow):
         """Проверяет наличие обновлений лаунчера"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.4"
+            current_version = "1.1.0.5"
             
             # Получаем информацию о последнем релизе с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3603,7 +3607,7 @@ class MainWindow(QMainWindow):
         """Обновляет метку версии в интерфейсе"""
         try:
             # Текущая версия лаунчера
-            current_version = "1.1.0.4"
+            current_version = "1.1.0.5"
             
             # Пробуем получить последнюю версию с GitHub
             api_url = "https://api.github.com/repos/mdreval/ib-launcher/releases/latest"
@@ -3811,8 +3815,8 @@ class MainWindow(QMainWindow):
         return False
 
     def _install_system_java(self):
-        """Запускает системную установку Java 25 после явного подтверждения пользователя."""
-        installer = JavaInstaller(self, java_major=25)
+        """Запускает системную установку Java 26 после явного подтверждения пользователя."""
+        installer = JavaInstaller(self, java_major=26)
         QTimer.singleShot(0, installer.start_java_installation)
         installer.exec_()
 

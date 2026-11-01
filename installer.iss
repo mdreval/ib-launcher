@@ -1,6 +1,6 @@
 [Setup]
 AppName=IB Launcher
-AppVersion=1.1.0.4
+AppVersion=1.1.0.5
 DefaultDirName={autopf}\IBLauncher
 DefaultGroupName=IB Launcher
 OutputDir=Output
