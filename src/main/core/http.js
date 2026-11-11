@@ -6,8 +6,6 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { Readable } = require("stream");
-const { pipeline } = require("stream/promises");
 
 const pkg = require("../../../package.json");
 
@@ -121,15 +119,18 @@ function fileSize(file) {
   }
 }
 
-function sha1OfFile(file) {
+function hashOfFile(file, algo) {
   return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("sha1");
+    const hash = crypto.createHash(algo);
     fs.createReadStream(file)
       .on("data", (c) => hash.update(c))
       .on("end", () => resolve(hash.digest("hex")))
       .on("error", reject);
   });
 }
+
+const sha1OfFile = (file) => hashOfFile(file, "sha1");
+const sha256OfFile = (file) => hashOfFile(file, "sha256");
 
 /** Одна попытка: докачивает .part с места обрыва (Range), обрывает
  * соединение только если данные не приходят idleTimeout мс подряд. */
@@ -171,18 +172,35 @@ async function downloadOnce(url, tmp, { onProgress, expectedSize, idleTimeout })
   if (!append) start = 0;
   const total = expectedSize || start + parseInt(res.headers.get("content-length") || "0", 10);
   let done = start;
-  const body = Readable.fromWeb(res.body);
-  body.on("data", (chunk) => {
-    done += chunk.length;
-    arm();
-    if (onProgress) onProgress(done, total);
-  });
+  // Пишем на диск строго по очереди: прочитали кусок → дождались записи →
+  // читаем следующий. Раньше здесь был Readable.fromWeb + pipeline, и в
+  // Electron на Windows куски по 16 КБ иногда записывались не в том порядке —
+  // архив модпака получался битым при правильном размере.
+  const reader = res.body.getReader();
+  const fh = await fs.promises.open(tmp, append ? "a" : "w");
   try {
-    await pipeline(body, fs.createWriteStream(tmp, { flags: append ? "a" : "w" }));
+    for (;;) {
+      const { done: finished, value } = await reader.read();
+      if (finished) break;
+      arm();
+      let offset = 0;
+      while (offset < value.length) {
+        const { bytesWritten } = await fh.write(value, offset, value.length - offset);
+        offset += bytesWritten;
+      }
+      done += value.length;
+      if (onProgress) onProgress(done, total);
+    }
   } catch (err) {
     throw friendlyNetworkError(err, url);
   } finally {
     clearTimeout(timer);
+    try {
+      reader.releaseLock();
+    } catch (e) {
+      /* поток уже закрыт */
+    }
+    await fh.close().catch(() => {});
   }
 }
 
@@ -192,7 +210,7 @@ async function downloadOnce(url, tmp, { onProgress, expectedSize, idleTimeout })
  * размера (expectedSize) и sha1, если они известны.
  */
 async function downloadFile(url, dest, opts = {}) {
-  const { onProgress, sha1, expectedSize, retries = 5, idleTimeout = 45000 } = opts;
+  const { onProgress, sha1, sha256, expectedSize, retries = 5, idleTimeout = 45000 } = opts;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   const tmp = `${dest}.part`;
   let lastErr = null;
@@ -210,6 +228,13 @@ async function downloadFile(url, dest, opts = {}) {
           throw new Error(`Файл ${path.basename(dest)} скачался повреждённым`);
         }
       }
+      if (sha256) {
+        const actual = await sha256OfFile(tmp);
+        if (actual.toLowerCase() !== String(sha256).toLowerCase()) {
+          fs.rmSync(tmp, { force: true });
+          throw new Error(`Файл ${path.basename(dest)} скачался повреждённым (контрольная сумма не совпала)`);
+        }
+      }
       await removeFile(dest);
       await moveFile(tmp, dest);
       return dest;
@@ -222,4 +247,4 @@ async function downloadFile(url, dest, opts = {}) {
   throw lastErr || new Error("Не удалось скачать файл");
 }
 
-module.exports = { USER_AGENT, HttpError, request, fetchJson, postJson, fetchBuffer, downloadFile, removeFile, moveFile };
+module.exports = { USER_AGENT, HttpError, request, fetchJson, postJson, fetchBuffer, downloadFile, removeFile, moveFile, sha256OfFile };

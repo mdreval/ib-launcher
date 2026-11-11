@@ -22,11 +22,11 @@ const path = require("path");
 
 const paths = require("../paths");
 const builds = require("./builds");
-const { fetchJson, downloadFile, removeFile, moveFile } = require("../core/http");
+const { fetchJson, downloadFile, removeFile, moveFile, sha256OfFile } = require("../core/http");
 const { readJson, writeJson } = require("../core/jsonFile");
 
 const STATE_FILE = ".igrobar-modpack.json";
-const TMP_DIR_NAME = ".igrobar-modpack-tmp";
+const TMP_PREFIX = ".igrobar-modpack-tmp";
 const STALL_MS = 120000; // распаковка «встала» — столько ждём без прогресса
 
 function sizeOf(file) {
@@ -59,6 +59,9 @@ async function findAsset(source) {
         updated_at: asset.updated_at,
         url: asset.browser_download_url,
         release: release.tag_name,
+        // GitHub сам считает SHA-256 каждого файла релиза — по нему проверяем,
+        // что архив скачался без единой ошибки.
+        sha256: /^sha256:[0-9a-f]{64}$/i.test(asset.digest || "") ? asset.digest.slice(7).toLowerCase() : null,
       };
     }
   }
@@ -279,22 +282,42 @@ async function sync(buildId, { force = false, onProgress } = {}) {
   const download = (target) =>
     downloadFile(asset.url, target, {
       expectedSize: asset.size,
+      sha256: asset.sha256,
       onProgress: (done, total) => report(total ? Math.round((done / total) * 88) : 0, `Скачивание модпака… ${Math.round(done / 1048576)} / ${Math.round(total / 1048576)} МБ`),
     });
 
   // Распаковываем во временную папку: моды в сборке меняются только когда
   // весь архив распаковался без ошибок (никаких «половинок» модпака).
-  const tmpDir = path.join(instanceDir, TMP_DIR_NAME);
+  // Каждая попытка распаковывает в СВОЮ новую папку: если антивирус ещё
+  // держит файлы прошлой попытки, они не мешают (раньше было «EPERM … open»).
+  cleanupTmpDirs(instanceDir);
+  let tmpDir = null;
   const extract = (zip) => {
     report(90, "Распаковка модпака…");
+    if (tmpDir) removeDirQuiet(tmpDir);
+    tmpDir = path.join(instanceDir, `${TMP_PREFIX}-${Date.now()}`);
     return extractModpack(zip, tmpDir, (p) => report(90 + Math.round(p * 8), "Распаковка модпака…"));
+  };
+  // Архив из кэша используем, только если он целый (размер и SHA-256).
+  const cachedOk = async (file) => {
+    if (sizeOf(file) !== asset.size) return false;
+    if (!asset.sha256) return true;
+    report(89, "Проверка архива модпака…");
+    return (await sha256OfFile(file).catch(() => "")) === asset.sha256;
   };
 
   let zipPath = path.join(paths.CACHE_DIR, `modpack-${asset.id}.zip`);
   let extracted;
   try {
     try {
-      if (sizeOf(zipPath) !== asset.size) await download(zipPath);
+      if (!(await cachedOk(zipPath))) {
+        try {
+          fs.rmSync(zipPath, { force: true });
+        } catch (err) {
+          zipPath = path.join(paths.CACHE_DIR, `modpack-${asset.id}-${Date.now()}.zip`);
+        }
+        await download(zipPath);
+      }
       extracted = await extract(zipPath);
     } catch (firstErr) {
       // Архив мог повредиться, а старый файл — быть занят антивирусом,
@@ -362,7 +385,18 @@ async function sync(buildId, { force = false, onProgress } = {}) {
     report(100, reason === "missing" ? "Пропавшие моды восстановлены" : "Модпак обновлён");
     return { skipped: false, updated: true, reason, restored: missing.length, release: asset.release, added: newFiles.length, removed };
   } finally {
-    removeDirQuiet(tmpDir);
+    if (tmpDir) removeDirQuiet(tmpDir);
+  }
+}
+
+/** Убирает временные папки прошлых распаковок (что не удаётся — позже). */
+function cleanupTmpDirs(instanceDir) {
+  try {
+    for (const name of fs.readdirSync(instanceDir)) {
+      if (name.startsWith(TMP_PREFIX)) removeDirQuiet(path.join(instanceDir, name));
+    }
+  } catch (err) {
+    /* папки нет */
   }
 }
 

@@ -1,6 +1,6 @@
 ![IGROBAR](https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/banner.jpg)
 
-## Igrobar Launcher 2.0.1
+## Igrobar Launcher 2.0.2
 
 Полностью новый лаунчер для сервера **IGROBAR** — быстрее, красивее и с кучей нового.
 
