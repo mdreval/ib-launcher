@@ -217,7 +217,8 @@
           const st = await api.modpack.status(b.id).catch(() => null);
           if (!st) return;
           statusLine.textContent = st.installed_release
-            ? `Установлен модпак из релиза ${st.installed_release} (${st.files} файлов), проверено ${IB.fmt.ago(st.synced_at)}.`
+            ? `Установлен модпак из релиза ${st.installed_release} (${st.files} файлов), проверено ${IB.fmt.ago(st.synced_at)}.` +
+              (st.missing ? ` Не хватает файлов: ${st.missing} — они скачаются заново при запуске.` : "")
             : "Модпак ещё не загружался — он скачается при первом запуске сборки.";
         }
         loadModpackStatus();

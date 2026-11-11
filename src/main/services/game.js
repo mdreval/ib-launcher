@@ -378,12 +378,19 @@ async function syncModpackFor(build, { strict }) {
   }
   try {
     const result = await modpack.sync(build.id, { onProgress: (p, t) => setProgress(build.id, p, t) });
-    if (result.updated) launcherLine(build.id, `Модпак обновлён до ${result.release}: ${result.added} файлов`);
-    else if (!result.skipped) launcherLine(build.id, "Модпак актуален");
+    if (result.updated && result.reason === "missing") {
+      launcherLine(build.id, `Не хватало файлов модпака (${result.restored}) — модпак поставлен заново`);
+    } else if (result.updated) {
+      launcherLine(build.id, `Модпак обновлён до ${result.release}: ${result.added} файлов`);
+    } else if (!result.skipped) launcherLine(build.id, "Модпак актуален");
   } catch (err) {
-    const neverInstalled = !modpack.status(build.id).files;
-    if (strict || neverInstalled) throw new Error(`Не удалось скачать модпак сервера: ${errorText(err)}`);
-    launcherLine(build.id, `Не удалось проверить модпак: ${errorText(err)} — запускаю с текущими модами`);
+    // Без полного модпака на сервер не зайти — игру не запускаем.
+    // Если все файлы на месте и не получилось только проверить обновление
+    // (например, нет интернета) — можно играть с текущими модами.
+    if (strict || !modpack.isComplete(build)) {
+      throw new Error(`Модпак сервера не установлен: ${errorText(err)}. Проверьте интернет и нажмите ещё раз — без модпака игра не запустится`);
+    }
+    launcherLine(build.id, `Не удалось проверить обновление модпака: ${errorText(err)} — запускаю с текущими модами`);
   }
 }
 
