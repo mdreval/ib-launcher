@@ -1,38 +1,46 @@
-# Release Notes
-![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
+![IGROBAR](https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/banner.jpg)
 
-## 🚀 Релиз v1.1.0.5 — Поддержка Java 26 и обновление профиля «Игробар»
+## Igrobar Launcher 2.0.0
 
-### 🛠 Что нового и исправлено:
-- **Поддержка Java 26:**
-  - Обновлена система определения и автоматической загрузки Java. Теперь лаунчер поддерживает Java 26 для соответствующих версий Minecraft.
-- **Обновление стандартного профиля «Игробар»:**
-  - Стандартная версия Minecraft для профиля «Игробар» теперь запускается на **NeoForge 21.1.265**.
+Полностью новый лаунчер для сервера **IGROBAR** — быстрее, красивее и с кучей нового.
+
+### ⚡ Сервер IGROBAR
+- Сборка IGROBAR (Minecraft 1.21.1 + NeoForge) создаётся сама и выбрана по умолчанию.
+- Модпак сервера скачивается и обновляется автоматически, ваши моды не трогаются.
+- Сервер сразу прописан в «Сетевой игре» — адрес вводить не нужно.
+- На главной видно, онлайн ли сервер, сколько игроков и какой пинг.
+- Карта сервера и Telegram прямо в лаунчере.
+
+### 🧱 Сборки
+- Любые версии Minecraft: релизы, снапшоты, бета и альфа.
+- Forge, NeoForge, Fabric и Quilt.
+- У каждой сборки своя папка с понятным именем, свои моды, миры и настройки.
+
+### 🧩 Моды
+- Каталог Modrinth с поиском: моды, ресурспаки и шейдеры в один клик.
+- «Обновить все», «Исправить», перетаскивание файлов в окно.
+
+### 🎨 Скины
+- Свой скин виден в игре на любой версии — без лицензии и без модов.
+- Редактор скина с 3D-предпросмотром.
+- Каталог скинов: MinecraftSkins.com, Ely.by, NameMC.
+
+### 👤 Аккаунты
+- Офлайн-ник, Microsoft и Ely.by, несколько профилей.
+
+### ☕ Java
+- Нужная Java скачивается сама под каждую версию игры.
+
+### 🖌️ Оформление
+- Темы «Зелёная» и «Красная IGROBAR», своя картинка на фон.
+- Русский, украинский и английский языки.
+
+### 🛡️ Надёжность
+- Докачка после обрыва сети, запасные зеркала загрузок.
+- Журнал игры и отчёт об ошибке в один клик.
+- Автообновление лаунчера.
 
 ---
 
-## 🚀 Release v1.1.0.5 — Java 26 Support & Igrobar Profile Update
-
-### 🛠 What's New and Fixed:
-- **Java 26 Support:**
-  - Updated Java detection and automatic download system. The launcher now supports Java 26 for the corresponding Minecraft versions.
-- **Igrobar Default Profile Update:**
-  - The default Minecraft version for the Igrobar profile now runs on **NeoForge 21.1.265**.
-
----
-
-## 🚀 Реліз v1.1.0.5 — Підтримка Java 26 та оновлення профілю «Ігробар»
-
-### 🛠 Що нового та виправлено:
-- **Підтримка Java 26:**
-  - Оновлено систему визначення та автоматичного завантаження Java. Тепер лаунчер підтримує Java 26 для відповідних версій Minecraft.
-- **Оновлення стандартного профілю «Ігробар»:**
-  - Стандартна версія Minecraft для профілю «Ігробар» тепер запускається на **NeoForge 21.1.265**.
-
----
-
-## Скачать / Завантажити / Download
-
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.5/IB-Launcher.exe) Windows (Standalone)
-- [IBLauncher_Setup.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.5/IBLauncher_Setup.exe) Windows (Installer)
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.5/IB-Launcher.dmg) macOS
+**Установка:** скачайте `Igrobar-Launcher-Setup-2.0.0.exe` ниже (Windows) или `.dmg` для macOS.
+Лаунчер хранит игру в `%APPDATA%\IBLauncher`, свои настройки — в `%APPDATA%\.LauncherIB`.

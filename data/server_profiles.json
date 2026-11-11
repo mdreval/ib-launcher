@@ -1,0 +1,22 @@
+{
+  "_help": "Главный файл настроек лаунчера. launcher_version — версия самого лаунчера (при отправке на GitHub с новой версией соберётся и выйдет обновление). servers — параметры сервера: версия Minecraft, загрузчик, адрес. Изменения servers применяются у игроков сразу, без нового релиза. server_address — адрес, который попадёт в «Сетевую игру»; status_address — адреса для проверки онлайна на главной (через запятую, берётся первый ответивший).",
+  "launcher_version": "2.0.0",
+  "servers": [
+    {
+      "id": "igrobar",
+      "name": "IGROBAR",
+      "mc_version": "1.21.1",
+      "loader_type": "neoforge",
+      "loader_version": "21.1.265",
+      "modpack": {
+        "repo": "mdreval/ib-launcher",
+        "asset": "modpack.zip"
+      },
+      "dynmap_url": "https://igrobar.dynmap.xyz/",
+      "server_address": "igrobar.aboba.host",
+      "status_address": "igrobar.aboba.host, igrobar2.aboba.host, d11.joinserver.xyz:25970, 135.181.237.56:25970",
+      "telegram": "https://t.me/igrobar",
+      "description": "Сборка сервера IGROBAR. Версия NeoForge закреплена под сервер, модпак подтягивается с GitHub автоматически."
+    }
+  ]
+}

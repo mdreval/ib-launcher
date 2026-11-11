@@ -1,0 +1,371 @@
+/* Каркас: фон, боковая панель, верхняя панель, область страниц */
+
+.app-bg {
+  position: fixed;
+  inset: -40px;
+  z-index: 0;
+  background: var(--app-bg-image, url("../../../assets/ui/background.jpg")) center / cover no-repeat;
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
+  transition: transform 900ms var(--ease);
+}
+
+.app-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(var(--c-070d0b), 0.9) 0%, rgba(var(--c-070d0b), 0.5) 45%, rgba(var(--c-070d0b), 0.18) 100%),
+    linear-gradient(180deg, rgba(var(--c-070d0b), 0.18) 0%, rgba(var(--c-070d0b), 0.85) 100%);
+}
+
+/* Красная тема IGROBAR: фон — заставка сервера, затемнение мягче, чтобы
+   надпись IGROBAR было видно. */
+:root[data-theme="red"] {
+  --app-bg-image: url("../../../assets/ui/background-igrobar.jpg");
+}
+
+:root[data-theme="red"]:not([data-custom-bg]) .app-bg::after {
+  background:
+    linear-gradient(90deg, rgba(var(--c-070d0b), 0.82) 0%, rgba(var(--c-070d0b), 0.35) 40%, rgba(var(--c-070d0b), 0.1) 100%),
+    linear-gradient(180deg, rgba(var(--c-070d0b), 0.1) 0%, rgba(var(--c-070d0b), 0.75) 100%);
+}
+
+/* Затемнение своей картинки (ползунок в настройках). */
+:root[data-custom-bg] .app-bg::after {
+  opacity: var(--bg-dim, 1);
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--topbar-h) 1fr;
+  height: 100vh;
+}
+
+/* ---------- боковая панель ---------- */
+.sidebar {
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0 18px;
+  background: rgba(var(--c-080e0c), 0.8);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(18px);
+  -webkit-app-region: drag;
+}
+
+.sidebar__logo {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  transition: transform 560ms var(--spring);
+  -webkit-app-region: no-drag;
+}
+
+.sidebar__logo:hover {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  -webkit-app-region: no-drag;
+}
+
+.nav__indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 56px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, rgba(var(--c-a8f0d0), 0.16), rgba(var(--c-a8f0d0), 0.05));
+  box-shadow: inset 0 0 0 1px rgba(var(--c-a8f0d0), 0.24), var(--glow);
+  transition: transform 420ms var(--spring), opacity 200ms;
+  pointer-events: none;
+}
+
+.nav__btn {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 56px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  transition: transform 160ms var(--ease);
+}
+
+.nav__btn img {
+  width: 34px;
+  height: 34px;
+  image-rendering: pixelated;
+  filter: saturate(0.75) brightness(0.88);
+  transition: filter 160ms, transform 280ms var(--spring);
+}
+
+.nav__btn:hover img {
+  filter: none;
+  transform: scale(1.1);
+}
+
+.nav__btn[aria-current="page"] img {
+  filter: drop-shadow(0 0 10px rgba(var(--c-a8f0d0), 0.4));
+}
+
+.nav__btn .tip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translate(-6px, -50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms, transform 200ms var(--ease);
+  z-index: 50;
+}
+
+.nav__btn:hover .tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.social-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(var(--c-a8f0d0), 0.06);
+  color: var(--accent);
+  transition: background 160ms, transform 200ms var(--spring);
+}
+
+.social-btn:hover {
+  background: rgba(var(--c-a8f0d0), 0.16);
+  transform: scale(1.06);
+}
+
+.social-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar__caption {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+/* ---------- верхняя панель ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px 0 var(--gutter);
+  -webkit-app-region: drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.brand b {
+  font-weight: 400;
+  color: var(--text-soft);
+}
+
+.version-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.topbar__title {
+  margin-left: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.topbar__spacer {
+  flex: 1;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.account-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px 0 5px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  backdrop-filter: blur(14px);
+  font-weight: 700;
+  transition: background 160ms, border-color 160ms;
+}
+
+.account-chip:hover {
+  background: var(--surface-hover);
+}
+
+.account-chip__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgb(var(--c-1c2a26));
+  flex: none;
+}
+
+.account-chip__avatar img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.account-chip svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-soft);
+}
+
+.window-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.win-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-soft);
+  transition: background 140ms, color 140ms, border-color 140ms;
+}
+
+.win-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+
+.win-btn--close:hover {
+  background: rgba(255, 138, 128, 0.16);
+  border-color: rgba(255, 138, 128, 0.4);
+  color: var(--danger);
+}
+
+.win-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- страницы ---------- */
+.page-host {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 18px var(--gutter) 32px;
+  animation: fade-in 360ms var(--ease);
+}
+
+.page--fixed {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.page-head h1 {
+  margin: 0 0 6px;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.page-head p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---------- macOS: родные кнопки окна слева сверху ---------- */
+.is-mac .sidebar {
+  padding-top: 48px;
+}
+
+.is-mac .window-controls {
+  display: none;
+}

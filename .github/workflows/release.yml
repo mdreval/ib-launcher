@@ -1,0 +1,116 @@
+name: Build & Release
+
+# Версия лаунчера задаётся в data/server_profiles.json → "launcher_version".
+#
+# Как выпустить новую версию лаунчера:
+#   1. поменяйте "launcher_version" в data/server_profiles.json (например 2.0.1);
+#   2. git commit и git push в ветку main.
+# Actions увидит, что релиза v2.0.1 ещё нет, соберёт установщик Windows (.exe)
+# и образы macOS (.dmg) и выложит их в GitHub Release v2.0.1. Установленные
+# лаунчеры на Windows обновятся сами, на macOS покажут ссылку на новый .dmg.
+#
+# Если версия не менялась (поменяли только сервер, модпак или код без новой
+# версии) — сборка пропускается, релиз не создаётся. Параметры сервера
+# (servers в том же файле) игроки получают сразу, без нового релиза.
+#
+# Ручной запуск (Run workflow) просто собирает файлы без публикации —
+# их можно скачать во вкладке Actions → Artifacts.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      publish: ${{ steps.ver.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from data/server_profiles.json
+        id: ver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./data/server_profiles.json').launcher_version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "publish=never" >> "$GITHUB_OUTPUT"
+            echo "Ручной запуск: сборка без публикации ($VERSION)"
+          elif gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "publish=skip" >> "$GITHUB_OUTPUT"
+            echo "Релиз v$VERSION уже есть — сборка не нужна"
+          else
+            echo "publish=always" >> "$GITHUB_OUTPUT"
+            echo "Новая версия $VERSION — собираю и публикую"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.publish != 'skip'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --win nsis --x64
+          - os: macos-latest
+            args: --mac dmg --x64 --arm64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync version into package.json
+        run: node scripts/sync-version.js
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        run: npx electron-builder ${{ matrix.args }} --publish ${{ needs.check.outputs.publish }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: igrobar-launcher-${{ runner.os }}
+          path: |
+            dist-installer/*.exe
+            dist-installer/*.dmg
+            dist-installer/*.yml
+          if-no-files-found: ignore
+
+  # Уведомление в Discord о новом релизе. Релиз создаёт GitHub Actions, а такие
+  # релизы не запускают другие workflow сами — поэтому запускаем
+  # discord-release.yml вручную, когда сборка опубликована.
+  notify:
+    needs: [check, build]
+    if: needs.check.outputs.publish == 'always'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Discord notification
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh workflow view discord-release.yml --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh workflow run discord-release.yml --repo "${{ github.repository }}"
+          else
+            echo "discord-release.yml нет — уведомление пропущено"
+          fi

@@ -1,258 +1,103 @@
-![icon](https://github.com/user-attachments/assets/e5f7129c-0a44-42cb-b3dc-bdd4c3b13faf)
+<p align="center">
+  <img src="docs/banner.jpg" alt="IGROBAR" width="100%" />
+</p>
 
-# IB Launcher v1.1.0.5
-![Screenshot_1](https://github.com/user-attachments/assets/b4039f36-f94e-4868-8e27-81454031e340)
+<h1 align="center">Igrobar Launcher</h1>
 
----
+<p align="center">
+  <b>Лаунчер Minecraft для сервера IGROBAR — и для любых своих сборок.</b><br />
+  Один клик до сервера, моды с Modrinth, свой скин в игре без лицензии.
+</p>
 
-## 🇷🇺 Русский
+<p align="center">
+  <a href="https://github.com/mdreval/ib-launcher/releases/latest"><img src="https://img.shields.io/github/v/release/mdreval/ib-launcher?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=e2262c" alt="Версия" /></a>
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS-1f1f1f?logo=windows11&logoColor=white" alt="Windows · macOS" />
+  <img src="https://img.shields.io/badge/Minecraft-Java%20Edition-3c8527" alt="Minecraft Java Edition" />
+  <a href="https://t.me/igrobar"><img src="https://img.shields.io/badge/Telegram-IGROBAR-26a5e4?logo=telegram&logoColor=white" alt="Telegram" /></a>
+</p>
 
-IB Launcher - это современный лаунчер для Minecraft, который позволяет легко устанавливать и запускать различные версии игры, включая Forge и моды.
-
-### Основные возможности:
-- Установка и запуск Minecraft с поддержкой **Forge**, **Fabric** и **NeoForge** (с 1.20.2)
-- Управление модами
-- Автоматическое обновление модов
-- Настройка параметров запуска
-- Поддержка различных версий Java (включая автоматическую загрузку Java 8 для старых версий и Java 25 для новых)
-- Удобный и многоязычный интерфейс (Русский, Украинский, Английский)
-- Отображение количества онлайн-игроков на сервере
-- Корректное закрытие лаунчера после запуска игры
-
-### Системные требования:
-- Windows 10/11 или macOS
-- Python 3.10 или выше
-- Минимум 4 ГБ оперативной памяти
-- 2 ГБ свободного места на диске
-
-### История версий
-
-#### Версия 1.1.0.3
-  - Реализована умная система сохранения пользовательского выбора: дефолтный серверный профиль «Игробар» устанавливается только при первом запуске, а дальше лаунчер запоминает последнюю выбранную версию и лоадер.
-  - Добавлен интерактивный мониторинг запуска игры с отображением этапов инициализации (OpenGL, моды, ресурсы) в реальном времени.
-  - Устранены зависания legacy-версий (1.12.x) в оконном режиме на Windows 11.
-  - Настроена изоляция рабочих директорий установщиков (`cwd=temp_dir`), избавившая рабочий стол от мусорных `.jar.log` файлов.
-
-#### Версия 1.1.0.2
-- Добавлена интеллектуальная система автоматического повтора скачивания (до 3 попыток) при сетевых сбоях и ошибках контрольных сумм (`Checksum`).
-- Реализовано автоматическое обнаружение и удаление поврежденных или неполных файлов библиотек (`.jar`) с последующей мгновенной докачкой.
-- Исправлена логика установки ванильных версий: теперь прерванные или поврежденные загрузки корректно переустанавливаются, а не пропускаются лаунчером.
-- Добавлена поддержка автоматической загрузки **Java 8** для старых версий Minecraft, которая теперь хранится в централизованной папке конфигурации (`IBLauncher-config` / папка конфигурации «Игробар»).
-
-#### Версия 1.1.0.1
-- Добавлена поддержка **NeoForge** для новых версий Minecraft, где он действительно доступен, включая версии с новым форматом нумерации.
-- Профиль **сервера IGROBAR** вынесен в одно место: можно быстро изменить версию Minecraft, тип лоадера (**NeoForge** или **Fabric**) и версию лоадера.
-- Выбранный профиль IGROBAR автоматически становится первым в списке версий и подставляет нужную сборку лоадера.
-- Улучшена проверка Java: для новых версий Minecraft требуется **Java 25**, а более новые версии Java по-прежнему подходят.
-- Если подходящей Java нет, лаунчер может скачать и установить **Java 25** в систему: для Windows через стандартное подтверждение UAC, для macOS — через запрос пароля администратора.
-
-#### Версия 1.1.0.0
-- Убраны **pre-release версии** и **снапшоты** из списка доступных версий Minecraft.
-- Начиная с **Minecraft 1.20** и до последней доступной версии добавлены все **официальные релизные версии Minecraft**.
-- **Модпак сервера IGROBAR** теперь скачивается только при выборе соответствующей версии для сервера **IGROBAR**.
-- Для остальных версий Minecraft **модпак сервера IGROBAR скачиваться не будет**.
-
-#### Версия 1.0.9.9
-- В списке лоадера для Minecraft **1.21 и новее** добавлен **NeoForge** (последняя сборка и список версий).
-- Установка NeoForge больше не требует официального лаунчера: создаётся `launcher_profiles.json`, сначала ставится ваниль.
-- Перед установкой Forge/NeoForge сбрасываются системные `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` (сообщение *Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). Память из слайдера лаунчера на это не влияет.
-- **1.20.1**, Forge и Fabric работают как раньше.
-
-#### Версия 1.0.9.6
-- Для Minecraft 1.20.1 по умолчанию выбирается профиль **сервер IGROBAR**, а не строка вида `1.20.1-forge-47.4.23`.
-- В списке лоадера игрок видит **сервер IGROBAR**; внутри ставится и запускается нужная версия Forge (сейчас 47.4.23).
-
-#### Версия 1.0.9.5
-- Добавлена новая вкладка «Карта» в лаунчере.
-- Вкладка открывает веб‑карту сервера (Dynmap): https://igrobar.dynmap.xyz/.
-- В том же списке, что и Forge, доступен выбор **Fabric** (включая «последнюю» версию лоадера и список недавних сборок).
-- В списке версий Minecraft добавлены **снапшоты** (после даты релиза 1.20.1).
-- **Проверка Java** перенесена на момент нажатия «Установить» / «Играть» (при старте лаунчер не требует Java).
-- Требования к Java зависят от выбранной версии Minecraft: достаточно **минимальной** мажорной версии (17 / 21 / 25), **более новая Java подходит**; диалоги и ссылки на загрузку — с учётом языка интерфейса и ОС.
-
-![Screenshot_2](https://github.com/user-attachments/assets/dcc25734-ab1b-4b5a-878e-a09027c1096a)
-
-#### Версия 1.0.9.0
-- Добавлена поддержка нескольких языков: Русский, Украинский, Английский.
-- Появилась возможность смены языка интерфейса в настройках.
-- Улучшен дизайн настроек для более удобного выбора языка.
-- Исправлен ряд ошибок и улучшена стабильность интерфейса.
-
-#### Версия 1.0.8.4
-- Добавлен индикатор онлайн-игроков на сервере.
-- Улучшено закрытие лаунчера после запуска игры.
-- Улучшено запоминание версий Minecraft и Forge.
-- Исправлены стили и поведение тем.
-- Мелкие улучшения и исправления интерфейса.
+<p align="center">
+  <img src="docs/screenshots/home-red.png" alt="Главная — красная тема IGROBAR" width="88%" />
+</p>
 
 ---
 
-## 🇺🇦 Українська
+## ⚡ Сервер IGROBAR в один клик
 
-IB Launcher - це сучасний лаунчер для Minecraft, який дозволяє легко встановлювати та запускати різні версії гри, включаючи Forge та моди.
+Нажал «Играть» — и ты на сервере. Лаунчер сам ставит нужную версию Minecraft и NeoForge,
+скачивает модпак сервера и добавляет IGROBAR в список «Сетевая игра» — адрес вводить не нужно.
 
-### Основні можливості:
-- Встановлення та запуск Minecraft з підтримкою **Forge**, **Fabric** та **NeoForge** (з 1.20.2)
-- Управління модами
-- Автоматичне оновлення модів
-- Налаштування параметрів запуску
-- Підтримка різних версій Java (включаючи автоматичне завантаження Java 8 для старих версій та Java 25 для нових)
-- Зручний та багатомовний інтерфейс (Російська, Українська, Англійська)
-- Відображення кількості онлайн-гравців на сервері
-- Коректне закриття лаунчера після запуску гри
+- **Модпак обновляется сам.** Вышли новые моды на сервере — лаунчер подтянет их перед запуском.
+  Свои моды игрока при этом не трогаются, а выключенные остаются выключенными.
+- **Онлайн сервера на главной** — сколько игроков сейчас в игре и какой пинг.
+- **Карта сервера** (DynMap) прямо в лаунчере и быстрый переход в Telegram.
+- **Всегда актуальная версия.** Сервер переехал на новую версию Minecraft — сборка у игроков
+  перестроится сама, обновлять лаунчер не нужно.
 
-### Системні вимоги:
-- Windows 10/11 або macOS
-- Python 3.10 або вище
-- Мінімум 4 ГБ оперативної пам'яті
-- 2 ГБ вільного місця на диску
+## 🧱 Любые версии и сборки
 
-### Історія версій
+<img src="docs/screenshots/builds-green.png" alt="Сборки" width="100%" />
 
-#### Версия 1.1.0.3
-  - Реалізовано розумну систему збереження вибору користувача: дефолтний серверний профіль «Ігробар» виставляється лише при першому запуску, а надалі лаунчер запам'ятовує останню обрану версію та лоадер.
-  - Додано інтерактивний моніторинг запуску гри з відображенням етапів ініціалізації (OpenGL, моди, ресурси) у реальному часі.
-  - Усунуто зависання legacy-версій (1.12.x) у віконному режимі на Windows 11.
-  - Налаштовано ізоляцію робочих директорій установників (`cwd=temp_dir`), що позбавило робочий стіл від сміттєвих `.jar.log` файлів.
+- Все версии Minecraft Java: **релизы, снапшоты, бета и альфа**.
+- Загрузчики **Forge, NeoForge, Fabric, Quilt** — версия подставляется с пометкой «рекомендуется».
+- У каждой сборки **своя папка** с понятным именем (`Forge-1.12.2`, `Fabric-1.20.1`) — свои моды,
+  миры, ресурспаки и настройки. Общие файлы игры качаются один раз на все сборки.
+- Своя память, аргументы Java, размер окна и полный экран — для каждой сборки отдельно.
 
-#### Версія 1.1.0.2
-- Додано інтелектуальну систему автоматичного повтору завантаження (до 3 спроб) у разі мережевих збоїв та помилок контрольних сум (`Checksum`).
-- Реалізовано автоматичне виявлення та видалення пошкоджених або неповних файлів бібліотек (`.jar`) із подальшим миттєвим докачуванням.
-- Виправлено логіку встановлення ванільних версій: тепер перервані чи пошкоджені завантаження коректно перевстановлюються, а не пропускаються лаунчером.
-- Додано підтримку автоматичного завантаження **Java 8** для старих версій Minecraft, яка тепер зберігається в централізованій папці конфігурації (`IBLauncher-config` / папка конфігурації «Ігробар»).
+## 🧩 Моды, ресурспаки и шейдеры
 
-#### Версія 1.1.0.1
-- Додано підтримку **NeoForge** для нових версій Minecraft, де він справді доступний, зокрема для версій із новим форматом нумерації.
-- Профіль **сервера IGROBAR** винесено в одне місце: можна швидко змінити версію Minecraft, тип лоадера (**NeoForge** або **Fabric**) і версію лоадера.
-- Обраний профіль IGROBAR автоматично стає першим у списку версій і підставляє потрібну збірку лоадера.
-- Покращено перевірку Java: для нових версій Minecraft потрібна **Java 25**, а новіші версії Java, як і раніше, підходять.
-- Якщо підходящої Java немає, лаунчер може завантажити й встановити **Java 25** у систему: для Windows через стандартне підтвердження UAC, для macOS — через запит пароля адміністратора.
+- Встроенный **каталог Modrinth** с поиском и категориями — установка в один клик, с зависимостями.
+- **«Обновить все»** и **«Исправить»**, пометки «не хватает зависимостей» и «не для этой сборки».
+- Просто **перетащи файлы** в окно — они окажутся в нужной папке.
 
-#### Версія 1.1.0.0
-- Прибрано **pre-release версії** та **знімки (snapshots)** зі списку доступних версій Minecraft.
-- Починаючи з **Minecraft 1.20** і до останньої доступної версії додано всі **офіційні релізні версії Minecraft**.
-- **Модпак сервера IGROBAR** тепер завантажується лише при виборі відповідної версії для сервера **IGROBAR**.
-- Для інших версій Minecraft **модпак сервера IGROBAR завантажуватися не буде**.
+## 🎨 Скины — как в лицензии, но без неё
 
-#### Версія 1.0.9.9
-- У списку лоадера для Minecraft **1.21 і новіше** додано **NeoForge** (остання збірка та список версій).
-- Встановлення NeoForge більше не потребує офіційного лаунчера: створюється `launcher_profiles.json`, спочатку ставиться ваніль.
-- Перед встановленням Forge/NeoForge скидаються системні `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS`. Памʼять зі слайдера лаунчера не змінюється.
-- **1.20.1**, Forge і Fabric працюють як раніше.
+<img src="docs/screenshots/skin-red.png" alt="Редактор скина" width="100%" />
 
-#### Версія 1.0.9.6
-- Для Minecraft 1.20.1 за замовчуванням обирається профіль **сервер IGROBAR**, а не рядок на кшталт `1.20.1-forge-47.4.23`.
-- У списку лоадера гравець бачить **сервер IGROBAR**; всередині встановлюється й запускається потрібна версія Forge (зараз 47.4.23).
+- **Свой скин виден в игре сразу** — в любой версии, в одиночной игре и на серверах, без модов.
+- **Редактор скина**: кисть, ластик, заливка, пипетка, рисование прямо на персонаже или на развёртке,
+  два слоя, отмена и живой 3D-предпросмотр.
+- **Каталог скинов** — сотни тысяч скинов с MinecraftSkins.com, Ely.by и NameMC: нажал «Скачать» на сайте,
+  и скин уже в лаунчере.
+- **Готовые скины** — выбрать персонажа в один клик.
+- Скины других игроков подтягиваются с Ely.by, TLauncher и Mojang.
 
-#### Версія 1.0.9.5
-- Додано нову вкладку «Карта» в лаунчері.
-- Вкладка відкриває веб‑карту сервера (Dynmap): https://igrobar.dynmap.xyz/.
-- У тому ж списку, що й Forge, доступний вибір **Fabric** (включно з «останньою» версією лоадера та списком недавніх збірок).
-- До списку версій Minecraft додані **знімки** (після дати релізу 1.20.1).
-- **Перевірка Java** виконується при натисканні «Встановити» / «Грати» (при запуску лаунчер не вимагає Java).
-- Вимоги до Java залежать від обраної версії Minecraft: достатньо **мінімальної** мажорної версії (17 / 21 / 25), **новіша Java підходить**; діалоги та посилання — з урахуванням мови інтерфейсу та ОС.
+## 👤 Аккаунты
 
-#### Версія 1.0.9.0
-- Додано підтримку декількох мов: Російська, Українська, Англійська.
-- З'явилася можливість зміни мови інтерфейсу в налаштуваннях.
-- Покращено дизайн налаштувань для зручнішого вибору мови.
-- Виправлено низку помилок та покращено стабільність інтерфейсу.
+- **Офлайн-ник** — играть без лицензии.
+- **Microsoft** — лицензия Minecraft, скин сразу загружается в профиль.
+- **Ely.by** — бесплатный аккаунт со скинами, которые видят все.
+- Несколько профилей и быстрое переключение; токены хранятся зашифрованными.
 
-#### Версія 1.0.8.4
-- Додано індикатор онлайн-гравців на сервері.
-- Покращено закриття лаунчера після запуска гри.
-- Покращено запам'ятовування версій Minecraft та Forge.
-- Виправлено стилі та поведінку тем.
-- Дрібні поліпшення та виправлення інтерфейсу.
+## ☕ Java не нужна
+
+Лаунчер сам скачивает правильную Java под каждую версию игры: Java 8 для 1.12.2 и старых версий,
+Java 17 и 21 — для новых. Ничего ставить отдельно не придётся.
+
+## 🖌️ Оформление под себя
+
+<img src="docs/screenshots/settings-red.png" alt="Настройки оформления" width="100%" />
+
+- Две темы: **зелёная** «Ночной лес» и **красная IGROBAR**.
+- **Своя картинка на фон** — с компьютера или по ссылке из интернета, с регулировкой затемнения.
+- Интерфейс на **русском, украинском и английском**.
+
+## 🛡️ Надёжно
+
+- **Докачка после обрыва** и повторные попытки — уже скачанное не теряется, установка не зависает.
+- Проверка контрольных сумм модпака: моды меняются, только если всё скачалось целиком.
+- **Журнал игры** в отдельном окне и кнопка «Скопировать отчёт», если игра упала.
+- Пока идёт игра, лаунчер прячется в трей и возвращается, когда игра закрыта.
+- **Лаунчер обновляется сам** — новая версия ставится при перезапуске.
 
 ---
 
-## 🇬🇧 English
+<p align="center">
+  <img src="docs/screenshots/home-green.png" alt="Главная — зелёная тема" width="88%" />
+</p>
 
-IB Launcher is a modern Minecraft launcher that allows you to easily install and run various versions of the game, including Forge and mods.
-
-### Key Features:
-- Install and run Minecraft with **Forge**, **Fabric**, and **NeoForge** (from 1.20.2)
-- Mod management
-- Automatic mod updates
-- Launch parameter customization
-- Support for various Java versions (including automatic download of Java 8 for older versions and Java 25 for newer versions)
-- User-friendly and multilingual interface (Russian, Ukrainian, English)
-- Display of online player count on the server
-- Proper launcher closure after game launch
-
-### System Requirements:
-- Windows 10/11 or macOS
-- Python 3.10 or higher
-- Minimum 4 GB of RAM
-- 2 GB of free disk space
-
-### Version History
-
-#### Version 1.1.0.3
-  - Implemented smart version persistence: default server profile is selected on first run only, while user selections (versions/loaders) are remembered across sessions.
-  - Added real-time launch monitoring that displays initialization stages (OpenGL, mods, resources) in the status area.
-  - Fixed legacy version (1.12.x) windowed mode freeze issue on Windows 11.
-  - Isolated installer working directories (`cwd=temp_dir`) to prevent `.jar.log` file clutter on the desktop.
-
-#### Version 1.1.0.2
-- Added an intelligent automatic download retry system (up to 3 attempts) for network failures and Checksum errors.
-- Implemented automatic detection and deletion of corrupted or partial library files (`.jar`), followed by immediate re-downloading.
-- Fixed vanilla version installation logic: interrupted or corrupted downloads are now properly repaired and re-installed rather than skipped by the launcher.
-- Added automatic downloading of **Java 8** for older Minecraft versions, stored in the centralized configuration folder (`IBLauncher-config` / Igrobar configuration folder).
-
-#### Version 1.1.0.1
-- Added **NeoForge** support for newer Minecraft versions where it is actually available, including versions that use the new numbering format.
-- Moved the **IGROBAR server** profile to one place: Minecraft version, loader type (**NeoForge** or **Fabric**), and loader version can now be changed quickly.
-- The selected IGROBAR profile is automatically placed first in the version list and applies the matching loader build.
-- Improved Java checks: newer Minecraft versions require **Java 25**, while newer Java versions remain supported.
-- If no suitable Java is installed, the launcher can download and install **Java 25** system-wide: through the standard UAC confirmation on Windows and the administrator-password prompt on macOS.
-
-#### Version 1.1.0.0
-- **Pre-release versions** and **snapshots** have been removed from the available Minecraft version list.
-- Starting from **Minecraft 1.20** up to the latest available version, all **official Minecraft release versions** have been added.
-- The **IGROBAR server modpack** is now downloaded only when the corresponding **IGROBAR server** version is selected.
-- The **IGROBAR server modpack will not be downloaded** for other Minecraft versions.
-
-#### Version 1.0.9.9
-- **NeoForge** is available in the loader list for Minecraft **1.20 and newer** (latest plus recent builds).
-- NeoForge install no longer needs the official launcher: a `launcher_profiles.json` is created, vanilla is installed first.
-- System `_JAVA_OPTIONS` / `JAVA_TOOL_OPTIONS` are cleared before Forge/NeoForge install (*Picked up _JAVA_OPTIONS: -Xmx8G -Xms512M*). The launcher memory slider is unchanged.
-- **1.20.1**, Forge, and Fabric still work as before.
-
-#### Version 1.0.9.6
-- For Minecraft 1.20.1 the default loader is **IGROBAR server**, not a string like `1.20.1-forge-47.4.23`.
-- The dropdown shows **IGROBAR server**; the matching Forge build is still installed and launched (currently 47.4.23).
-
-#### Version 1.0.9.5
-- Added a new **Map** tab to the launcher.
-- The tab opens the server Dynmap in an embedded browser: https://igrobar.dynmap.xyz/.
-- **Fabric** can be selected in the same loader dropdown as Forge (latest loader plus many recent loader versions).
-- **Snapshots** are included in the Minecraft version list (from 1.20.1 release date onward).
-- **Java** is checked only when you click **Install** or **Play** (not on launcher startup).
-- Required Java **depends on the selected Minecraft version** (minimum major 17 / 21 / 25); **newer Java is accepted**. Dialogs and download hints follow UI language and OS.
-
-#### Version 1.0.9.0
-- Added multi-language support: Russian, Ukrainian, English.
-- Added the ability to change the interface language in the settings.
-- Improved settings design for easier language selection.
-- Fixed a number of bugs and improved UI stability.
-
-#### Version 1.0.8.4
-- Added an online player indicator for the server.
-- Improved launcher closure after game launch.
-- Improved saving of selected Minecraft and Forge versions.
-- Fixed theme styles and behavior.
-- Minor improvements and UI fixes.
-
----
-
-### Скачать / Завантажити / Download
-- [IB-Launcher.exe](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.5/IB-Launcher.exe) - Windows
-- [IB-Launcher.dmg](https://github.com/mdreval/ib-launcher/releases/download/v1.1.0.5/IB-Launcher.dmg) - macOS 
-
-### Обратная связь / Зворотній зв'язок / Feedback
-- YouTube: [@IGROBAR](https://www.youtube.com/@igrobar)
-- Telegram: [@IGROBAR](https://t.me/igrobar)
-
-Copyright (c) 2024-2027 Igrobar
+<p align="center">
+  Сделано для сервера <b>IGROBAR</b> · <a href="https://t.me/igrobar">Telegram</a> ·
+  <a href="https://igrobar.dynmap.xyz/">Карта сервера</a><br />
+  <sub>Для разработчика: <a href="docs/MAINTAINING.md">docs/MAINTAINING.md</a> · Что нового: <a href="RELEASE_NOTES.md">RELEASE_NOTES.md</a></sub>
+</p>

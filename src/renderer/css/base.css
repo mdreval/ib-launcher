@@ -1,0 +1,248 @@
+/* Шрифт Inter (SIL Open Font License, см. assets/fonts/OFL.txt) */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../../../assets/fonts/inter-cyrillic-wght-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../../../assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---- цвета тем (генерируются из зелёной темы; красная — IGROBAR) ---- */
+:root {
+  --c-030706: 3, 7, 6;
+  --c-060c0a: 6, 12, 10;
+  --c-070d0b: 7, 13, 11;
+  --c-080e0c: 8, 14, 12;
+  --c-0a1210: 10, 18, 16;
+  --c-0a1411: 10, 20, 17;
+  --c-0b1311: 11, 19, 17;
+  --c-0c1513: 12, 21, 19;
+  --c-0d1714: 13, 23, 20;
+  --c-0e1815: 14, 24, 21;
+  --c-0f1916: 15, 25, 22;
+  --c-101a17: 16, 26, 23;
+  --c-14221e: 20, 34, 30;
+  --c-162420: 22, 36, 32;
+  --c-1a2c27: 26, 44, 39;
+  --c-1c2a26: 28, 42, 38;
+  --c-1e302a: 30, 48, 42;
+  --c-2d4b42: 45, 75, 66;
+  --c-6f8880: 111, 136, 128;
+  --c-7de6b8: 125, 230, 184;
+  --c-93ecc6: 147, 236, 198;
+  --c-a8f0d0: 168, 240, 208;
+  --c-a9beb5: 169, 190, 181;
+  --c-c3f7e0: 195, 247, 224;
+  --c-c7d6cf: 199, 214, 207;
+  --c-c9d6d0: 201, 214, 208;
+  --c-d6fbea: 214, 251, 234;
+  --c-eef6f2: 238, 246, 242;
+}
+
+:root[data-theme="red"] {
+  --c-030706: 7, 3, 3;
+  --c-060c0a: 12, 6, 6;
+  --c-070d0b: 13, 7, 7;
+  --c-080e0c: 14, 8, 8;
+  --c-0a1210: 18, 10, 10;
+  --c-0a1411: 255, 255, 255;
+  --c-0b1311: 19, 11, 11;
+  --c-0c1513: 21, 12, 12;
+  --c-0d1714: 23, 13, 13;
+  --c-0e1815: 24, 14, 14;
+  --c-0f1916: 25, 15, 15;
+  --c-101a17: 26, 16, 16;
+  --c-14221e: 34, 20, 20;
+  --c-162420: 36, 22, 22;
+  --c-1a2c27: 44, 26, 26;
+  --c-1c2a26: 42, 28, 28;
+  --c-1e302a: 48, 30, 30;
+  --c-2d4b42: 76, 44, 45;
+  --c-6f8880: 137, 110, 111;
+  --c-7de6b8: 226, 38, 44;
+  --c-93ecc6: 214, 30, 36;
+  --c-a8f0d0: 255, 86, 86;
+  --c-a9beb5: 191, 168, 169;
+  --c-c3f7e0: 240, 60, 64;
+  --c-c7d6cf: 214, 199, 199;
+  --c-c9d6d0: 214, 201, 201;
+  --c-d6fbea: 255, 98, 102;
+  --c-eef6f2: 246, 238, 238;
+}
+
+:root {
+  color-scheme: dark;
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", "JetBrains Mono", monospace;
+
+  --bg: rgb(var(--c-070d0b));
+  --surface: rgba(var(--c-0d1714), 0.74);
+  --surface-strong: rgba(var(--c-0a1210), 0.95);
+  --surface-raised: rgba(var(--c-162420), 0.82);
+  --surface-hover: rgba(var(--c-1e302a), 0.85);
+  --border: rgba(var(--c-a8f0d0), 0.11);
+  --border-strong: rgba(var(--c-a8f0d0), 0.26);
+  --text: rgb(var(--c-eef6f2));
+  --text-soft: rgb(var(--c-a9beb5));
+  --text-muted: rgb(var(--c-6f8880));
+  --on-accent: rgb(var(--c-0a1411));
+  --accent: rgb(var(--c-a8f0d0));
+  --accent-strong: rgb(var(--c-7de6b8));
+  --accent-soft: rgba(var(--c-a8f0d0), 0.12);
+  --accent-glow: rgba(var(--c-a8f0d0), 0.32);
+  --danger: #ff8a80;
+  --danger-soft: rgba(255, 138, 128, 0.13);
+  --ok: #5fe39a; /* «сервер онлайн» — зелёный в любой теме */
+  --warning: #ffd479;
+  --warning-soft: rgba(255, 212, 121, 0.14);
+
+  --loader-vanilla: #7de6b8;
+  --loader-fabric: #e7c58f;
+  --loader-forge: #8fa8ff;
+  --loader-neoforge: #ff9e5e;
+  --loader-quilt: #c99bff;
+
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 34px rgba(var(--c-a8f0d0), 0.22);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --sidebar-w: 92px;
+  --topbar-h: 64px;
+  --gutter: 36px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+a {
+  color: var(--accent);
+}
+
+::selection {
+  background: rgba(var(--c-a8f0d0), 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--c-a8f0d0), 0.16);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--c-a8f0d0), 0.3);
+}
+
+.pixelated {
+  image-rendering: pixelated;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+.soft {
+  color: var(--text-soft);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}

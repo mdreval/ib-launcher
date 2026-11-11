@@ -1,0 +1,146 @@
+[
+  {
+    "id": "igrobar",
+    "name": {
+      "ru": "Игробар",
+      "uk": "Ігробар",
+      "en": "Igrobar"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "miner",
+    "name": {
+      "ru": "Шахтёр",
+      "uk": "Шахтар",
+      "en": "Miner"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "explorer",
+    "name": {
+      "ru": "Путешественник",
+      "uk": "Мандрівник",
+      "en": "Explorer"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "knight",
+    "name": {
+      "ru": "Рыцарь",
+      "uk": "Лицар",
+      "en": "Knight"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "ninja",
+    "name": {
+      "ru": "Ниндзя",
+      "uk": "Ніндзя",
+      "en": "Ninja"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "chef",
+    "name": {
+      "ru": "Повар",
+      "uk": "Кухар",
+      "en": "Chef"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "scientist",
+    "name": {
+      "ru": "Учёный",
+      "uk": "Науковець",
+      "en": "Scientist"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "astronaut",
+    "name": {
+      "ru": "Космонавт",
+      "uk": "Космонавт",
+      "en": "Astronaut"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "zombie",
+    "name": {
+      "ru": "Зомби",
+      "uk": "Зомбі",
+      "en": "Zombie"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "alice",
+    "name": {
+      "ru": "Алиса",
+      "uk": "Аліса",
+      "en": "Alice"
+    },
+    "model": "slim"
+  },
+  {
+    "id": "hacker",
+    "name": {
+      "ru": "Хакер",
+      "uk": "Хакер",
+      "en": "Hacker"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "farmer",
+    "name": {
+      "ru": "Фермер",
+      "uk": "Фермер",
+      "en": "Farmer"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "pirate",
+    "name": {
+      "ru": "Пират",
+      "uk": "Пірат",
+      "en": "Pirate"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "ranger",
+    "name": {
+      "ru": "Лесник",
+      "uk": "Лісник",
+      "en": "Ranger"
+    },
+    "model": "classic"
+  },
+  {
+    "id": "mia",
+    "name": {
+      "ru": "Мия",
+      "uk": "Мія",
+      "en": "Mia"
+    },
+    "model": "slim"
+  },
+  {
+    "id": "king",
+    "name": {
+      "ru": "Король",
+      "uk": "Король",
+      "en": "King"
+    },
+    "model": "classic"
+  }
+]

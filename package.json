@@ -1,0 +1,98 @@
+{
+  "name": "igrobar-launcher",
+  "productName": "Igrobar Launcher",
+  "version": "2.0.0",
+  "description": "Лаунчер Minecraft для сервера IGROBAR и своих сборок",
+  "main": "src/main/index.js",
+  "author": "IGROBAR",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "prestart": "node scripts/sync-version.js",
+    "start": "electron .",
+    "predist": "node scripts/sync-version.js",
+    "dist": "electron-builder",
+    "sync-version": "node scripts/sync-version.js",
+    "dist:publish": "electron-builder --publish always"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "electron-log": "^5.2.0",
+    "electron-updater": "^6.3.9",
+    "minecraft-java-core": "^4.2.8",
+    "yauzl": "^2.10.0"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ru.igrobar.launcher",
+    "productName": "Igrobar Launcher",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "assets/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Igrobar Launcher"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mdreval",
+        "repo": "ib-launcher",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon-1024.png",
+      "category": "public.app-category.games",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Igrobar Launcher ${version}"
+    },
+    "releaseInfo": {
+      "releaseNotesFile": "RELEASE_NOTES.md"
+    }
+  }
+}
