@@ -3,17 +3,22 @@ name: Build & Release
 # Версия лаунчера задаётся в data/server_profiles.json → "launcher_version".
 #
 # Как выпустить новую версию лаунчера:
-#   1. поменяйте "launcher_version" в data/server_profiles.json (например 2.0.1);
+#   1. поменяйте "launcher_version" в data/server_profiles.json (например 2.0.1)
+#      и опишите изменения в RELEASE_NOTES.md;
 #   2. git commit и git push в ветку main.
-# Actions увидит, что релиза v2.0.1 ещё нет, соберёт установщик Windows (.exe)
-# и образы macOS (.dmg) и выложит их в GitHub Release v2.0.1. Установленные
-# лаунчеры на Windows обновятся сами, на macOS покажут ссылку на новый .dmg.
 #
-# Если версия не менялась (поменяли только сервер, модпак или код без новой
-# версии) — сборка пропускается, релиз не создаётся. Параметры сервера
-# (servers в том же файле) игроки получают сразу, без нового релиза.
+# Что делает workflow:
+#   check     — если опубликованного релиза vX.Y.Z ещё нет, создаёт его
+#               черновиком (draft) с текстом из RELEASE_NOTES.md;
+#   build     — три отдельные сборки: Windows (.exe), macOS Intel и macOS
+#               Apple Silicon (.dmg). Отдельно — потому что два .dmg одним
+#               заходом падали (оба монтируются с одинаковым именем тома);
+#   finalize  — когда все файлы загружены, публикует релиз (до этого игроки
+#               его не видят и обновление не начнётся «наполовину») и сразу
+#               отправляет уведомление в Discord (секрет DISCORD_WEBHOOK).
 #
-# Ручной запуск (Run workflow) просто собирает файлы без публикации —
+# Если версия не менялась — сборка пропускается, релиз не создаётся.
+# Ручной запуск (Run workflow) только собирает файлы без публикации —
 # их можно скачать во вкладке Actions → Artifacts.
 
 on:
@@ -25,7 +30,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   check:
@@ -43,17 +47,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="$(node -p "require('./data/server_profiles.json').launcher_version")"
+          TAG="v$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "publish=never" >> "$GITHUB_OUTPUT"
             echo "Ручной запуск: сборка без публикации ($VERSION)"
-          elif gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "publish=skip" >> "$GITHUB_OUTPUT"
-            echo "Релиз v$VERSION уже есть — сборка не нужна"
-          else
-            echo "publish=always" >> "$GITHUB_OUTPUT"
-            echo "Новая версия $VERSION — собираю и публикую"
+            exit 0
           fi
+          DRAFT="$(gh release view "$TAG" --repo "${{ github.repository }}" --json isDraft -q .isDraft 2>/dev/null || echo missing)"
+          if [ "$DRAFT" = "false" ]; then
+            echo "publish=skip" >> "$GITHUB_OUTPUT"
+            echo "Релиз $TAG уже опубликован — сборка не нужна"
+            exit 0
+          fi
+          if [ "$DRAFT" = "missing" ]; then
+            gh release create "$TAG" --repo "${{ github.repository }}" --draft \
+              --target "${{ github.sha }}" --title "Igrobar Launcher $VERSION" --notes-file RELEASE_NOTES.md
+            echo "Создан черновик релиза $TAG"
+          else
+            gh release edit "$TAG" --repo "${{ github.repository }}" \
+              --title "Igrobar Launcher $VERSION" --notes-file RELEASE_NOTES.md
+            echo "Черновик $TAG уже есть (прошлая сборка не закончилась) — собираю заново"
+          fi
+          echo "publish=always" >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
@@ -62,10 +78,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - name: windows
+            os: windows-latest
             args: --win nsis --x64
-          - os: macos-latest
-            args: --mac dmg --x64 --arm64
+          - name: mac-x64
+            os: macos-latest
+            args: --mac dmg --x64
+          - name: mac-arm64
+            os: macos-latest
+            args: --mac dmg --arm64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -90,27 +111,92 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: igrobar-launcher-${{ runner.os }}
+          name: igrobar-launcher-${{ matrix.name }}
           path: |
             dist-installer/*.exe
             dist-installer/*.dmg
             dist-installer/*.yml
           if-no-files-found: ignore
 
-  # Уведомление в Discord о новом релизе. Релиз создаёт GitHub Actions, а такие
-  # релизы не запускают другие workflow сами — поэтому запускаем
-  # discord-release.yml вручную, когда сборка опубликована.
-  notify:
+  finalize:
     needs: [check, build]
-    if: needs.check.outputs.publish == 'always'
+    if: needs.check.outputs.publish == 'always' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Run Discord notification
+      - uses: actions/checkout@v4
+
+      - name: Publish release with notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh workflow view discord-release.yml --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh workflow run discord-release.yml --repo "${{ github.repository }}"
-          else
-            echo "discord-release.yml нет — уведомление пропущено"
-          fi
+          TAG="v${{ needs.check.outputs.version }}"
+          gh release edit "$TAG" --repo "${{ github.repository }}" \
+            --title "Igrobar Launcher ${{ needs.check.outputs.version }}" \
+            --notes-file RELEASE_NOTES.md --draft=false --latest
+
+      # Уведомление в Discord — прямо здесь, автоматически после публикации.
+      # (Отдельный discord-release.yml на такие релизы сам не срабатывает:
+      # GitHub не запускает workflow из-за действий других workflow.)
+      # Нужен секрет DISCORD_WEBHOOK: Settings → Secrets and variables → Actions.
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, urllib.request
+
+          webhook = os.environ.get("DISCORD_WEBHOOK")
+          if not webhook:
+              print("Секрета DISCORD_WEBHOOK нет — уведомление пропущено")
+              raise SystemExit(0)
+
+          repo = os.environ["REPOSITORY"]
+          version = os.environ["VERSION"]
+          tag = f"v{version}"
+          release = json.loads(subprocess.check_output(
+              ["gh", "release", "view", tag, "--repo", repo, "--json", "url,assets"]))
+          release_url = release["url"]
+          exe = next((a for a in release["assets"] if a["name"].endswith(".exe")), None)
+
+          body = open("RELEASE_NOTES.md", encoding="utf-8").read()
+          image_url = None
+          m = re.search(r'!\[[^\]]*\]\((https?://[^)]+)\)', body)
+          if m:
+              image_url = m.group(1)
+              body = body.replace(m.group(0), "").strip()
+          # Заголовки Markdown Discord показывает плохо — делаем их жирными.
+          body = re.sub(r'^#{1,6}\s*(.+)$', r'**\1**', body, flags=re.M)
+          if len(body) > 3900:
+              body = body[:3897] + "..."
+
+          fields = [{"name": "Версия", "value": f"`{tag}`", "inline": True}]
+          if exe:
+              fields.append({"name": "Скачать", "value": f"[Windows (.exe)]({exe['url']})", "inline": True})
+          fields.append({"name": "Все файлы", "value": f"[GitHub]({release_url})", "inline": True})
+
+          embed = {
+              "title": f"🚀 Igrobar Launcher {version}",
+              "description": body,
+              "url": release_url,
+              "color": 0xE2262C,
+              "fields": fields,
+              "footer": {"text": "GitHub Release"},
+          }
+          if image_url:
+              embed["image"] = {"url": image_url}
+
+          payload = {
+              "content": "@everyone",
+              "username": "Igrobar Launcher",
+              "embeds": [embed],
+              "allowed_mentions": {"parse": ["everyone"]},
+          }
+          req = urllib.request.Request(
+              webhook, data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json", "User-Agent": "GitHub-Actions"}, method="POST")
+          with urllib.request.urlopen(req) as resp:
+              print(f"Discord: {resp.status}")
+          PY
