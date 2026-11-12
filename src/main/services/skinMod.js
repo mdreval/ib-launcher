@@ -11,10 +11,9 @@
  *      папку сборки CustomSkinLoader/LocalSkin/skins/<ник>.png — игрок видит
  *      свой скин сразу.
  *
- * Чтобы скин видели ДРУГИЕ игроки, он должен лежать на общем сервере скинов.
- * CustomSkinLoader по умолчанию берёт скины по нику с Mojang, Ely.by,
- * TLauncher, LittleSkin — поэтому достаточно зарегистрировать свой ник на
- * ely.by и загрузить туда скин (в лаунчере для этого есть кнопка).
+ * Чтобы скин видели ДРУГИЕ игроки, лаунчер загружает его на общий сервер
+ * скинов IGROBAR (skinCloud.js), а CustomSkinLoader у всех берёт скины
+ * оттуда по нику — источник «Igrobar» стоит сразу после LocalSkin.
  *
  * Выключается настройкой skin_mod: false в settings.json.
  */
@@ -25,6 +24,7 @@ const path = require("path");
 const builds = require("./builds");
 const settings = require("./settings");
 const skins = require("./skins");
+const skinCloud = require("./skinCloud");
 const { fetchJson, downloadFile, fetchBuffer } = require("../core/http");
 const { readJson, writeJson } = require("../core/jsonFile");
 
@@ -100,20 +100,26 @@ async function ensureMod(build, log) {
 // лаунчера» (LocalSkin) — почти последним. Поэтому, если ник занят на
 // Microsoft (например, mdreval), мод показывал лицензионный скин, а не
 // выбранный в лаунчере. Наш порядок:
-//   1. LocalSkin   — свой скин игрока: для офлайн-профиля — выбранный в
-//                    лаунчере, для Ely.by-аккаунта — скачанный с Ely.by;
-//   2. Ely.by, TLauncher — скины ДРУГИХ игроков по нику: у игроков сервера
-//                    они обычно там;
-//   3. GameProfile — скин, который прислал сервер. На офлайн-сервере с
+//   1. LocalSkin   — свой скин игрока (тот, что выбран в лаунчере);
+//   2. Igrobar     — общий сервер скинов IGROBAR: скины ДРУГИХ игроков
+//                    лаунчера, ровно те, что они выбрали у себя;
+//   3. Ely.by, TLauncher — по нику, для тех, кого нет на сервере IGROBAR;
+//   4. GameProfile — скин, который прислал сервер. На офлайн-сервере с
 //                    плагином скинов это скин с Mojang по нику (или пустой),
 //                    поэтому он ниже Ely.by — иначе все видели бы друг у друга
 //                    стандартный или «чужой» лицензионный скин;
-//   4. Mojang и остальные.
+//   5. Mojang и остальные.
 // Файл: <сборка>/CustomSkinLoader/CustomSkinLoader.json. Мод сам дописывает
 // в записи адреса и пути по имени источника — нам достаточно имени и типа.
+// Запись «Igrobar» мод не знает, поэтому её мы всегда пишем целиком сами.
+
+function igrobarSource() {
+  return { name: "Igrobar", type: "CustomSkinAPI", root: skinCloud.cslRoot() };
+}
 
 const PREFERRED_ORDER = [
   { name: "LocalSkin", type: "Legacy" },
+  { name: "Igrobar", own: true },
   { name: "ElyBy", type: "ElyByAPI" },
   { name: "TLauncher", type: "ElyByAPI" },
   { name: "GameProfile", type: "GameProfile" },
@@ -140,6 +146,16 @@ function orderSkinSources(build) {
   const byName = new Map(current.map((p) => [p.name, p]));
   const ordered = [];
   for (const want of PREFERRED_ORDER) {
+    if (want.own) {
+      // Запись мода оставляем как есть (он мог дописать свои поля), если
+      // адрес совпадает; иначе — пишем свою.
+      const existing = byName.get(want.name);
+      byName.delete(want.name);
+      if (!skinCloud.enabled()) continue;
+      const fresh = igrobarSource();
+      ordered.push(existing && existing.type === fresh.type && existing.root === fresh.root ? existing : fresh);
+      continue;
+    }
     const existing = byName.get(want.name);
     if (existing) {
       ordered.push(existing);
@@ -151,8 +167,8 @@ function orderSkinSources(build) {
   // Свои источники игрока (если добавлял) — в конец, в прежнем порядке.
   for (const p of current) if (byName.has(p.name)) ordered.push(p);
 
-  const before = JSON.stringify(current.map((p) => p.name));
-  const after = JSON.stringify(ordered.map((p) => p.name));
+  const before = JSON.stringify(current);
+  const after = JSON.stringify(ordered);
   if (before === after && current.length) return false;
   config.loadlist = ordered;
   fs.mkdirSync(dir, { recursive: true });
@@ -169,28 +185,20 @@ function orderSkinSources(build) {
 /**
  * Кладёт свой скин игрока туда, откуда его берёт CustomSkinLoader
  * (CustomSkinLoader/LocalSkin/skins/<ник>.png), — он стоит первым, поэтому
- * игрок видит себя со своим скином и в одиночной игре, и на серверах:
- *  - офлайн-профиль — скин, выбранный в лаунчере;
- *  - Ely.by — скин с Ely.by (тот, что загружен в профиль на ely.by);
+ * игрок видит себя со своим скином и в одиночной игре, и на серверах.
+ * Скин тот же, что уходит на сервер IGROBAR (skinCloud.currentTextures):
+ *  - офлайн-профиль — выбранный в лаунчере;
+ *  - Ely.by — выбранный в лаунчере, иначе текущий с Ely.by;
  *  - Microsoft — ничего не кладём, игра и так берёт лицензионный скин.
  */
-async function placeLocalSkin(build, account) {
+async function placeLocalSkin(build, account, textures) {
   if (!account || !account.name) return;
   const dir = path.join(builds.instanceDir(build), "CustomSkinLoader", "LocalSkin", "skins");
   const target = path.join(dir, `${account.name}.png`);
   let png = null;
-  if (account.type === "offline") {
-    const skin = skins.get(account.id);
-    if (skin && skin.custom) png = skins.dataUrlToBuffer(skin.dataUrl);
-  } else if (account.type === "ely") {
-    try {
-      const buf = await fetchBuffer(`https://skinsystem.ely.by/skins/${encodeURIComponent(account.name)}.png`, { timeout: 8000 });
-      skins.validatePng(buf);
-      png = buf;
-    } catch (err) {
-      png = null; // нет скина на Ely.by или нет сети — оставим как есть
-      if (fs.existsSync(target)) return;
-    }
+  if (account.type !== "microsoft") {
+    const t = textures || (await skinCloud.currentTextures(account));
+    png = t.skin;
   }
   if (png) {
     fs.mkdirSync(dir, { recursive: true });
@@ -216,10 +224,21 @@ async function prepare(build, account, log) {
   } catch (err) {
     if (log) log(`Не удалось поставить мод скинов: ${err.message || err}`);
   }
+  let textures = null;
   try {
-    await placeLocalSkin(build, account);
+    if (account) textures = await skinCloud.currentTextures(account);
+  } catch (err) {
+    textures = null;
+  }
+  try {
+    await placeLocalSkin(build, account, textures);
   } catch (err) {
     /* не критично */
+  }
+  try {
+    await skinCloud.sync(account, log, { textures });
+  } catch (err) {
+    if (log) log(`Скин не загружен на сервер IGROBAR (${err.message || err}) — другие игроки увидят его после следующего запуска`);
   }
   if (modLoadersFor(build.loader_type).length && settings.get().skin_mod !== false) {
     try {

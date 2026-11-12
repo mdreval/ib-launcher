@@ -136,16 +136,15 @@
       // ---------- предпросмотр ----------
       const previewBox = h("div", {});
       const previewName = h("div", { class: "muted", style: { fontSize: "12.5px" } });
-      // Подсказка для офлайн-профиля: как сделать, чтобы скин видели другие.
+      // Подсказка: скин видят другие игроки (через сервер скинов IGROBAR).
       const elyHint = h(
         "div",
         { class: "skin-share-hint" },
         h("div", { style: { fontWeight: 700, marginBottom: "4px" }, text: "Скин видят другие игроки?" }),
         h("div", {
           class: "muted",
-          text: "Свой скин вы увидите в игре сразу, в любой версии. Другие игроки видят его, если этот ник зарегистрирован на Ely.by и туда загружен тот же скин.",
-        }),
-        h("button", { class: "btn btn--sm", style: { marginTop: "8px" }, html: `${IB.icon("external")}Открыть Ely.by`, onClick: () => api.app.openExternal("https://ely.by/") })
+          text: "Да: лаунчер сам загружает ваш скин и плащ на сервер скинов IGROBAR, и все игроки с этим лаунчером видят их в игре. Неважно, откуда скин — из редактора, файла, каталога или Ely.by.",
+        })
       );
       const saveState = h("div", { class: "muted", style: { fontSize: "12.5px", textAlign: "center", marginTop: "12px" } });
       const overlaySwitch = IB.switchEl({ checked: true, label: "Верхний слой" });
@@ -586,7 +585,7 @@
       async function loadAccountSkin() {
         const acc = S.accounts.find((a) => a.id === st.accountId);
         previewName.textContent = acc ? `${acc.name} · ${acc.type === "offline" ? "офлайн-профиль" : acc.type === "microsoft" ? "Microsoft" : "Ely.by"}` : "Аккаунт не выбран";
-        elyHint.style.display = acc && acc.type === "offline" ? "" : "none";
+        elyHint.style.display = acc ? "" : "none";
         if (draft && draft.accountId === st.accountId) {
           await setTextureFromDataUrl(draft.dataUrl, draft.model, { dirty: draft.dirty });
           return;
@@ -689,9 +688,7 @@
             h(
               "p",
               { class: "soft", style: { margin: 0 } },
-              acc.type === "microsoft"
-                ? "У лицензии Microsoft в игре показывается официальный плащ (если он есть). Плащ отсюда виден в превью и на аккаунтах по нику и Ely.by."
-                : "Плащ виден вам — в игре (в любой версии) и в лаунчере. Другим игрокам Minecraft показывает только официальные плащи и плащи Ely.by, поэтому это ваше личное украшение."
+              "Плащ видят все игроки IGROBAR с этим лаунчером — в игре и в превью."
             ),
             grid,
             h("div", { class: "setting-line" }, h("span", { text: "Показывать плащ в игре и в превью" }), enabled)

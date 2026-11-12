@@ -408,6 +408,8 @@
     "Модель: обычные руки": ["Модель: звичайні руки", "Model: classic arms"],
     "Открыть Ely.by": ["Відкрити Ely.by", "Open Ely.by"],
     "Скин видят другие игроки?": ["Скін бачать інші гравці?", "Can other players see your skin?"],
+    "Да: лаунчер сам загружает ваш скин и плащ на сервер скинов IGROBAR, и все игроки с этим лаунчером видят их в игре. Неважно, откуда скин — из редактора, файла, каталога или Ely.by.": ["Так: лаунчер сам завантажує ваш скін і плащ на сервер скінів IGROBAR, і всі гравці з цим лаунчером бачать їх у грі. Неважливо, звідки скін — з редактора, файлу, каталогу чи Ely.by.", "Yes: the launcher uploads your skin and cape to the IGROBAR skin server, and every player using this launcher sees them in game. It doesn't matter where the skin came from — the editor, a file, a catalog or Ely.by."],
+    "Плащ видят все игроки IGROBAR с этим лаунчером — в игре и в превью.": ["Плащ бачать усі гравці IGROBAR з цим лаунчером — у грі та в прев'ю.", "Every IGROBAR player using this launcher sees the cape — in game and in the preview."],
     "Свой скин вы увидите в игре сразу, в любой версии. Другие игроки видят его, если этот ник зарегистрирован на Ely.by и туда загружен тот же скин.": ["Свій скін ви побачите в грі одразу, у будь-якій версії. Інші гравці бачать його, якщо цей нік зареєстровано на Ely.by і туди завантажено той самий скін.", "You will see your skin in game right away, in any version. Other players see it if this nickname is registered on Ely.by with the same skin uploaded there."],
     "Откроется окно с сайтом. Найдите скин и нажмите у него «Скачать» / «Download» — скин сразу появится здесь, и его можно будет применить.": ["Відкриється вікно з сайтом. Знайдіть скін і натисніть у нього «Завантажити» / «Download» — скін одразу з'явиться тут, і його можна буде застосувати.", "A window with the website will open. Find a skin and click its “Download” button — it will appear here right away and you can apply it."],
     "Самый большой каталог: сотни тысяч скинов, поиск по названию.": ["Найбільший каталог: сотні тисяч скінів, пошук за назвою.", "The biggest catalog: hundreds of thousands of skins, search by name."],
@@ -431,6 +433,7 @@
     "Выберите папку игры": ["Виберіть теку гри", "Choose the game folder"],
     "Сначала закройте игру": ["Спочатку закрийте гру", "Close the game first"],
     "Скин сохранён": ["Скін збережено", "Skin saved"],
+    "Скин сохранён — его увидят все игроки IGROBAR с этим лаунчером": ["Скін збережено — його побачать усі гравці IGROBAR з цим лаунчером", "Skin saved — every IGROBAR player using this launcher will see it"],
     "Скин загружен в профиль Minecraft": ["Скін завантажено в профіль Minecraft", "Skin uploaded to your Minecraft profile"],
     "Скин сохранён в лаунчере. Чтобы его видели другие игроки, загрузите его на ely.by": [
       "Скін збережено в лаунчері. Щоб його бачили інші гравці, завантажте його на ely.by",

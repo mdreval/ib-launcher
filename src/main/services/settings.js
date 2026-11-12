@@ -58,6 +58,10 @@ function defaults() {
     cape_enabled: true,
     skin_mod: true,
     skin_server: true,
+    // Общий сервер скинов IGROBAR: лаунчер загружает туда скин игрока,
+    // CustomSkinLoader у всех берёт скины оттуда (services/skinCloud.js).
+    skin_cloud: true,
+    skin_cloud_url: "",
   };
 }
 

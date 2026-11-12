@@ -1,29 +1,15 @@
-## IGROBAR Launcher 2.0.4
+## IGROBAR Launcher 2.0.5
 
 <p>
-<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/home-news.jpg" width="49%" alt="Главная" />
-<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/music.jpg" width="49%" alt="Музыка" />
-<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/worlds.jpg" width="49%" alt="Миры" />
-<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/settings-custom-color.jpg" width="49%" alt="Оформление" />
+<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/skin.jpg" width="49%" alt="Редактор скина" />
+<img src="https://raw.githubusercontent.com/mdreval/ib-launcher/main/docs/screenshots/capes.jpg" width="49%" alt="Плащи" />
 </p>
 
-**📰 Главная** — лента новостей из Telegram-канала, список игроков онлайн, друзья ⭐ с уведомлением «друг зашёл на сервер», переключатель **«Сразу на сервер»** и мини-плеер музыки.
+**👕 Скины теперь видят все.** Скин и плащ из лаунчера видны всем игрокам IGROBAR, а не только вам. Неважно, откуда скин: нарисован в редакторе, загружен файлом, взят из каталога, с Ely.by или из лицензии.
 
-**🎵 Музыка** — новая вкладка: встроенный эмбиент или свои треки с перемоткой, а также управление **Spotify** (трек, обложка, пауза, перемотка, своя громкость).
+Лаунчер сам отправляет скин на сервер скинов IGROBAR при сохранении и перед запуском игры. Ничего настраивать и регистрировать не нужно.
 
-**🌍 Миры и скриншоты** — резервные копии миров в один клик, восстановление, галерея скриншотов с копированием в буфер.
-
-**📦 Сборки** — экспорт в один файл `.ibpack` и импорт `.ibpack` / `.mrpack` (Modrinth), можно просто перетащить файл.
-
-**👤 Профиль и плащи** — сколько наиграно и по каким сборкам; 5 готовых плащей или свой PNG.
-
-**🎨 Оформление** — новый фон (ночная долина), тема **IGROBAR**, логотип на выбор, живой фон (светлячки, звёзды, дождь, снег…) и сезонные эффекты, своё видео на фоне.
-
-**📜 Правила и ссылки** — новая вкладка с правилами сервера, Telegram, чатом и Discord.
-
-**🩺 Причины вылета** — «Журнал игры» объясняет, почему игра закрылась и что делать.
-
-**💬 Discord** — кнопка сервера в меню и статус «Играет на IGROBAR». Всё новое переведено на украинский и английский.
+> Скины друг друга видят игроки, у которых стоит лаунчер версии 2.0.5 или новее — обновитесь вместе с друзьями.
 
 ---
 

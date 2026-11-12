@@ -14,6 +14,7 @@ const builds = require("./services/builds");
 const versions = require("./services/versions");
 const accounts = require("./services/accounts");
 const skins = require("./services/skins");
+const skinCloud = require("./services/skinCloud");
 const game = require("./services/game");
 const modpack = require("./services/modpack");
 const news = require("./services/news");
@@ -200,19 +201,19 @@ function register() {
       await accounts.uploadMicrosoftSkin(id, buffer, model);
       uploaded = true;
       message = "Скин загружен в профиль Minecraft";
-    } else if (account && account.type === "ely") {
-      message = "Скин сохранён в лаунчере. Чтобы его видели другие игроки, загрузите его на ely.by";
     } else {
-      message = "Скин сохранён — в игре он появится при следующем запуске. Чтобы его видели другие игроки, загрузите его на ely.by под тем же ником";
+      message = "Скин сохранён — его увидят все игроки IGROBAR с этим лаунчером";
     }
     const skin = skins.save(id, buffer, model, uploaded ? "account" : "custom");
     broadcast("skins:changed", { accountId: id });
+    skinCloud.syncInBackground(account);
     return { skin: { accountId: id, ...skin }, uploaded, message };
   });
   handle("skins:reset", (accountId) => {
     const id = accountId || (accounts.selected() || {}).id;
     skins.remove(id);
     broadcast("skins:changed", { accountId: id });
+    skinCloud.syncInBackground(accounts.accountById(id));
     return { accountId: id, ...skins.get(id) };
   });
   handle("skins:presets", () => skins.presets());
@@ -473,11 +474,13 @@ function register() {
   handle("capes:save", ({ accountId, dataUrl, source }) => {
     const res = skins.saveCape(accountId, skins.dataUrlToBuffer(dataUrl), source || "custom");
     broadcast("skins:changed", { accountId });
+    skinCloud.syncInBackground(accounts.accountById(accountId));
     return res;
   });
   handle("capes:remove", (accountId) => {
     skins.removeCape(accountId);
     broadcast("skins:changed", { accountId });
+    skinCloud.syncInBackground(accounts.accountById(accountId));
     return null;
   });
   handle("capes:pick", async () => {
