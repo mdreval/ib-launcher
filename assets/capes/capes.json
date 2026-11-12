@@ -1,0 +1,22 @@
+[
+  {
+    "id": "igrobar",
+    "name": "IGROBAR"
+  },
+  {
+    "id": "forest",
+    "name": "Ночной лес"
+  },
+  {
+    "id": "space",
+    "name": "Космос"
+  },
+  {
+    "id": "flame",
+    "name": "Пламя"
+  },
+  {
+    "id": "ice",
+    "name": "Лёд"
+  }
+]

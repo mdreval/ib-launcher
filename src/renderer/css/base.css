@@ -246,3 +246,7 @@ a {
     background-position: 200% 0;
   }
 }
+
+[hidden] {
+  display: none !important;
+}

@@ -102,9 +102,13 @@
 
     renderList();
     const off = IB.on("accounts", renderList);
+    const offExit = window.ib.on("game:exited", (p) => {
+      if (p.buildId === currentId) renderCrash(p.reasons || []);
+    });
     const origClose = m.close;
     m.close = () => {
       off();
+      offExit();
       origClose();
     };
     return m;
@@ -158,6 +162,7 @@
   function logs(buildId) {
     let currentId = buildId || S.selected;
     const view = h("div", { class: "log-view" });
+    const crashBox = h("div", { class: "crash-box", hidden: true });
     const select = h("select", { class: "select", style: { width: "280px" } });
     for (const b of S.builds) select.append(h("option", { value: b.id, text: b.name }));
     select.value = currentId;
@@ -179,9 +184,21 @@
       view.scrollTop = view.scrollHeight;
     }
 
+    /** Понятные причины вылета — над журналом. */
+    function renderCrash(reasons) {
+      crashBox.textContent = "";
+      crashBox.hidden = !(reasons && reasons.length);
+      if (crashBox.hidden) return;
+      crashBox.append(h("div", { class: "crash-box__head", html: `${IB.icon("alert")}<span>Почему игра закрылась</span>` }));
+      for (const r of reasons) {
+        crashBox.append(h("div", { class: "crash-box__item" }, h("strong", { text: r.title }), h("p", { text: r.text })));
+      }
+    }
+
     async function load() {
       lines = (await api.game.logs(currentId).catch(() => [])) || [];
       render();
+      renderCrash(await api.game.crashInfo(currentId).catch(() => []));
     }
 
     select.addEventListener("change", () => {
@@ -216,7 +233,7 @@
     const m = modal({
       title: "Журнал игры",
       xl: true,
-      content: h("div", {}, h("div", { class: "row", style: { marginBottom: "12px" } }, h("span", { class: "soft", text: "Сборка:" }), select), view),
+      content: h("div", {}, h("div", { class: "row", style: { marginBottom: "12px" } }, h("span", { class: "soft", text: "Сборка:" }), select), crashBox, view),
       footer: [copyBtn, reportBtn, clearBtn],
     });
 
@@ -225,6 +242,7 @@
       if (payload.reset) {
         lines = [];
         render();
+        renderCrash([]);
         return;
       }
       const atBottom = view.scrollTop + view.clientHeight >= view.scrollHeight - 40;
@@ -234,9 +252,13 @@
       while (view.childElementCount > 5000) view.firstElementChild.remove();
       if (atBottom) view.scrollTop = view.scrollHeight;
     });
+    const offExit = window.ib.on("game:exited", (p) => {
+      if (p.buildId === currentId) renderCrash(p.reasons || []);
+    });
     const origClose = m.close;
     m.close = () => {
       off();
+      offExit();
       origClose();
     };
     load();

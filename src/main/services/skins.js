@@ -94,4 +94,64 @@ function remove(accountId) {
   fs.rmSync(fileFor(accountId), { force: true });
 }
 
-module.exports = { get, save, remove, presets, validatePng, dataUrlToBuffer };
+// ---------- плащи ----------
+// У каждого аккаунта может быть свой плащ: PNG 64×32 (или HD: 128×64, 256×128…,
+// а также старый формат 22×17). Хранится рядом со скинами: <id>.cape.png.
+
+function capeFile(accountId) {
+  return path.join(paths.SKINS_DIR, `${safeId(accountId)}.cape.png`);
+}
+
+function validateCape(buffer) {
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (!Buffer.isBuffer(buffer) || buffer.length < 24 || !buffer.subarray(0, 8).equals(signature)) throw new Error("Это не PNG-файл");
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+  const ok = (width === 22 && height === 17) || (width >= 64 && width % 64 === 0 && height * 2 === width);
+  if (!ok) throw new Error(`Плащ должен быть 64×32 (или 128×64, 22×17), а этот ${width}×${height}`);
+  return { width, height };
+}
+
+function getCape(accountId) {
+  const file = capeFile(accountId);
+  if (!accountId || !fs.existsSync(file)) return null;
+  const png = fs.readFileSync(file);
+  const entry = (meta()[safeId(accountId)] || {}).cape || {};
+  return { dataUrl: `data:image/png;base64,${png.toString("base64")}`, source: entry.source || "custom" };
+}
+
+function saveCape(accountId, buffer, source = "custom") {
+  if (!accountId) throw new Error("Сначала добавьте аккаунт");
+  validateCape(buffer);
+  fs.mkdirSync(paths.SKINS_DIR, { recursive: true });
+  fs.writeFileSync(capeFile(accountId), buffer);
+  const all = meta();
+  all[safeId(accountId)] = { ...(all[safeId(accountId)] || {}), cape: { source, updated_at: Date.now() } };
+  writeJson(META_FILE, all);
+  return getCape(accountId);
+}
+
+function removeCape(accountId) {
+  fs.rmSync(capeFile(accountId), { force: true });
+  const all = meta();
+  if (all[safeId(accountId)]) delete all[safeId(accountId)].cape;
+  writeJson(META_FILE, all);
+  return null;
+}
+
+/** Готовые плащи из assets/capes. */
+function capePresets() {
+  const dir = paths.appResource("assets", "capes");
+  return readJson(path.join(dir, "capes.json"), [])
+    .map((p) => {
+      try {
+        const png = fs.readFileSync(path.join(dir, `${p.id}.png`));
+        return { id: p.id, name: p.name, dataUrl: `data:image/png;base64,${png.toString("base64")}` };
+      } catch (err) {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+module.exports = { get, save, remove, presets, validatePng, dataUrlToBuffer, getCape, saveCape, removeCape, capePresets, validateCape };

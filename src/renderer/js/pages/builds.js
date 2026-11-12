@@ -41,7 +41,8 @@
     actions.append(
       h("button", { class: "icon-btn icon-btn--plain", title: "Моды", html: IB.icon("cube"), onClick: stop(() => IB.actions.openContent(b.id)) }),
       h("button", { class: "icon-btn icon-btn--plain", title: "Настройки сборки", html: IB.icon("gear"), onClick: stop(() => IB.modals.buildSettings(b.id)) }),
-      h("button", { class: "icon-btn icon-btn--plain", title: "Папка сборки", html: IB.icon("folder"), onClick: stop(() => IB.actions.openFolder(b.id)) })
+      h("button", { class: "icon-btn icon-btn--plain", title: "Папка сборки", html: IB.icon("folder"), onClick: stop(() => IB.actions.openFolder(b.id)) }),
+      h("button", { class: "icon-btn icon-btn--plain", title: "Экспорт сборки в файл", html: IB.icon("upload"), disabled: !b.installed, onClick: stop(() => IB.extras.exportBuild(b.id)) })
     );
     if (b.kind !== "server") {
       actions.append(
@@ -125,7 +126,17 @@
           "div",
           { class: "page-head" },
           h("div", {}, h("h1", { text: "Сборки" }), h("p", { text: "Свои сборки с Fabric, Forge, NeoForge или Quilt и чистые версии Minecraft Java Edition." })),
-          h("button", { class: "btn btn--primary", html: `${IB.icon("plus")}Создать сборку`, onClick: () => IB.modals.newBuild() })
+          h(
+            "div",
+            { class: "row", style: { gap: "8px" } },
+            h("button", {
+              class: "btn",
+              title: "Открыть сборку из файла .ibpack (экспорт этого лаунчера) или .mrpack (модпак Modrinth). Файл можно и просто перетащить в окно.",
+              html: `${IB.icon("download")}Импорт`,
+              onClick: () => IB.extras.importBuild(),
+            }),
+            h("button", { class: "btn btn--primary", html: `${IB.icon("plus")}Создать сборку`, onClick: () => IB.modals.newBuild() })
+          )
         ),
         h("div", { class: "toolbar" }, h("div", { class: "search" }, IB.iconEl("search"), search), chips),
         listEl
@@ -202,6 +213,24 @@
           );
         }
       }
+
+      // перетаскивание .ibpack / .mrpack — импорт сборки
+      page.addEventListener("dragover", (e) => {
+        if ([...e.dataTransfer.items].some((i) => i.kind === "file")) {
+          e.preventDefault();
+          page.classList.add("is-over");
+        }
+      });
+      page.addEventListener("dragleave", (e) => {
+        if (!page.contains(e.relatedTarget)) page.classList.remove("is-over");
+      });
+      page.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        page.classList.remove("is-over");
+        const file = [...e.dataTransfer.files].map((f) => api.files.pathFor(f)).find((p) => p && /\.(ibpack|mrpack|zip)$/i.test(p));
+        if (!file) return IB.toast("Перетащите файл сборки .ibpack или .mrpack", "info");
+        IB.extras.importBuild(file);
+      });
 
       search.addEventListener("input", IB.debounce(renderList, 150));
       renderChips();

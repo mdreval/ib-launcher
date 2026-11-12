@@ -381,3 +381,50 @@
 .is-mac .window-controls {
   display: none;
 }
+
+/* ---------- живой фон: частицы и видео ---------- */
+.fx-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app-bg__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.social-btn--discord {
+  color: #a5b4ff;
+}
+
+/* невысокое окно: пункты меню плотнее, чтобы всё помещалось */
+@media (max-height: 780px) {
+  .sidebar__logo {
+    margin-bottom: 14px;
+  }
+  .nav {
+    gap: 4px;
+  }
+  .nav__btn,
+  .nav__indicator {
+    height: 48px;
+  }
+  .nav__btn img {
+    width: 30px;
+    height: 30px;
+  }
+  .social-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* иконка «Музыка» — гладкая (не пиксельная) */
+.nav__btn img[src$="nav-music.png"] {
+  image-rendering: auto;
+}

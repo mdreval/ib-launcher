@@ -26,6 +26,10 @@ const modpack = require("./modpack");
 const versions = require("./versions");
 const serverList = require("./serverList");
 const skinMod = require("./skinMod");
+const serverStatus = require("../core/serverStatus");
+const stats = require("./stats");
+const crash = require("./crash");
+const discordRpc = require("./discordRpc");
 const { broadcast } = require("../core/broadcast");
 const { tr } = require("../core/i18n");
 
@@ -63,7 +67,7 @@ const sessions = new Map(); // buildId -> { status, progress, child, lines, logF
 
 function session(buildId) {
   if (!sessions.has(buildId)) {
-    sessions.set(buildId, { status: "idle", progress: null, child: null, lines: [], logStream: null, exitCode: null });
+    sessions.set(buildId, { status: "idle", progress: null, child: null, lines: [], logStream: null, exitCode: null, crash: [] });
   }
   return sessions.get(buildId);
 }
@@ -160,10 +164,10 @@ function loaderOption(build) {
   return { type: build.loader_type, build: buildValue, enable: true, path: "./loader" };
 }
 
-function baseOptions(build, authenticator, extraJvm = []) {
+function baseOptions(build, authenticator, extraJvm = [], extraGame = []) {
   const s = settings.get();
   const ramMb = build.ram_mb || s.ram_mb;
-  const gameArgs = [];
+  const gameArgs = [...extraGame];
   if (build.fullscreen) gameArgs.push("--fullscreen");
   return {
     path: settings.gameDir(),
@@ -181,6 +185,24 @@ function baseOptions(build, authenticator, extraJvm = []) {
     downloadFileMultiple: 6,
     timeout: 30000,
   };
+}
+
+/**
+ * «Сразу на сервер»: аргументы, с которыми игра после загрузки сама
+ * подключается к серверу. 1.20+ — --quickPlayMultiplayer (понимает SRV);
+ * старые версии — --server/--port, туда передаём уже найденный адрес из SRV.
+ */
+async function quickConnectArgs(build) {
+  if (build.kind !== "server" || !build.server_address || settings.get().auto_connect === false) return [];
+  const m = /^1\.(\d+)/.exec(build.mc_version || "");
+  const minor = m ? parseInt(m[1], 10) : 99;
+  if (minor >= 20) return ["--quickPlayMultiplayer", build.server_address];
+  try {
+    const target = await serverStatus.resolve(build.server_address);
+    return ["--server", target.host, "--port", String(target.port)];
+  } catch (err) {
+    return [];
+  }
 }
 
 function errorText(err) {
@@ -438,6 +460,7 @@ async function launch(buildId) {
 
   s.lines = [];
   s.exitCode = null;
+  s.crash = [];
   openLogFile(buildId);
   broadcast("game:log-reset", { buildId });
   setStatus(buildId, "preparing", { percent: 0, text: "Подготовка…" });
@@ -452,7 +475,9 @@ async function launch(buildId) {
     addServerToList(build);
     await skinMod.prepare(build, auth.account, (line) => launcherLine(buildId, line));
 
-    const options = baseOptions(build, auth.authenticator, auth.jvmArgs);
+    const connectArgs = await quickConnectArgs(build);
+    if (connectArgs.length) launcherLine(buildId, `После загрузки игра сразу подключится к ${build.server_address}`);
+    const options = baseOptions(build, auth.authenticator, auth.jvmArgs, connectArgs);
     const expectedCwd = normalizeDir(path.join(options.path, "instances", options.instance));
     const launcher = makeLauncher("launch", buildId);
 
@@ -474,6 +499,8 @@ async function launch(buildId) {
         builds.update(buildId, { last_played: Date.now() });
         setStatus(buildId, "running");
         launcherLine(buildId, "Игра запущена");
+        stats.gameStarted(buildId, auth.account && auth.account.id);
+        discordRpc.playing(build);
         windowHooks.onGameStart(buildId);
         resolve();
       };
@@ -490,8 +517,15 @@ async function launch(buildId) {
           s.logStream = null;
         }
         setStatus(buildId, "idle");
-        broadcast("game:exited", { buildId, exitCode, crashed: exitCode !== 0 && exitCode !== null });
-        if (!anyRunning()) windowHooks.onAllGamesClosed();
+        stats.gameStopped(buildId);
+        const crashed = exitCode !== 0 && exitCode !== null;
+        s.crash = crashed ? crash.analyze(s.lines, exitCode) : [];
+        for (const reason of s.crash) launcherLine(buildId, `Вероятная причина: ${reason.title}. ${reason.text}`);
+        broadcast("game:exited", { buildId, exitCode, crashed, reasons: s.crash });
+        if (!anyRunning()) {
+          windowHooks.onAllGamesClosed();
+          discordRpc.idle();
+        }
       });
       launcher.on("igrobar:failed", (err) => {
         spawnWatchers.delete(watcher);
@@ -535,6 +569,11 @@ function logs(buildId) {
   return session(buildId).lines;
 }
 
+/** Вероятные причины последнего вылета (для «Журнала игры»). */
+function crashInfo(buildId) {
+  return session(buildId).crash || [];
+}
+
 function clearLogs(buildId) {
   session(buildId).lines = [];
   broadcast("game:log-reset", { buildId });
@@ -563,4 +602,4 @@ function isBusy() {
   return [...sessions.values()].some((s) => s.status !== "idle");
 }
 
-module.exports = { install, launch, stop, logs, clearLogs, report, allStates, publicState, setWindowHooks, anyRunning, isBusy };
+module.exports = { install, launch, stop, logs, crashInfo, clearLogs, report, allStates, publicState, setWindowHooks, anyRunning, isBusy };

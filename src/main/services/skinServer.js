@@ -25,6 +25,7 @@ const http = require("http");
 const crypto = require("crypto");
 
 const skins = require("./skins");
+const settings = require("./settings");
 const { USER_AGENT } = require("../core/http");
 
 let server = null;
@@ -94,6 +95,13 @@ function texturesFor(profile) {
     textures.set(hash, png);
     out.SKIN = { url: `${baseUrl()}/textures/${hash}` };
     if (skin.model === "slim") out.SKIN.metadata = { model: "slim" };
+  }
+  const cape = settings.get().cape_enabled !== false ? skins.getCape(profile.id) : null;
+  if (cape) {
+    const png = skins.dataUrlToBuffer(cape.dataUrl);
+    const hash = crypto.createHash("sha256").update(png).digest("hex");
+    textures.set(hash, png);
+    out.CAPE = { url: `${baseUrl()}/textures/${hash}` };
   }
   return out;
 }

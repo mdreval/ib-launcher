@@ -121,7 +121,7 @@
             h("button", { "aria-pressed": String(a.background !== "custom"), text: "Картинка темы", onClick: async () => apply(await run(() => api.appearance.set({ background: "theme" }))) }),
             h("button", {
               "aria-pressed": String(a.background === "custom"),
-              text: "Своя картинка",
+              text: "Своя картинка или видео",
               onClick: async () => {
                 if (a.hasCustom) apply(await run(() => api.appearance.set({ background: "custom" })));
                 else apply(await run(() => api.appearance.pickFile()));
@@ -148,14 +148,42 @@
             dimRow = h("div", { class: "setting-line", style: { marginTop: "12px" } }, h("div", {}, h("h3", { text: "Затемнение картинки" }), h("p", { text: "Чтобы текст хорошо читался поверх яркой картинки." })), h("div", { style: { width: "220px" } }, dim));
           }
 
+          const season = IB.effects ? IB.effects.season() : null;
+          const SEASON_NAMES = { newyear: "сейчас: новогодний снег и конфетти", winter: "сейчас: снег", halloween: "сейчас: Хэллоуин", autumn: "сейчас: листопад", spring: "сейчас: лепестки" };
+          const fxLine = (title, desc, key) =>
+            h(
+              "div",
+              { class: "setting-line", style: { marginTop: "12px" } },
+              h("div", {}, h("h3", { text: title }), h("p", { text: desc })),
+              IB.switchEl({ checked: a[key] !== false, label: title, onChange: async (on) => apply(await run(() => api.appearance.set({ [key]: on }))) })
+            );
           card.append(
             h("h3", { text: "Оформление" }),
-            h("p", { text: "Цвет лаунчера и картинка на фоне. Свою картинку можно выбрать с компьютера или вставить ссылку на неё из интернета." }),
+            h("p", { text: "Цвет лаунчера и фон. Свою картинку или видео (MP4, WebM) можно выбрать с компьютера, картинку — ещё и по ссылке из интернета." }),
             themeRow,
             colorRow,
             h("div", { class: "row", style: { marginTop: "14px", gap: "10px", flexWrap: "wrap" } }, bgSeg, pickBtn, urlBtn, delBtn)
           );
           if (dimRow) card.append(dimRow);
+          card.append(
+            fxLine("Живой фон", "Анимация поверх фона — выберите любой вариант, он работает с любой темой и своей картинкой.", "live_effects"),
+            a.live_effects !== false && IB.effects
+              ? h(
+                  "div",
+                  { class: "fx-variants" },
+                  ...IB.effects.LIVE_VARIANTS.map((v) =>
+                    h("button", {
+                      class: "chip",
+                      type: "button",
+                      "aria-pressed": String((a.live_effect || "auto") === v.id),
+                      text: v.id === "auto" ? `${v.title} (${a.theme === "red" ? "искры" : a.theme === "custom" ? "огоньки" : "светлячки"})` : v.title,
+                      onClick: async () => apply(await run(() => api.appearance.set({ live_effect: v.id }))),
+                    })
+                  )
+                )
+              : null,
+            fxLine("Сезонные эффекты", `Снег зимой, конфетти на Новый год, летучие мыши на Хэллоуин, листопад осенью${season ? ` — ${SEASON_NAMES[season]}` : ""}. Показываются вместе с живым фоном.`, "seasonal_effects")
+          );
         };
         draw();
         if (appearanceOff) appearanceOff();
@@ -281,6 +309,98 @@
               modpackSwitch
             ),
             h("div", { class: "row row--between" }, statusLine, checkBtn)
+          )
+        );
+
+        // ---- сервер и друзья ----
+        // Сразу запоминаем новое значение: настройки перерисовываются по
+        // событию из main раньше, чем придёт ответ, и ползунок «прыгал» назад.
+        const save = (patch) => {
+          S.settings = { ...S.settings, ...patch };
+          return run(() => api.settings.update(patch).then((x) => (S.settings = x)));
+        };
+        const line = (title, desc, key, def = true, extra) =>
+          h(
+            "div",
+            { class: "setting-line" },
+            h("div", {}, h("h3", { text: title }), h("p", { text: desc })),
+            IB.switchEl({
+              checked: def ? s[key] !== false : !!s[key],
+              label: title,
+              onChange: (on) => save({ [key]: on }).then(() => extra && extra(on)),
+            })
+          );
+        const friendInput = h("input", { class: "input", placeholder: "Ник друга", maxlength: "16", spellcheck: "false", style: { width: "200px" } });
+        const friendList = h("div", { class: "friend-chips" });
+        const renderFriends = () => {
+          friendList.textContent = "";
+          const list = S.settings.friends || [];
+          if (!list.length) friendList.append(h("span", { class: "muted", style: { fontSize: "13px" }, text: "Друзей пока нет. Добавьте ник здесь или звёздочкой в списке «Онлайн» на главной." }));
+          for (const f of list) {
+            friendList.append(
+              h(
+                "span",
+                { class: "friend-chip" },
+                IB.headEl ? IB.headEl(f, 20) : null,
+                f,
+                h("button", {
+                  class: "friend-chip__x",
+                  title: "Убрать",
+                  html: IB.icon("close"),
+                  onClick: async () => {
+                    const next = await run(() => api.friends.toggle(f));
+                    if (next) {
+                      S.settings = { ...S.settings, friends: next };
+                      renderFriends();
+                    }
+                  },
+                })
+              )
+            );
+          }
+        };
+        const addFriend = async () => {
+          const nick = friendInput.value.trim();
+          if (!nick) return;
+          if ((S.settings.friends || []).some((f) => f.toLowerCase() === nick.toLowerCase())) return toast("Этот ник уже в друзьях", "info");
+          const next = await run(() => api.friends.toggle(nick));
+          if (next) {
+            S.settings = { ...S.settings, friends: next };
+            friendInput.value = "";
+            renderFriends();
+          }
+        };
+        friendInput.addEventListener("keydown", (e) => e.key === "Enter" && addFriend());
+        renderFriends();
+        wrap.append(
+          h(
+            "div",
+            { class: "card" },
+            h("h3", { text: "Сервер и друзья" }),
+            line("Сразу на сервер", "После загрузки игра сама подключится к серверу IGROBAR — без главного меню и списка серверов.", "auto_connect"),
+            line("Тихое обновление модпака", "Пока лаунчер открыт (и даже свёрнут в трей), он сам скачивает новый модпак сервера — к запуску всё уже готово.", "silent_modpack"),
+            line("Друг зашёл на сервер", "Уведомление Windows/macOS, когда кто-то из друзей заходит на сервер.", "friend_notifications"),
+            h("div", { class: "row", style: { gap: "8px", marginTop: "12px" } }, friendInput, h("button", { class: "btn btn--sm", html: `${IB.icon("plus")}В друзья`, onClick: addFriend })),
+            friendList
+          )
+        );
+
+        // музыка — на отдельной странице «Музыка» (pages/music.js)
+
+        // ---- Discord ----
+        const rpcReady = server && server.discord_client_id;
+        wrap.append(
+          h(
+            "div",
+            { class: "card" },
+            line(
+              "Статус в Discord",
+              rpcReady
+                ? "Друзья в Discord видят, что вы играете на IGROBAR и в какой версии. Нужен запущенный Discord на компьютере."
+                : "Друзья в Discord будут видеть, что вы играете на IGROBAR. Включится после обновления лаунчера, когда администратор подключит приложение Discord.",
+              "discord_rpc"
+            ),
+            server && server.discord ? h("button", { class: "btn btn--sm", html: `${IB.icon("discord")}Discord-сервер IGROBAR`, onClick: () => api.app.openExternal(server.discord) }) : null
           )
         );
 

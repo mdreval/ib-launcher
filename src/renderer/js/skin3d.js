@@ -138,6 +138,15 @@
       }
     }
 
+    /** Плащ (PNG 64×32 или HD 128×64, 256×128…); null — без плаща. */
+    setCape(dataUrl) {
+      const next = dataUrl || null;
+      if (next === this.capeUrl) return;
+      this.capeUrl = next;
+      this.model.style.setProperty("--cape", next ? `url("${next}")` : "none");
+      this.build();
+    }
+
     setScale(scale) {
       if (!scale || scale === this.scale) return;
       this.scale = scale;
@@ -162,6 +171,7 @@
           this.model.append(this.cube(part, layer, s));
         }
       }
+      if (this.capeUrl) this.model.append(this.capeCube(s));
       // модель по центру по вертикали: от -16 (макушка) до 16 (ступни)
       this.scene.style.transform = `translateY(${-0.5 * s}px)`;
     }
@@ -203,6 +213,45 @@
         face.style.transform = f.t;
         face.style.backgroundImage = "var(--skin)";
         face.style.backgroundSize = `${64 * kx}px ${64 * ky}px`;
+        face.style.backgroundPosition = `${-u * kx}px ${-v * ky}px`;
+        el.append(face);
+      }
+      return el;
+    }
+
+    /** Плащ 10×16×1 за спиной, чуть отведён назад, крепится у плеч. */
+    capeCube(s) {
+      const W = 10 * s;
+      const H = 16 * s;
+      const D = 1 * s;
+      const el = h("div", { class: "cube cube--cape" });
+      el.style.width = `${W}px`;
+      el.style.height = `${H}px`;
+      el.style.transformOrigin = "50% 0 0";
+      el.style.transform = `translate3d(${-W / 2}px, ${-8 * s}px, ${-2.6 * s}px) rotateX(-12deg)`;
+      // Разметка плаща в текстуре 64×32: снаружи (1,1), изнутри (12,1).
+      const rects = faceRects(0, 0, 10, 16, 1);
+      const faces = {
+        // наружная сторона смотрит назад (-Z), внутренняя — к спине игрока
+        front: { rect: rects.back, w: W, h: H, x: 0, y: 0, t: `translateZ(${D / 2}px)` },
+        back: { rect: rects.front, w: W, h: H, x: 0, y: 0, t: `rotateY(180deg) translateZ(${D / 2}px)` },
+        right: { rect: rects.right, w: D, h: H, x: (W - D) / 2, y: 0, t: `rotateY(-90deg) translateZ(${W / 2}px)` },
+        left: { rect: rects.left, w: D, h: H, x: (W - D) / 2, y: 0, t: `rotateY(90deg) translateZ(${W / 2}px)` },
+        top: { rect: rects.top, w: W, h: D, x: 0, y: (H - D) / 2, t: `rotateX(90deg) translateZ(${H / 2}px)` },
+        bottom: { rect: rects.bottom, w: W, h: D, x: 0, y: (H - D) / 2, t: `rotateX(-90deg) translateZ(${H / 2}px)` },
+      };
+      for (const [name, f] of Object.entries(faces)) {
+        const [u, v, fw, fh] = f.rect;
+        const kx = f.w / fw;
+        const ky = f.h / fh;
+        const face = h("div", { class: `cube__face cube__face--${name}` });
+        face.style.width = `${f.w}px`;
+        face.style.height = `${f.h}px`;
+        face.style.left = `${f.x}px`;
+        face.style.top = `${f.y}px`;
+        face.style.transform = f.t;
+        face.style.backgroundImage = "var(--cape)";
+        face.style.backgroundSize = `${64 * kx}px ${32 * ky}px`;
         face.style.backgroundPosition = `${-u * kx}px ${-v * ky}px`;
         el.append(face);
       }

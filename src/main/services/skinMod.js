@@ -102,19 +102,21 @@ async function ensureMod(build, log) {
 // выбранный в лаунчере. Наш порядок:
 //   1. LocalSkin   — свой скин игрока: для офлайн-профиля — выбранный в
 //                    лаунчере, для Ely.by-аккаунта — скачанный с Ely.by;
-//   2. GameProfile — скин, который прислал сервер (на серверах с плагином
-//                    скинов, вроде SkinsRestorer, это скин с Mojang по нику —
-//                    поэтому он теперь ниже своего);
-//   3. Ely.by, TLauncher — где обычно скины у игроков без лицензии;
+//   2. Ely.by, TLauncher — скины ДРУГИХ игроков по нику: у игроков сервера
+//                    они обычно там;
+//   3. GameProfile — скин, который прислал сервер. На офлайн-сервере с
+//                    плагином скинов это скин с Mojang по нику (или пустой),
+//                    поэтому он ниже Ely.by — иначе все видели бы друг у друга
+//                    стандартный или «чужой» лицензионный скин;
 //   4. Mojang и остальные.
 // Файл: <сборка>/CustomSkinLoader/CustomSkinLoader.json. Мод сам дописывает
 // в записи адреса и пути по имени источника — нам достаточно имени и типа.
 
 const PREFERRED_ORDER = [
   { name: "LocalSkin", type: "Legacy" },
-  { name: "GameProfile", type: "GameProfile" },
   { name: "ElyBy", type: "ElyByAPI" },
   { name: "TLauncher", type: "ElyByAPI" },
+  { name: "GameProfile", type: "GameProfile" },
   { name: "Mojang", type: "MojangAPI" },
   { name: "LittleSkin", type: "CustomSkinAPI" },
   { name: "BlessingSkin", type: "CustomSkinAPI" },
@@ -195,6 +197,16 @@ async function placeLocalSkin(build, account) {
     fs.writeFileSync(target, png);
   } else if (fs.existsSync(target)) {
     fs.rmSync(target, { force: true });
+  }
+  // Плащ — туда же, в LocalSkin/capes/<ник>.png (видно себе в любой версии с модом).
+  const capeDir = path.join(builds.instanceDir(build), "CustomSkinLoader", "LocalSkin", "capes");
+  const capeTarget = path.join(capeDir, `${account.name}.png`);
+  const cape = account.type !== "microsoft" && settings.get().cape_enabled !== false ? skins.getCape(account.id) : null;
+  if (cape) {
+    fs.mkdirSync(capeDir, { recursive: true });
+    fs.writeFileSync(capeTarget, skins.dataUrlToBuffer(cape.dataUrl));
+  } else if (fs.existsSync(capeTarget)) {
+    fs.rmSync(capeTarget, { force: true });
   }
 }
 

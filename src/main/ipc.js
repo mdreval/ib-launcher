@@ -16,6 +16,13 @@ const accounts = require("./services/accounts");
 const skins = require("./services/skins");
 const game = require("./services/game");
 const modpack = require("./services/modpack");
+const news = require("./services/news");
+const info = require("./services/info");
+const presence = require("./services/presence");
+const instanceData = require("./services/instanceData");
+const stats = require("./services/stats");
+const music = require("./services/music");
+const discordRpc = require("./services/discordRpc");
 const content = require("./services/content");
 const serverStatus = require("./core/serverStatus");
 const skinCatalog = require("./skinCatalog");
@@ -84,6 +91,10 @@ function register() {
     /* не критично */
   }
 
+  // Фоновые проверки сервера, друзья, тихое обновление модпака, Discord.
+  presence.start({ game, modpack, showWindow: () => windowMod.showWindow() });
+  setTimeout(() => discordRpc.start(), 4000);
+
   game.setWindowHooks({
     onGameStart: () => windowMod.onGameStart(settings.get().hide_on_launch),
     onAllGamesClosed: () => {
@@ -128,6 +139,7 @@ function register() {
   handle("settings:update", (patch) => {
     if (patch && "game_dir" in patch && game.isBusy()) throw new Error("Сначала закройте игру");
     settings.update(patch || {});
+    if (patch && "discord_rpc" in patch) discordRpc.refresh();
     notifyBuilds();
     return settingsView();
   });
@@ -355,14 +367,18 @@ function register() {
   handle("appearance:get", () => appearance.get());
   handle("appearance:set", (patch) => {
     const allowed = {};
-    for (const key of ["theme", "accent_color", "background", "bg_dim"]) if (patch && key in patch) allowed[key] = patch[key];
+    for (const key of ["theme", "accent_color", "background", "bg_dim", "live_effects", "live_effect", "seasonal_effects"]) if (patch && key in patch) allowed[key] = patch[key];
     settings.update(allowed);
     return appearance.get();
   });
   handle("appearance:pick-file", async () => {
     const res = await dialog.showOpenDialog(windowMod.getMainWindow(), {
-      title: i18n.tr("Выберите картинку для фона"),
-      filters: [{ name: i18n.tr("Картинки"), extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+      title: i18n.tr("Выберите картинку или видео для фона"),
+      filters: [
+        { name: i18n.tr("Картинки и видео"), extensions: ["png", "jpg", "jpeg", "webp", "gif", "mp4", "webm"] },
+        { name: i18n.tr("Картинки"), extensions: ["png", "jpg", "jpeg", "webp", "gif"] },
+        { name: i18n.tr("Видео"), extensions: ["mp4", "webm"] },
+      ],
       properties: ["openFile"],
     });
     if (res.canceled || !res.filePaths[0]) return null;
@@ -379,6 +395,114 @@ function register() {
 
   // ----- сервер -----
   handle("server:ping", (address) => serverStatus.ping(address));
+  handle("server:status", (force) => presence.status({ force: !!force }));
+  handle("news:list", (force) => news.list({ force: !!force }));
+  handle("info:get", (force) => info.get({ force: !!force }));
+
+  // ----- друзья -----
+  handle("friends:toggle", (name) => {
+    const nick = String(name || "").trim();
+    if (!/^[A-Za-z0-9_]{2,16}$/.test(nick)) throw new Error("Неверный ник");
+    const list = settings.get().friends || [];
+    const exists = list.some((f) => f.toLowerCase() === nick.toLowerCase());
+    const next = exists ? list.filter((f) => f.toLowerCase() !== nick.toLowerCase()) : [...list, nick];
+    settings.update({ friends: next });
+    return settings.get().friends;
+  });
+
+  // ----- миры и скриншоты -----
+  handle("worlds:list", (buildId) => instanceData.listWorlds(buildId));
+  handle("worlds:backup", ({ buildId, folder }) => instanceData.backupWorld(buildId, folder));
+  handle("worlds:restore", ({ buildId, file }) => instanceData.restoreBackup(buildId, file));
+  handle("worlds:delete", ({ buildId, folder }) => instanceData.deleteWorld(buildId, folder));
+  handle("worlds:delete-backup", ({ buildId, file }) => instanceData.deleteBackup(buildId, file));
+  handle("worlds:open", ({ buildId, folder }) => instanceData.openWorld(buildId, folder));
+  handle("worlds:open-backups", (buildId) => instanceData.openBackups(buildId));
+  handle("worlds:import", async (buildId) => {
+    const res = await dialog.showOpenDialog(windowMod.getMainWindow(), {
+      title: i18n.tr("Выберите архив с миром"),
+      filters: [{ name: "ZIP", extensions: ["zip"] }],
+      properties: ["openFile"],
+    });
+    if (res.canceled || !res.filePaths[0]) return null;
+    return instanceData.importWorld(buildId, res.filePaths[0]);
+  });
+  handle("worlds:import-path", ({ buildId, file }) => instanceData.importWorld(buildId, file));
+  handle("shots:list", (buildId) => instanceData.listScreenshots(buildId));
+  handle("shots:copy", ({ buildId, file }) => instanceData.copyScreenshot(buildId, file));
+  handle("shots:delete", ({ buildId, file }) => instanceData.deleteScreenshot(buildId, file));
+  handle("shots:open", ({ buildId, file }) => instanceData.openScreenshot(buildId, file));
+  handle("shots:show", ({ buildId, file }) => instanceData.showScreenshot(buildId, file));
+
+  // ----- импорт / экспорт сборок -----
+  handle("builds:export", async ({ buildId, withWorlds }) => {
+    const build = builds.get(buildId);
+    if (!build) throw new Error("Сборка не найдена");
+    const res = await dialog.showSaveDialog(windowMod.getMainWindow(), {
+      title: i18n.tr("Сохранить сборку"),
+      defaultPath: `${builds.folderSlug(build.name)}.ibpack`,
+      filters: [{ name: "IGROBAR Launcher", extensions: ["ibpack"] }],
+    });
+    if (res.canceled || !res.filePath) return null;
+    return instanceData.exportBuild(buildId, res.filePath, { withWorlds: !!withWorlds });
+  });
+  const importFrom = async (file) => {
+    const res = await instanceData.importBuild(file, { onProgress: (percent, text) => broadcast("import:progress", { percent, text }) });
+    notifyBuilds();
+    return res;
+  };
+  handle("builds:import", async () => {
+    const res = await dialog.showOpenDialog(windowMod.getMainWindow(), {
+      title: i18n.tr("Выберите сборку"),
+      filters: [{ name: i18n.tr("Сборки"), extensions: ["ibpack", "mrpack", "zip"] }],
+      properties: ["openFile"],
+    });
+    if (res.canceled || !res.filePaths[0]) return null;
+    return importFrom(res.filePaths[0]);
+  });
+  handle("builds:import-path", (file) => importFrom(file));
+
+  // ----- профиль и статистика -----
+  handle("stats:get", () => stats.get());
+  handle("game:crash-info", (buildId) => game.crashInfo(buildId));
+
+  // ----- плащи -----
+  handle("capes:get", (accountId) => skins.getCape(accountId));
+  handle("capes:presets", () => skins.capePresets());
+  handle("capes:save", ({ accountId, dataUrl, source }) => {
+    const res = skins.saveCape(accountId, skins.dataUrlToBuffer(dataUrl), source || "custom");
+    broadcast("skins:changed", { accountId });
+    return res;
+  });
+  handle("capes:remove", (accountId) => {
+    skins.removeCape(accountId);
+    broadcast("skins:changed", { accountId });
+    return null;
+  });
+  handle("capes:pick", async () => {
+    const res = await dialog.showOpenDialog(windowMod.getMainWindow(), {
+      title: i18n.tr("Выберите плащ (PNG 64×32)"),
+      filters: [{ name: "PNG", extensions: ["png"] }],
+      properties: ["openFile"],
+    });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const buffer = require("fs").readFileSync(res.filePaths[0]);
+    skins.validateCape(buffer);
+    return `data:image/png;base64,${buffer.toString("base64")}`;
+  });
+
+  // ----- музыка -----
+  handle("music:list", () => music.list());
+  handle("music:add", async () => {
+    const res = await dialog.showOpenDialog(windowMod.getMainWindow(), {
+      title: i18n.tr("Выберите музыку"),
+      filters: [{ name: i18n.tr("Музыка"), extensions: ["mp3", "ogg", "wav", "m4a", "flac", "opus", "webm"] }],
+      properties: ["openFile", "multiSelections"],
+    });
+    if (res.canceled || !res.filePaths.length) return null;
+    return music.add(res.filePaths);
+  });
+  handle("music:remove", (file) => music.remove(file));
 
   // ----- обновления лаунчера -----
   updater.setup((event) => broadcast("update:event", event));

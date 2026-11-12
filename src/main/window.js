@@ -39,6 +39,7 @@ function createMainWindow() {
       sandbox: false,
       webviewTag: true,
       spellcheck: false,
+      autoplayPolicy: "no-user-gesture-required", // музыка в лаунчере и видео-фон
     },
   });
 

@@ -183,4 +183,11 @@ async function ping(address) {
   return last;
 }
 
-module.exports = { ping };
+/** Куда реально подключаться: SRV-запись или host:порт из адреса. */
+async function resolve(address) {
+  const first = String(address || "").split(",")[0].trim();
+  const { targets } = await resolveTargets(first);
+  return targets[0];
+}
+
+module.exports = { ping, resolve };

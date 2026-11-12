@@ -25,6 +25,9 @@ const EVENTS = [
   "game:exited",
   "modpack:progress",
   "update:event",
+  "server:status",
+  "modpack:background",
+  "import:progress",
 ];
 
 function on(event, callback) {
@@ -116,9 +119,58 @@ contextBridge.exposeInMainWorld("ib", {
     logs: (buildId) => call("game:logs", buildId),
     clearLogs: (buildId) => call("game:clear-logs", buildId),
     report: (buildId) => call("game:report", buildId),
+    crashInfo: (buildId) => call("game:crash-info", buildId),
   },
   server: {
     ping: (address) => call("server:ping", address),
+    status: (force) => call("server:status", force),
+  },
+  news: {
+    list: (force) => call("news:list", force),
+  },
+  info: {
+    get: (force) => call("info:get", force),
+  },
+  friends: {
+    toggle: (name) => call("friends:toggle", name),
+  },
+  worlds: {
+    list: (buildId) => call("worlds:list", buildId),
+    backup: (buildId, folder) => call("worlds:backup", { buildId, folder }),
+    restore: (buildId, file) => call("worlds:restore", { buildId, file }),
+    remove: (buildId, folder) => call("worlds:delete", { buildId, folder }),
+    removeBackup: (buildId, file) => call("worlds:delete-backup", { buildId, file }),
+    open: (buildId, folder) => call("worlds:open", { buildId, folder }),
+    openBackups: (buildId) => call("worlds:open-backups", buildId),
+    import: (buildId) => call("worlds:import", buildId),
+    importPath: (buildId, file) => call("worlds:import-path", { buildId, file }),
+  },
+  shots: {
+    list: (buildId) => call("shots:list", buildId),
+    copy: (buildId, file) => call("shots:copy", { buildId, file }),
+    remove: (buildId, file) => call("shots:delete", { buildId, file }),
+    open: (buildId, file) => call("shots:open", { buildId, file }),
+    show: (buildId, file) => call("shots:show", { buildId, file }),
+  },
+  packs: {
+    export: (buildId, withWorlds) => call("builds:export", { buildId, withWorlds }),
+    import: () => call("builds:import"),
+    importPath: (file) => call("builds:import-path", file),
+  },
+  stats: {
+    get: () => call("stats:get"),
+  },
+  capes: {
+    get: (accountId) => call("capes:get", accountId),
+    presets: () => call("capes:presets"),
+    save: (payload) => call("capes:save", payload),
+    remove: (accountId) => call("capes:remove", accountId),
+    pick: () => call("capes:pick"),
+  },
+  music: {
+    list: () => call("music:list"),
+    add: () => call("music:add"),
+    remove: (file) => call("music:remove", file),
   },
   updates: {
     check: () => call("updates:check"),

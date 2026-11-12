@@ -1,7 +1,7 @@
 {
   "name": "igrobar-launcher",
   "productName": "Igrobar Launcher",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Лаунчер Minecraft для сервера IGROBAR и своих сборок",
   "main": "src/main/index.js",
   "author": "IGROBAR",

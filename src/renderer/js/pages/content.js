@@ -10,6 +10,13 @@
     { id: "resourcepacks", title: "Ресурспаки", one: "ресурспак" },
     { id: "shaderpacks", title: "Шейдеры", one: "шейдер" },
   ];
+  // Миры и скриншоты сборки — рисует pages/extras.js
+  const EXTRA_KINDS = [
+    { id: "worlds", title: "Миры", icon: "globe" },
+    { id: "screenshots", title: "Скриншоты", icon: "image" },
+  ];
+  const isExtra = (kind) => EXTRA_KINDS.some((k) => k.id === kind);
+
   const SORTS = [
     { id: "downloads", title: "Популярные" },
     { id: "relevance", title: "По релевантности" },
@@ -71,7 +78,7 @@
         h(
           "div",
           { class: "page-head" },
-          h("div", {}, h("h1", { text: "Моды" }), h("p", { text: "Моды, ресурспаки и шейдеры с Modrinth для ваших сборок." })),
+          h("div", {}, h("h1", { text: "Моды" }), h("p", { text: "Моды, ресурспаки и шейдеры с Modrinth, а ещё миры и скриншоты ваших сборок." })),
           h("div", { class: "content-head-right" }, h("span", { class: "field__label", text: "Сборка" }), buildSelect, buildMeta)
         ),
         h("div", { class: "row row--between", style: { marginBottom: "16px", flexWrap: "wrap" } }, kindTabs, modeSeg),
@@ -115,7 +122,24 @@
             })
           );
         }
+        kindTabs.append(h("span", { class: "chip-sep" }));
+        for (const k of EXTRA_KINDS) {
+          kindTabs.append(
+            h("button", {
+              class: "chip",
+              "aria-pressed": String(view.kind === k.id),
+              html: `${IB.icon(k.icon)}${k.title}`,
+              onClick: () => {
+                view.kind = k.id;
+                renderTabs();
+                refresh();
+              },
+            })
+          );
+        }
         modeSeg.textContent = "";
+        modeSeg.hidden = isExtra(view.kind);
+        if (modeSeg.hidden) return;
         modeSeg.append(
           h("button", {
             "aria-pressed": String(view.mode === "installed"),
@@ -428,6 +452,11 @@
           body.append(h("div", { class: "empty" }, IB.iconEl("cube"), "Сначала создайте сборку"));
           return;
         }
+        if (isExtra(view.kind)) {
+          const fn = view.kind === "worlds" ? IB.extras.worlds : IB.extras.screenshots;
+          fn({ toolbar, body, buildId: view.buildId, quiet });
+          return;
+        }
         if (view.mode === "installed") loadInstalled(quiet);
         else {
           renderCatalogToolbar();
@@ -437,7 +466,8 @@
 
       // перетаскивание файлов
       body.addEventListener("dragover", (e) => {
-        if (view.mode !== "installed") return;
+        if (view.kind === "screenshots") return;
+        if (view.mode !== "installed" && !isExtra(view.kind)) return;
         e.preventDefault();
         body.classList.add("is-over");
       });
@@ -447,9 +477,15 @@
       body.addEventListener("drop", async (e) => {
         e.preventDefault();
         body.classList.remove("is-over");
-        if (view.mode !== "installed") return;
+        if (view.kind === "screenshots") return;
+        if (view.mode !== "installed" && !isExtra(view.kind)) return;
         const paths = [...e.dataTransfer.files].map((f) => api.files.pathFor(f)).filter(Boolean);
         if (!paths.length) return;
+        if (view.kind === "worlds") {
+          for (const file of paths) await run(() => api.worlds.importPath(view.buildId, file), { success: "Мир добавлен" });
+          refresh();
+          return;
+        }
         const res = await run(() => api.content.addPaths(view.buildId, view.kind, paths));
         if (res) {
           if (res.added.length) toast(`Добавлено: ${res.added.length}`, "success");

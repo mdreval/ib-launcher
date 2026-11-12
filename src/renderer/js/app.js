@@ -15,6 +15,7 @@
     avatar: null,
     page: null,
     lastLogBuild: null,
+    serverStatus: null,
   });
 
   // ---------- шина событий ----------
@@ -229,8 +230,9 @@
       applyPalette(null);
       if (theme === "red") logoSrc = "../../assets/ui/logo-red.png";
     }
-    if (a.background === "custom" && a.customDataUrl) {
-      root.style.setProperty("--app-bg-image", `url("${a.customDataUrl}")`);
+    if (a.background === "custom" && (a.customDataUrl || a.customVideoUrl)) {
+      if (a.customDataUrl) root.style.setProperty("--app-bg-image", `url("${a.customDataUrl}")`);
+      else root.style.setProperty("--app-bg-image", "none");
       root.setAttribute("data-custom-bg", "");
       root.style.setProperty("--bg-dim", String(a.bg_dim ?? 0.7));
     } else {
@@ -289,6 +291,8 @@
     { id: "content", title: "Моды", icon: "nav-mods.png" },
     { id: "skin", title: "Скин", icon: "nav-skin.png" },
     { id: "map", title: "Карта сервера", icon: "nav-map.png" },
+    { id: "music", title: "Музыка", icon: "nav-music.png" },
+    { id: "rules", title: "Правила и ссылки", icon: "nav-rules.png" },
     { id: "settings", title: "Настройки", icon: "nav-settings.png" },
   ];
 
@@ -318,9 +322,11 @@
     const indicator = document.getElementById("nav-indicator");
     if (idx >= 0) {
       indicator.style.opacity = "1";
-      indicator.style.transform = `translateY(${idx * 64}px)`;
+      indicator.style.transform = `translateY(${buttons[idx].offsetTop}px)`;
     } else indicator.style.opacity = "0";
   }
+
+  window.addEventListener("resize", () => S.page && updateNav(S.page));
 
   IB.go = (pageId, params = {}) => {
     const page = IB.pages[pageId];
@@ -336,7 +342,7 @@
   };
 
   // события состояния передаём текущей странице
-  for (const name of ["builds", "accounts", "skin", "settings", "game", "log"]) {
+  for (const name of ["builds", "accounts", "skin", "settings", "game", "log", "server"]) {
     IB.on(name, (detail) => {
       if (current && current.update) current.update(name, detail);
     });
@@ -355,6 +361,7 @@
   function wireTopbar() {
     document.getElementById("account-chip").addEventListener("click", () => IB.modals.accounts());
     document.getElementById("logs-btn").addEventListener("click", () => IB.modals.logs(S.lastLogBuild || S.selected));
+    document.getElementById("profile-btn").addEventListener("click", () => IB.modals.profile());
     document.getElementById("win-min").addEventListener("click", () => api.app.minimize());
     document.getElementById("win-max").addEventListener("click", () => api.app.toggleMaximize());
     document.getElementById("win-close").addEventListener("click", async () => {
@@ -370,9 +377,11 @@
     const server = IB.serverBuild();
     const footer = document.getElementById("sidebar-footer");
     footer.textContent = "";
-    const tg = (server && server.telegram) || "https://t.me/igrobar";
+    const tg = "https://t.me/igrobar_minecraft"; // чат сервера в Telegram — всегда сюда
+    const ds = (server && server.discord) || "https://discord.gg/CxtzR2quvd";
     footer.append(
       h("button", { class: "social-btn", title: "Telegram IGROBAR", html: IB.icon("telegram"), onClick: () => api.app.openExternal(tg) }),
+      h("button", { class: "social-btn social-btn--discord", title: "Discord IGROBAR", html: IB.icon("discord"), onClick: () => api.app.openExternal(ds) }),
       h("span", { class: "sidebar__caption", text: "IGROBAR" })
     );
   }
@@ -399,12 +408,21 @@
     });
     api.on("game:log", (payload) => IB.emit("log", payload));
     api.on("game:log-reset", (payload) => IB.emit("log", { ...payload, reset: true }));
-    api.on("game:exited", ({ buildId, exitCode, crashed }) => {
+    api.on("game:exited", ({ buildId, exitCode, crashed, reasons }) => {
       if (crashed) {
-        toast(`Игра завершилась с ошибкой (код ${exitCode}). Подробности — в «Журнале игры».`, "error");
+        const why = reasons && reasons[0] ? ` Вероятная причина: ${reasons[0].title}.` : "";
+        toast(`Игра завершилась с ошибкой (код ${exitCode}).${why} Подробности — в «Журнале игры».`, "error", 7000);
         IB.modals.logs(buildId);
       }
     });
+    api.on("server:status", (st) => {
+      S.serverStatus = st;
+      IB.emit("server", st);
+    });
+    api.on("modpack:background", ({ release }) => {
+      toast(`Модпак сервера тихо обновлён${release ? ` до ${release}` : ""} — можно играть`, "success");
+    });
+    api.on("import:progress", (p) => IB.emit("import", p));
     api.on("modpack:progress", (p) => IB.emit("game", { buildId: p.buildId, status: "modpack", progress: p }));
     api.on("update:event", (event) => {
       IB.emit("update", event);
@@ -452,6 +470,10 @@
       toast(`Ошибка запуска интерфейса: ${err.message}`, "error");
     }
     renderSidebarFooter();
+    if (IB.effects) {
+      IB.effects.apply();
+      IB.effects.applyMusic();
+    }
     IB.go("home");
     if (S.settings && S.settings.check_launcher_updates) {
       setTimeout(() => api.updates.check().catch(() => {}), 4000);

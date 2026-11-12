@@ -305,7 +305,8 @@ async function launchAuth(onLog) {
     // authlib-injector (как в Rich/HMCL), без модов и на любой версии.
     const jvmArgs = [];
     const skin = skins.get(account.id);
-    if (skin && skin.custom && settings.get().skin_server !== false) {
+    const cape = settings.get().cape_enabled !== false ? skins.getCape(account.id) : null;
+    if (((skin && skin.custom) || cape) && settings.get().skin_server !== false) {
       try {
         const injector = await ensureAuthlibInjector();
         jvmArgs.push(...(await skinServer.jvmArgs(injector)));

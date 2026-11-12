@@ -69,6 +69,7 @@
       const accountSelect = h("select", { class: "select", style: { width: "240px" } });
       const presetsBtn = h("button", { class: "btn", html: `${IB.icon("person")}Готовые скины` });
       const catalogBtn = h("button", { class: "btn", html: `${IB.icon("search")}Каталог скинов` });
+      const capeBtn = h("button", { class: "btn", html: `${IB.icon("sparkles")}Плащ` });
       const loadBtn = h("button", { class: "btn", html: `${IB.icon("upload")}Загрузить PNG` });
       const saveBtn = h("button", { class: "btn btn--primary", html: `${IB.icon("save")}Сохранить скин`, disabled: true });
       root.append(
@@ -76,7 +77,7 @@
           "div",
           { class: "page-head", style: { marginBottom: "16px" } },
           h("div", {}, h("div", { class: "eyebrow", text: "Персонализация" }), h("h1", { text: "Редактор скина" }), h("p", { text: "Рисуйте на персонаже или загрузите готовый скин." })),
-          h("div", { class: "row" }, accountSelect, presetsBtn, catalogBtn, loadBtn, saveBtn)
+          h("div", { class: "row" }, accountSelect, presetsBtn, catalogBtn, capeBtn, loadBtn, saveBtn)
         )
       );
 
@@ -592,7 +593,123 @@
         }
         const skin = await api.skins.get(st.accountId).catch(() => null);
         if (skin) await setTextureFromDataUrl(skin.dataUrl, skin.model);
+        loadCape();
       }
+
+      // ---------- плащ ----------
+      async function loadCape() {
+        const enabled = !S.settings || S.settings.cape_enabled !== false;
+        const cape = enabled && st.accountId ? await api.capes.get(st.accountId).catch(() => null) : null;
+        player.setCape(cape ? cape.dataUrl : null);
+        return cape;
+      }
+
+      /** Лицевая сторона плаща крупно (для карточек выбора). */
+      function capeThumb(dataUrl) {
+        const c = h("canvas", { class: "cape-thumb", width: 50, height: 80 });
+        const img = new Image();
+        img.onload = () => {
+          const k = img.width / 64;
+          const ctx = c.getContext("2d");
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 1 * k, 1 * k, 10 * k, 16 * k, 0, 0, 50, 80);
+        };
+        img.src = dataUrl;
+        return c;
+      }
+
+      async function openCapes() {
+        const acc = S.accounts.find((a) => a.id === st.accountId);
+        if (!acc) {
+          toast("Сначала добавьте аккаунт", "error");
+          return IB.modals.accounts();
+        }
+        const presets = (await run(() => api.capes.presets())) || [];
+        let current = await api.capes.get(acc.id).catch(() => null);
+        const grid = h("div", { class: "cape-grid" });
+        const enabled = IB.switchEl({
+          checked: !S.settings || S.settings.cape_enabled !== false,
+          label: "Показывать плащ",
+          onChange: async (v) => {
+            S.settings = await run(() => api.settings.update({ cape_enabled: v }));
+            loadCape();
+          },
+        });
+
+        async function choose(dataUrl, source) {
+          const res = await run(() => api.capes.save({ accountId: acc.id, dataUrl, source }), { success: "Плащ надет — он появится в игре при следующем запуске" });
+          if (res) {
+            current = res;
+            if (S.settings && S.settings.cape_enabled === false) {
+              S.settings = await api.settings.update({ cape_enabled: true });
+              enabled.input.checked = true;
+            }
+            loadCape();
+            render();
+          }
+        }
+
+        function render() {
+          grid.textContent = "";
+          grid.append(
+            h(
+              "button",
+              { class: `cape-card${!current ? " is-active" : ""}`, onClick: async () => {
+                await run(() => api.capes.remove(acc.id));
+                current = null;
+                loadCape();
+                render();
+              } },
+              h("div", { class: "cape-card__none", html: IB.icon("close") }),
+              h("span", { text: "Без плаща" })
+            )
+          );
+          for (const p of presets) {
+            grid.append(
+              h(
+                "button",
+                { class: `cape-card${current && current.source === `preset:${p.id}` ? " is-active" : ""}`, onClick: () => choose(p.dataUrl, `preset:${p.id}`) },
+                capeThumb(p.dataUrl),
+                h("span", { text: p.name })
+              )
+            );
+          }
+          if (current && !String(current.source || "").startsWith("preset:")) {
+            grid.append(h("button", { class: "cape-card is-active" }, capeThumb(current.dataUrl), h("span", { text: "Свой плащ" })));
+          }
+        }
+        render();
+
+        const m = IB.modal({
+          title: "Плащ",
+          wide: true,
+          content: h(
+            "div",
+            { class: "stack" },
+            h(
+              "p",
+              { class: "soft", style: { margin: 0 } },
+              acc.type === "microsoft"
+                ? "У лицензии Microsoft в игре показывается официальный плащ (если он есть). Плащ отсюда виден в превью и на аккаунтах по нику и Ely.by."
+                : "Плащ виден вам — в игре (в любой версии) и в лаунчере. Другим игрокам Minecraft показывает только официальные плащи и плащи Ely.by, поэтому это ваше личное украшение."
+            ),
+            grid,
+            h("div", { class: "setting-line" }, h("span", { text: "Показывать плащ в игре и в превью" }), enabled)
+          ),
+          footer: [
+            h("button", {
+              class: "btn",
+              html: `${IB.icon("upload")}Загрузить свой PNG`,
+              onClick: async () => {
+                const dataUrl = await run(() => api.capes.pick());
+                if (dataUrl) choose(dataUrl, "custom");
+              },
+            }),
+            h("button", { class: "btn btn--primary", text: "Готово", onClick: () => m.close() }),
+          ],
+        });
+      }
+      capeBtn.addEventListener("click", openCapes);
 
       function renderAccounts() {
         accountSelect.textContent = "";
@@ -881,6 +998,7 @@
             renderAccounts();
             if (!st.dirty) loadAccountSkin();
           }
+          if (kind === "skin") loadCape();
         },
       };
     },

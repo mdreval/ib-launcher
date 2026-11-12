@@ -36,6 +36,25 @@ function defaults() {
     accent_color: "#7de6b8", // для theme: "custom"
     background: "theme",
     bg_dim: 0.7,
+    // Друзья: ники; когда кто-то из них заходит на сервер — уведомление.
+    friends: [],
+    friend_notifications: true,
+    // «Сразу на сервер»: сборка сервера после загрузки игры сама подключается.
+    auto_connect: true,
+    // Фон: живые эффекты (искры/светлячки), сезонные (снег, Хэллоуин…).
+    live_effects: true,
+    live_effect: "auto", // вариант живого фона: auto (по теме), fireflies, embers, glow, stars, rain, snow, petals, leaves, bubbles
+    seasonal_effects: true,
+    // Музыка в лаунчере: source — "ambient" (встроенная) или "custom" (свои файлы).
+    music_enabled: false,
+    music_volume: 0.35,
+    music_source: "ambient",
+    // Статус «Играет на IGROBAR» в Discord.
+    discord_rpc: true,
+    // Модпак обновляется в фоне, пока лаунчер открыт.
+    silent_modpack: true,
+    // Плащ показывается в игре (если выбран).
+    cape_enabled: true,
     skin_mod: true,
     skin_server: true,
   };
@@ -63,6 +82,12 @@ function update(patch) {
   if (!/^#[0-9a-f]{6}$/i.test(String(next.accent_color || ""))) next.accent_color = "#7de6b8";
   if (!["theme", "custom"].includes(next.background)) next.background = "theme";
   next.bg_dim = Math.max(0, Math.min(1, Number(next.bg_dim) || 0));
+  next.friends = Array.isArray(next.friends)
+    ? [...new Set(next.friends.map((f) => String(f).trim()).filter((f) => /^[A-Za-z0-9_]{2,16}$/.test(f)))].slice(0, 100)
+    : [];
+  next.music_volume = Math.max(0, Math.min(1, Number(next.music_volume) || 0));
+  if (!["ambient", "custom"].includes(next.music_source)) next.music_source = "ambient";
+  if (!["auto", "fireflies", "embers", "glow", "stars", "rain", "snow", "petals", "leaves", "bubbles"].includes(next.live_effect)) next.live_effect = "auto";
   cache = next;
   writeJson(paths.SETTINGS_FILE, cache);
   return cache;

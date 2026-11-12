@@ -17,12 +17,215 @@
     return { dot: "var(--accent)", text: "Готов к запуску" };
   }
 
+  // ================= правая панель: новости и онлайн =================
+
+  /** Голова игрока из скина Ely.by (лицо + слой шляпы). */
+  function headEl(name, size = 28) {
+    const url = `https://skinsystem.ely.by/skins/${encodeURIComponent(name)}.png`;
+    const el = h("span", { class: "head", style: { width: `${size}px`, height: `${size}px` } });
+    el.style.backgroundImage = `url("${url}"), url("${url}")`;
+    el.style.backgroundSize = `${size * 8}px auto, ${size * 8}px auto`;
+    el.style.backgroundPosition = `-${size * 5}px -${size}px, -${size}px -${size}px`;
+    return el;
+  }
+  IB.headEl = headEl;
+
+  let newsCache = null;
+
+  function fmtNewsDate(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return `сегодня, ${d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+    return d.toLocaleDateString(IB.i18n ? IB.i18n.locale() : "ru-RU", { day: "numeric", month: "long" });
+  }
+
+  IB.homeSide = function homeSide() {
+    let tab = (() => {
+      try {
+        return localStorage.getItem("ib.homeTab") || "news";
+      } catch (err) {
+        return "news";
+      }
+    })();
+    const body = h("div", { class: "home-side__body" });
+    const tabs = h("div", { class: "home-side__tabs", role: "tablist" });
+    const el = h("aside", { class: "home-side" }, tabs, body);
+    let destroyed = false;
+
+    function renderTabs() {
+      tabs.textContent = "";
+      const st = S.serverStatus;
+      const items = [
+        { id: "news", title: "Новости", icon: "news" },
+        { id: "online", title: st && st.online ? `Онлайн · ${st.players}` : "Онлайн", icon: "users" },
+      ];
+      for (const t of items) {
+        tabs.append(
+          h("button", {
+            class: "home-side__tab",
+            role: "tab",
+            "aria-selected": String(tab === t.id),
+            html: `${IB.icon(t.icon)}<span>${IB.escapeHtml ? IB.escapeHtml(t.title) : t.title}</span>`,
+            onClick: () => {
+              tab = t.id;
+              try {
+                localStorage.setItem("ib.homeTab", tab);
+              } catch (err) {
+                /* не важно */
+              }
+              render();
+            },
+          })
+        );
+      }
+    }
+
+    // ---------- новости ----------
+    function newsCard(n) {
+      const card = h(
+        "article",
+        { class: `news-card${n.pinned ? " news-card--pinned" : ""}` },
+        n.image ? h("img", { class: "news-card__img", src: n.image, alt: "", loading: "lazy", onError: (e) => e.target.remove() }) : null,
+        h(
+          "div",
+          { class: "news-card__body" },
+          h(
+            "div",
+            { class: "news-card__meta" },
+            n.pinned ? h("span", { class: "news-card__pin", html: `${IB.icon("star")}Закреплено` }) : null,
+            n.source === "telegram" ? h("span", { class: "news-card__src", html: `${IB.icon("telegram")}${n.channel || "Telegram"}` }) : null,
+            h("span", { text: fmtNewsDate(n.date) })
+          ),
+          n.title ? h("h4", { class: "news-card__title", text: n.title }) : null,
+          n.text ? h("p", { class: "news-card__text", text: n.text }) : null
+        )
+      );
+      if (n.url) {
+        card.classList.add("news-card--link");
+        card.title = "Открыть";
+        card.addEventListener("click", () => api.app.openExternal(n.url));
+      }
+      return card;
+    }
+
+    function renderNews() {
+      body.textContent = "";
+      if (!newsCache) {
+        body.append(h("div", { class: "home-side__empty" }, h("span", { class: "spinner" }), "Загружаю новости…"));
+        return;
+      }
+      const list = h("div", { class: "news-list" });
+      if (newsCache.offline) list.append(h("div", { class: "home-side__note", text: "Нет связи — показаны сохранённые новости" }));
+      if (!newsCache.items.length) {
+        list.append(h("div", { class: "home-side__empty", text: "Новостей пока нет" }));
+      }
+      for (const n of newsCache.items) list.append(newsCard(n));
+      const server = IB.serverBuild();
+      if (server && server.telegram) {
+        list.append(h("button", { class: "btn btn--ghost btn--sm home-side__more", html: `${IB.icon("telegram")}Все новости в Telegram`, onClick: () => api.app.openExternal(server.telegram) }));
+      }
+      body.append(list);
+    }
+
+    async function loadNews(force) {
+      try {
+        newsCache = await api.news.list(!!force);
+      } catch (err) {
+        newsCache = newsCache || { items: [], offline: true };
+      }
+      if (!destroyed && tab === "news") renderNews();
+    }
+
+    // ---------- онлайн ----------
+    function renderOnline() {
+      renderTabs();
+      if (tab !== "online") return;
+      body.textContent = "";
+      const st = S.serverStatus;
+      if (!st) {
+        body.append(h("div", { class: "home-side__empty" }, h("span", { class: "spinner" }), "Проверяю сервер…"));
+        return;
+      }
+      if (!st.online) {
+        body.append(h("div", { class: "home-side__empty", text: "Сервер сейчас недоступен" }));
+        return;
+      }
+      const friends = new Set(((S.settings && S.settings.friends) || []).map((f) => f.toLowerCase()));
+      const names = [...(st.names || [])].sort((a, b) => Number(friends.has(b.toLowerCase())) - Number(friends.has(a.toLowerCase())) || a.localeCompare(b));
+      const head = h("div", { class: "online-head" }, h("strong", { text: `${st.players} из ${st.max}` }), h("span", { class: "muted", text: "игроков на сервере" }));
+      body.append(head);
+      if (!names.length) {
+        body.append(h("div", { class: "home-side__empty", text: st.players ? "Сервер не показывает список игроков" : "Сейчас никого нет — зайдите первым!" }));
+      } else {
+        const list = h("div", { class: "online-list" });
+        for (const name of names) {
+          const isFriend = friends.has(name.toLowerCase());
+          list.append(
+            h(
+              "div",
+              { class: `online-row${isFriend ? " online-row--friend" : ""}` },
+              headEl(name),
+              h("span", { class: "online-row__name", text: name }),
+              h("button", {
+                class: "icon-btn icon-btn--plain online-row__star",
+                title: isFriend ? "Убрать из друзей" : "В друзья — пришлю уведомление, когда зайдёт",
+                html: IB.icon(isFriend ? "starFill" : "star"),
+                onClick: () =>
+                  IB.run(async () => {
+                    const list2 = await api.friends.toggle(name);
+                    S.settings = { ...S.settings, friends: list2 };
+                    renderOnline();
+                  }),
+              })
+            )
+          );
+        }
+        body.append(list);
+        if (st.players > names.length) body.append(h("div", { class: "home-side__note", text: `Сервер показывает только часть списка (${names.length} из ${st.players})` }));
+      }
+      body.append(h("div", { class: "home-side__note", text: "Отметьте друга звёздочкой — лаунчер сообщит, когда он зайдёт на сервер" }));
+    }
+
+    function render() {
+      renderTabs();
+      if (tab === "news") renderNews();
+      else renderOnline();
+    }
+
+    render();
+    loadNews(false);
+    if (!S.serverStatus) {
+      api.server
+        .status(false)
+        .then((st) => {
+          S.serverStatus = st;
+          IB.emit("server", st);
+        })
+        .catch(() => {});
+    }
+    const timer = setInterval(() => loadNews(false), 10 * 60 * 1000);
+
+    return {
+      el,
+      renderOnline,
+      destroy() {
+        destroyed = true;
+        clearInterval(timer);
+      },
+    };
+  };
+
   IB.pages.home = {
     mount(host) {
       const page = h("section", { class: "page page--fixed" });
       const root = h("div", { class: "home" });
       page.append(root);
       host.append(page);
+
+      // ---- правая панель: новости и онлайн ----
+      const side = IB.homeSide();
+      root.append(side.el);
 
       // ---- верх ----
       const skinChip = h("span", { class: "skin-chip" });
@@ -89,43 +292,61 @@
         const acc = IB.selectedAccount();
         nameEl.textContent = acc ? acc.name : "Игрок";
         if (S.skin) player.setSkin(S.skin.dataUrl, S.skin.model);
+        if (acc && (!S.settings || S.settings.cape_enabled !== false)) {
+          api.capes
+            .get(acc.id)
+            .then((cape) => player.setCape(cape ? cape.dataUrl : null))
+            .catch(() => {});
+        } else player.setCape(null);
         skinChip.innerHTML = `<span class="dot"></span>${S.skin && S.skin.custom ? "Свой скин" : "Стандартный скин"}`;
+      }
+
+      let statusLine = null;
+      function renderStatusLine() {
+        if (!statusLine) return;
+        const st = S.serverStatus;
+        statusLine.textContent = "";
+        if (!st) {
+          statusLine.textContent = "Проверка сервера…";
+          return;
+        }
+        statusLine.append(
+          h("span", { class: "dot", style: { background: st.online ? "var(--ok)" : "var(--danger)" } }),
+          st.online ? `Онлайн: ${st.players}/${st.max}${st.ping != null ? ` · пинг ${st.ping} мс` : ""}` : "Сервер недоступен"
+        );
       }
 
       function renderServer() {
         serverSlot.textContent = "";
+        statusLine = null;
         const b = IB.selectedBuild();
         if (!b || !b.modpack_capable) return;
         const server = IB.serverBuild();
         const modpackLine = b.modpack_enabled
           ? h("div", { class: "server-card__line" }, h("span", { class: "dot" }), "Модпак обновляется с GitHub автоматически")
           : h("div", { class: "server-card__line" }, h("span", { class: "dot", style: { background: "var(--text-muted)" } }), "Автообновление модпака выключено");
+        if (server && server.server_address) statusLine = h("div", { class: "server-card__line" });
+        const autoConnect = IB.switchEl({
+          checked: !S.settings || S.settings.auto_connect !== false,
+          label: "Сразу на сервер",
+          onChange: (v) =>
+            IB.run(async () => {
+              S.settings = await api.settings.update({ auto_connect: v });
+            }),
+        });
+        autoConnect.title = "После загрузки игра сама подключится к серверу — без меню и списка серверов";
         serverSlot.append(
           h(
             "div",
             { class: "server-card" },
             h("div", { class: "server-card__title" }, h("img", { src: "../../assets/ui/nav-home.png", alt: "" }), `Сервер ${server ? server.name : "IGROBAR"}`),
+            statusLine,
             modpackLine,
-            h(
-              "div",
-              { class: "row", style: { gap: "8px" } },
-              h("button", { class: "btn btn--sm", html: `${IB.icon("map")}Карта сервера`, onClick: () => IB.go("map") }),
-              server && server.telegram ? h("button", { class: "btn btn--sm btn--ghost", html: `${IB.icon("telegram")}Telegram`, onClick: () => api.app.openExternal(server.telegram) }) : null
-            )
+            h("div", { class: "server-card__line server-card__switch", title: autoConnect.title }, autoConnect, h("span", { text: "Сразу на сервер" })),
+            h("div", { class: "row", style: { gap: "8px" } }, h("button", { class: "btn btn--sm", html: `${IB.icon("map")}Карта сервера`, onClick: () => IB.go("map") }))
           )
         );
-        if (server && server.server_address) {
-          const line = h("div", { class: "server-card__line", text: "Проверка сервера…" });
-          serverSlot.firstChild.insertBefore(line, serverSlot.firstChild.children[1]);
-          api.server.ping(server.status_address || server.server_address).then((st) => {
-            line.textContent = "";
-            line.append(
-              h("span", { class: "dot", style: { background: st.online ? "var(--ok)" : "var(--danger)" } }),
-              st.online ? `Онлайн: ${st.players}/${st.max}${st.ping != null ? ` · пинг ${st.ping} мс` : ""}` : "Сервер недоступен"
-            );
-            if (st.online && st.names && st.names.length) line.title = st.names.join(", ");
-          });
-        }
+        renderStatusLine();
       }
 
       function renderBar() {
@@ -172,6 +393,7 @@
       return {
         cleanup() {
           resize.disconnect();
+          side.destroy();
         },
         update(kind, detail) {
           if (kind === "skin" || kind === "accounts") renderSkin();
@@ -180,6 +402,11 @@
             renderBar();
           }
           if (kind === "game" && detail && detail.buildId === S.selected) renderBar();
+          if (kind === "server") {
+            renderStatusLine();
+            side.renderOnline();
+          }
+          if (kind === "settings") side.renderOnline();
         },
       };
     },
