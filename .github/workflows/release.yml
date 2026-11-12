@@ -81,9 +81,6 @@ jobs:
           - name: windows
             os: windows-latest
             args: --win nsis --x64
-          - name: mac-x64
-            os: macos-latest
-            args: --mac dmg --x64
           - name: mac-arm64
             os: macos-latest
             args: --mac dmg --arm64
