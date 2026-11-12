@@ -1,7 +1,7 @@
 /* Главная: 3D-скин игрока, карточка сервера IGROBAR, панель запуска */
 (function () {
   const IB = window.IB;
-  const { h } = IB;
+  const { h, toast } = IB;
   const api = window.ib;
   const S = IB.state;
 
@@ -216,6 +216,96 @@
     };
   };
 
+  // ================= мини-плеер музыки на главной =================
+
+  const SPOTIFY_ICON =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1ed760"/><path d="M6.4 9.3c3.7-1.1 8.1-.7 11.3 1.2M7 12.4c3-.9 6.6-.5 9.2 1M7.6 15.3c2.4-.6 5-.3 7.1.9" fill="none" stroke="#000" stroke-width="1.7" stroke-linecap="round"/></svg>';
+
+  /** Мини-плеер: своя музыка лаунчера или Spotify (что сейчас играет). */
+  IB.miniPlayer = function miniPlayer() {
+    const title = h("div", { class: "mini-player__title" });
+    const sub = h("div", { class: "mini-player__sub" });
+    const fx = () => IB.effects;
+    let mode = "launcher"; // или "spotify"
+    let sp = null; // последнее состояние Spotify
+    let destroyed = false;
+    let timer = null;
+
+    async function spotify(cmd) {
+      if (cmd === "toggle" && sp && !sp.playing && fx() && fx().pauseForSpotify()) toast("Музыка лаунчера на паузе — играет Spotify", "info");
+      try {
+        sp = await api.spotify.command(cmd);
+      } catch (err) {
+        /* не важно */
+      }
+      paint();
+    }
+    const act = (launcherFn, spotifyCmd) => () => (mode === "spotify" ? spotify(spotifyCmd) : fx() && fx()[launcherFn]());
+    const prev = h("button", { class: "mini-player__btn", title: "Предыдущий трек", html: IB.icon("skipBack"), onClick: act("prevTrack", "prev") });
+    const toggle = h("button", { class: "mini-player__btn mini-player__btn--main", onClick: act("togglePause", "toggle") });
+    const next = h("button", { class: "mini-player__btn", title: "Следующий трек", html: IB.icon("skipForward"), onClick: act("nextTrack", "next") });
+    const logo = h("button", { class: "mini-player__logo", title: "Открыть «Музыку»", onClick: () => IB.go("music") });
+    const el = h("div", { class: "mini-player" }, logo, h("div", { class: "mini-player__info", title: "Открыть «Музыку»", onClick: () => IB.go("music") }, title, sub), prev, toggle, next);
+
+    function paint() {
+      const s = S.settings || {};
+      const np = fx() ? fx().nowPlaying() : null;
+      const launcherOn = !!(s.music_enabled && np);
+      const launcherPlaying = launcherOn && !np.paused;
+      const spOn = !!(sp && sp.running && sp.title);
+      // Spotify — если он играет, или если своя музыка выключена / на паузе
+      mode = spOn && (sp.playing || !launcherPlaying) ? "spotify" : "launcher";
+      if (mode === "launcher" && !launcherOn) mode = spOn ? "spotify" : "none";
+      el.hidden = mode === "none";
+      if (el.hidden) return;
+      el.classList.toggle("mini-player--spotify", mode === "spotify");
+      if (mode === "spotify") {
+        logo.innerHTML = SPOTIFY_ICON;
+        title.textContent = sp.title;
+        sub.textContent = sp.playing ? sp.artist || "Spotify" : "Spotify · на паузе";
+        toggle.innerHTML = IB.icon(sp.playing ? "pause" : "play");
+        toggle.title = sp.playing ? "Пауза" : "Играть";
+        prev.hidden = next.hidden = false;
+        el.classList.toggle("is-paused", !sp.playing);
+      } else {
+        logo.innerHTML = '<img src="../../assets/ui/nav-music.png" alt="">';
+        title.textContent = np.title || "Музыка";
+        sub.textContent = np.paused ? "На паузе" : np.custom ? `Трек ${np.index + 1} из ${np.count}` : "Играет";
+        toggle.innerHTML = IB.icon(np.paused ? "play" : "pause");
+        toggle.title = np.paused ? "Играть" : "Пауза";
+        prev.hidden = next.hidden = !np.custom;
+        el.classList.toggle("is-paused", np.paused);
+      }
+    }
+
+    async function poll() {
+      if (destroyed) return;
+      try {
+        sp = await api.spotify.command("state");
+      } catch (err) {
+        sp = null;
+      }
+      if (destroyed) return;
+      paint();
+      if (sp && sp.supported === false) return; // Linux — Spotify не поддерживается
+      timer = setTimeout(poll, sp && sp.running ? 2000 : 10000);
+    }
+
+    paint();
+    poll();
+    const offMusic = IB.on("music", paint);
+    const offSettings = IB.on("settings", paint);
+    return {
+      el,
+      destroy() {
+        destroyed = true;
+        clearTimeout(timer);
+        offMusic();
+        offSettings();
+      },
+    };
+  };
+
   IB.pages.home = {
     mount(host) {
       const page = h("section", { class: "page page--fixed" });
@@ -230,7 +320,8 @@
       // ---- верх ----
       const skinChip = h("span", { class: "skin-chip" });
       const serverSlot = h("div", {});
-      root.append(h("div", { class: "home__top" }, h("div", {}, h("div", { class: "eyebrow", text: "Minecraft Java Edition" }), serverSlot), skinChip));
+      const mini = IB.miniPlayer();
+      root.append(h("div", { class: "home__top" }, h("div", {}, h("div", { class: "eyebrow", text: "Minecraft Java Edition" }), serverSlot), mini.el));
 
       // ---- сцена со скином ----
       const playerBox = h("div", { class: "home__player" });
@@ -241,7 +332,7 @@
         playerBox,
         h("button", { class: "icon-btn home__arrow home__arrow--left", "aria-label": "Повернуть", html: IB.icon("chevronLeft"), onClick: () => player.rotateBy(-45) }),
         h("button", { class: "icon-btn home__arrow home__arrow--right", "aria-label": "Повернуть", html: IB.icon("chevronRight"), onClick: () => player.rotateBy(45) }),
-        h("div", { class: "home__name" }, nameEl, h("span", { text: "Ваш текущий скин" })),
+        h("div", { class: "home__name" }, skinChip, nameEl, h("span", { text: "Ваш текущий скин" })),
         h("div", { class: "home__hint", text: "Потяните, чтобы повернуть" }),
         h("button", { class: "btn home__skin-btn", html: `${IB.icon("user")}Изменить скин${IB.icon("chevronRight")}`, onClick: () => IB.go("skin") })
       );
@@ -394,6 +485,7 @@
         cleanup() {
           resize.disconnect();
           side.destroy();
+          mini.destroy();
         },
         update(kind, detail) {
           if (kind === "skin" || kind === "accounts") renderSkin();

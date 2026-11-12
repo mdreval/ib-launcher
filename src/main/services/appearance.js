@@ -103,6 +103,7 @@ function get() {
   return {
     theme: s.theme,
     accent_color: s.accent_color,
+    logo: s.logo || "auto",
     background: useCustom && (dataUrl || video) ? "custom" : "theme",
     bg_dim: s.bg_dim,
     customDataUrl: dataUrl,

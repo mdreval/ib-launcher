@@ -5,12 +5,55 @@
   const api = window.ib;
   const S = IB.state;
 
+  const SPOTIFY_SVG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1ed760"/><path d="M6.4 9.3c3.7-1.1 8.1-.7 11.3 1.2M7 12.4c3-.9 6.6-.5 9.2 1M7.6 15.3c2.4-.6 5-.3 7.1.9" fill="none" stroke="#000" stroke-width="1.7" stroke-linecap="round"/></svg>';
+
+  const fmtTime = (sec) => {
+    const t = Math.max(0, Math.floor(Number(sec) || 0));
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+  };
+
+  /** Полоса перемотки: время слева, длина справа; пока тянут — не дёргается. */
+  function seekBar(onSeek) {
+    const range = h("input", { class: "range seek-bar__range", type: "range", min: "0", max: "1", step: "0.1", value: "0" });
+    const cur = h("span", { class: "seek-bar__time", text: "0:00" });
+    const dur = h("span", { class: "seek-bar__time", text: "0:00" });
+    const el = h("div", { class: "seek-bar" }, cur, range, dur);
+    let dragging = false;
+    const paint = () => range.style.setProperty("--fill", `${(range.value / (range.max || 1)) * 100}%`);
+    range.addEventListener("input", () => {
+      dragging = true;
+      cur.textContent = fmtTime(range.value);
+      paint();
+    });
+    range.addEventListener("change", () => {
+      dragging = false;
+      onSeek(+range.value);
+    });
+    return {
+      el,
+      set(current, duration, enabled = true) {
+        range.disabled = !enabled || !(duration > 0);
+        if (dragging) return;
+        range.max = String(Math.max(1, duration || 0));
+        range.value = String(Math.min(current || 0, duration || 0));
+        cur.textContent = fmtTime(current);
+        dur.textContent = duration > 0 ? fmtTime(duration) : "—:—";
+        paint();
+      },
+    };
+  }
+
   IB.pages.music = {
     mount(host) {
       const page = h("section", { class: "page" });
       host.append(page);
       const wrap = h("div", { class: "settings music-page" });
       let offMusic = null;
+      let offTime = null;
+      let spotifyTimer = null;
+      let destroyed = false;
+      let spotifyCard = null;
       let tracks = [];
 
       page.append(
@@ -52,12 +95,21 @@
         });
         vol.addEventListener("change", () => save({ music_volume: +vol.value }));
         paintVol();
+        const seek = seekBar((t) => fx() && fx().seek(t));
+        const paintTime = (pr) => {
+          const np = fx() ? fx().nowPlaying() : null;
+          const show = !!(np && np.custom && S.settings && S.settings.music_enabled && pr);
+          seek.el.hidden = !show;
+          if (show) seek.set(pr.current, pr.duration);
+        };
+        if (offTime) offTime();
+        offTime = IB.on("music:time", paintTime);
         const disc = h("div", { class: "mp-hero__disc" }, h("img", { src: "../../assets/ui/nav-music.png", alt: "" }));
         const hero = h(
           "div",
           { class: "card mp-hero" },
           disc,
-          h("div", { class: "mp-hero__info" }, title, sub, h("div", { class: "mp-hero__vol" }, IB.iconEl("music"), vol, volLabel)),
+          h("div", { class: "mp-hero__info" }, title, sub, seek.el, h("div", { class: "mp-hero__vol" }, IB.iconEl("music"), vol, volLabel)),
           h("div", { class: "mp-hero__controls" }, prev, toggle, next)
         );
         const paint = () => {
@@ -73,6 +125,7 @@
           prev.hidden = next.hidden = !np.custom;
           hero.classList.toggle("is-playing", playing);
           for (const row of wrap.querySelectorAll(".track-row[data-index]")) row.classList.toggle("is-current", np.custom && +row.dataset.index === np.index);
+          paintTime(fx().progress());
         };
         offMusic = IB.on("music", paint);
 
@@ -111,7 +164,10 @@
           h("div", { class: "setting-line" }, h("div", {}, h("h3", { text: "Что играет" }), h("p", { text: "Встроенная — эмбиент, который сочиняется прямо в лаунчере. Свои треки — MP3, OGG, WAV и т. п., играют по очереди по кругу." })), sourceSeg)
         );
 
-        wrap.append(hero, settingsCard);
+        // порядок: плеер → Spotify → настройки → свои треки
+        spotifyCard = spotifyBlock();
+        wrap.append(hero, spotifyCard.el, settingsCard);
+        if (lastSpotify) spotifyCard.paint(lastSpotify);
 
         // ---------- свои треки ----------
         if ((s.music_source || "ambient") === "custom") {
@@ -165,12 +221,117 @@
         paint();
       }
 
+      // ---------- Spotify ----------
+      let lastSpotify = null;
+      function spotifyBlock() {
+        const cover = h("div", { class: "sp-cover" });
+        const title = h("div", { class: "sp-title" });
+        const sub = h("div", { class: "sp-sub" });
+        const seek = seekBar((t) => send("seek", t));
+        const prev = h("button", { class: "icon-btn", title: "Предыдущий трек", html: IB.icon("skipBack"), onClick: () => send("prev") });
+        const toggle = h("button", { class: "icon-btn icon-btn--lg sp-toggle", onClick: () => send("toggle") });
+        const next = h("button", { class: "icon-btn", title: "Следующий трек", html: IB.icon("skipForward"), onClick: () => send("next") });
+        // громкость самого Spotify (микшер Windows / Spotify на macOS)
+        const vol = h("input", { class: "range", type: "range", min: "0", max: "1", step: "0.01", value: "1" });
+        const volLabel = h("span", { class: "mp-hero__vol-label" });
+        const volRow = h("div", { class: "mp-hero__vol sp-vol", title: "Громкость Spotify" }, IB.iconEl("music"), vol, volLabel);
+        let volDragging = false;
+        let volTimer = null;
+        const paintVol = () => {
+          vol.style.setProperty("--fill", `${vol.value * 100}%`);
+          volLabel.textContent = `${Math.round(vol.value * 100)}%`;
+        };
+        vol.addEventListener("input", () => {
+          volDragging = true;
+          paintVol();
+          clearTimeout(volTimer);
+          volTimer = setTimeout(() => api.spotify.command("volume", +vol.value).catch(() => {}), 120);
+        });
+        vol.addEventListener("change", () => {
+          clearTimeout(volTimer);
+          api.spotify
+            .command("volume", +vol.value)
+            .catch(() => {})
+            .finally(() => setTimeout(() => (volDragging = false), 600));
+        });
+        const now = h("div", { class: "sp-now" }, cover, h("div", { class: "sp-info" }, title, sub, seek.el, volRow), h("div", { class: "sp-controls" }, prev, toggle, next));
+        const off = h("div", { class: "sp-off" });
+        const link = h("input", { class: "input", placeholder: "Ссылка на плейлист или альбом Spotify", spellcheck: "false" });
+        const openLink = () =>
+          run(async () => {
+            await api.spotify.open(link.value);
+            link.value = "";
+          });
+        link.addEventListener("keydown", (e) => e.key === "Enter" && openLink());
+        const el = h(
+          "div",
+          { class: "card sp-card" },
+          h("div", { class: "sp-head" }, h("span", { class: "sp-logo", html: SPOTIFY_SVG }), h("h3", { text: "Spotify" }), h("span", { class: "grow" }), h("button", { class: "btn btn--sm btn--ghost", html: `${IB.icon("external")}Открыть Spotify`, onClick: () => run(() => api.spotify.open("")) })),
+          h("p", { class: "soft sp-note", text: "Управление приложением Spotify на этом компьютере: что играет, пауза, переключение и перемотка. Работает с бесплатным аккаунтом, входить в лаунчере не нужно." }),
+          now,
+          off,
+          h("div", { class: "row", style: { gap: "8px", marginTop: "12px" } }, link, h("button", { class: "btn btn--sm", html: `${IB.icon("play")}Включить`, onClick: openLink }))
+        );
+        async function send(cmd, value) {
+          if (cmd === "toggle" && lastSpotify && !lastSpotify.playing && fx() && fx().pauseForSpotify()) toast("Музыка лаунчера на паузе — играет Spotify", "info");
+          try {
+            const st = await api.spotify.command(cmd, value);
+            lastSpotify = st;
+            paint(st);
+          } catch (err) {
+            toast(err.message, "error");
+          }
+        }
+        function paint(st) {
+          const running = st && st.running;
+          now.hidden = !running;
+          off.hidden = !!running;
+          if (!running) {
+            off.textContent = "";
+            if (st && st.supported === false) off.append(h("span", { text: "Управление Spotify работает на Windows и macOS." }));
+            else off.append(IB.iconEl("music"), h("span", { text: st ? "Spotify не запущен или ничего не играет. Откройте Spotify и включите музыку — трек появится здесь." : "Ищу Spotify…" }));
+            return;
+          }
+          cover.style.backgroundImage = st.cover ? `url("${st.cover}")` : "";
+          cover.classList.toggle("sp-cover--empty", !st.cover);
+          title.textContent = st.title || "—";
+          sub.textContent = [st.artist, st.album].filter(Boolean).join(" · ");
+          toggle.innerHTML = IB.icon(st.playing ? "pause" : "play");
+          toggle.title = st.playing ? "Пауза" : "Играть";
+          seek.set(st.position, st.duration, st.canSeek !== false);
+          volRow.hidden = !(st.volume >= 0);
+          if (st.volume >= 0 && !volDragging) {
+            vol.value = String(st.volume);
+            paintVol();
+          }
+          seek.el.title = st.canSeek === false ? "Spotify не даёт перематывать отсюда" : "";
+        }
+        return { el, paint };
+      }
+
+      async function pollSpotify() {
+        if (destroyed) return;
+        try {
+          lastSpotify = await api.spotify.command("state");
+        } catch (err) {
+          lastSpotify = { running: false };
+        }
+        if (destroyed) return;
+        if (spotifyCard) spotifyCard.paint(lastSpotify);
+        spotifyTimer = setTimeout(pollSpotify, lastSpotify && lastSpotify.running ? 1000 : 4000);
+      }
+
       loadTracks().then(render);
       render();
 
+      pollSpotify();
+
       return {
         cleanup() {
+          destroyed = true;
+          clearTimeout(spotifyTimer);
           if (offMusic) offMusic();
+          if (offTime) offTime();
         },
         update(kind) {
           if (kind === "settings") render();

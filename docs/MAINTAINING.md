@@ -15,34 +15,6 @@ electron — бинарник Electron кладётся вручную: соде
 `electron-v32.x.x-win32-x64.zip` → `node_modules\electron\dist` и файл
 `node_modules\electron\path.txt` с текстом `electron.exe`.
 
-## Выпуск новой версии (GitHub Actions)
-
-Версия лаунчера задаётся в **одном месте** — `data/server_profiles.json`, поле
-`"launcher_version"` (сейчас `2.0.0`). В `package.json` её переносит скрипт
-`scripts/sync-version.js` — сам, перед `npm start`, `npm run dist` и в GitHub Actions.
-Руками `package.json` менять не нужно.
-
-1. Залейте проект в репозиторий GitHub. Имя репозитория — в `package.json`
-   → `build.publish` (сейчас `mdreval/ib-launcher`).
-2. Поменяйте `"launcher_version"` в `data/server_profiles.json`, например на `2.0.1`.
-3. Отправьте на GitHub:
-   ```bash
-   git add .
-   git commit -m "Лаунчер 2.0.1"
-   git push
-   ```
-4. Workflow `.github/workflows/release.yml` увидит, что релиза `v2.0.1` ещё нет, и соберёт:
-   - `Igrobar-Launcher-Setup-2.0.1.exe` — установщик Windows;
-   - `Igrobar-Launcher-2.0.1-mac-x64.dmg` и `...-mac-arm64.dmg` — macOS,
-
-   и выложит их в GitHub Release `v2.0.1`. Если версия не менялась, сборка
-   пропускается — можно спокойно пушить правки сервера и кода.
-
-**Обновление у игроков:**
-- Windows — лаунчер сам находит новую версию, скачивает и ставит при перезапуске.
-- macOS — приложение не подписано сертификатом Apple, поэтому автоматически
-  обновиться не может: лаунчер показывает окно «Доступна новая версия» с кнопкой,
-  которая открывает нужный .dmg в релизе.
 
 **Первый запуск на macOS.** Приложение без подписи Apple, поэтому macOS может
 написать «повреждено» или «не удаётся проверить разработчика». Решение — один раз
@@ -78,9 +50,6 @@ xattr -cr "/Applications/Igrobar Launcher.app"
 | `.LauncherIB\data\` | настройки, аккаунты (зашифрованы средствами системы), скины, журналы, кэш |
 | `.LauncherIB\` | служебные файлы самого лаунчера (Electron) |
 
-Старые папки `IgrobarLauncher` и `Igrobar Launcher` переносятся сюда сами при
-первом запуске новой версии. Удаление сборки удаляет только её `instances\<сборка>`.
-Папку игры можно перенести в «Настройках». Пути — в `src/main/paths.js`.
 
 ## Установка игры
 
@@ -88,33 +57,6 @@ xattr -cr "/Applications/Igrobar Launcher.app"
   «Играть» показывается кнопка «Установить».
 - Если часть файлов не скачалась (обрыв сети), лаунчер сам докачивает недостающее
   — до 4 попыток. Уже скачанное не теряется.
-
-## Сервер IGROBAR: версия, NeoForge, адрес — `data/server_profiles.json`
-
-Всё, что относится к серверу, лежит в одном файле **`data/server_profiles.json`**:
-
-```json
-"mc_version": "1.21.1",            ← версия Minecraft
-"loader_type": "neoforge",          ← загрузчик: neoforge / forge / fabric / quilt
-"loader_version": "21.1.265",      ← версия загрузчика
-"server_address": "igrobar.aboba.host",  ← адрес, который попадёт в «Сетевую игру»
-"modpack": { "repo": "mdreval/ib-launcher", "asset": "modpack.zip" }
-```
-
-**Как перевести сервер на новую версию** (например 1.21.4):
-1. Поменяйте `mc_version` и `loader_version` в `data/server_profiles.json`.
-2. Выложите новый `modpack.zip` под эту версию в релиз `mdreval/ib-launcher`.
-3. Закоммитьте и отправьте на GitHub в ветку `main`:
-   ```bash
-   git add data/server_profiles.json
-   git commit -m "Сервер: 1.21.4"
-   git push
-   ```
-Новый релиз лаунчера для этого **не нужен**: лаунчер скачивает этот файл из
-репозитория (`raw.githubusercontent.com/<репозиторий из package.json>/main/data/server_profiles.json`)
-при запуске и перед каждым «Играть» в сборке IGROBAR. Сборка у игроков сама
-переустановится под новую версию, модпак подтянется. Репозиторий должен быть
-публичным (для приватного приложите `server_profiles.json` к релизу).
 
 ## Java
 
@@ -181,11 +123,6 @@ Java 17 для 1.18–1.20.4, Java 21 для 1.20.5 и новее. Скачив�
 
 Без интернета показываются последние сохранённые новости.
 
-> Вебхук Discord для новостей не подходит: через вебхук можно только
-> **отправлять** сообщения в канал, читать их нельзя. Не вставляйте адрес
-> вебхука в код лаунчера и не публикуйте его — любой, у кого он есть, может
-> писать в ваш канал. Он нужен только как секрет `DISCORD_WEBHOOK` в
-> GitHub Actions для объявлений о релизах.
 
 ## Вкладка «Правила и ссылки» — `data/info.json`
 
@@ -196,13 +133,6 @@ Java 17 для 1.18–1.20.4, Java 21 для 1.20.5 и новее. Скачив�
 `telegram`, `discord`, `map`, `globe`, `star`, `news`, `users`, `link`.
 
 ## Статус в Discord («Играет на IGROBAR»)
-
-1. Откройте https://discord.com/developers/applications → **New Application**,
-   назовите `IGROBAR` (это имя будет видно в статусе: «Играет в IGROBAR»).
-2. **Rich Presence → Art Assets** → загрузите логотип (512×512 PNG) с ключом
-   **`logo`**.
-3. Скопируйте **Application ID** (General Information) и впишите его в
-   `data/server_profiles.json` → `"discord_client_id": "…"`, отправьте на GitHub.
 
 Статус появится у игроков с запущенным Discord (лаунчер подхватит файл сам).
 Игрок может выключить его в «Настройки → Статус в Discord».
@@ -224,14 +154,6 @@ Java 17 для 1.18–1.20.4, Java 21 для 1.20.5 и новее. Скачив�
 - Музыка: встроенная генерируется в `src/renderer/js/effects.js`; свои треки
   игрок добавляет на вкладке «Музыка» (копируются в `.LauncherIB\data\music`).
 - Сезонные эффекты включаются по дате (там же, функция `season`).
-
-## Оформление
-
-- Темы: зелёная (по умолчанию) и красная IGROBAR. Цвета — в начале
-  `src/renderer/css/base.css` (блоки `:root` и `:root[data-theme="red"]`).
-- Картинки тем: `assets/ui/background.jpg`, `assets/ui/background-igrobar.jpg`,
-  логотипы `assets/ui/logo.png`, `assets/ui/logo-red.png`.
-- Своя картинка или видео игрока хранится в `.LauncherIB\data\background\`.
 
 ## Готовые скины
 

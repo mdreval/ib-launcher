@@ -736,10 +736,39 @@
     "Добавьте аккаунт (можно просто ник) — кнопка справа вверху.": ["Додайте акаунт (можна просто нік) — кнопка праворуч угорі.", "Add an account (a nickname is enough) — the button at the top right."],
     "На главной выберите сборку IGROBAR и нажмите «Играть».": ["На головній виберіть збірку IGROBAR і натисніть «Грати».", "On Home, pick the IGROBAR build and press “Play”."],
     "Если сервер по whitelist — напишите свой ник в Telegram или Discord.": ["Якщо сервер за whitelist — напишіть свій нік у Telegram або Discord.", "If the server uses a whitelist — send your nickname on Telegram or Discord."],
+    // ---- Spotify и перемотка ----
+    "Ссылка на плейлист или альбом Spotify": ["Посилання на плейлист або альбом Spotify", "Spotify playlist or album link"],
+    "Открыть Spotify": ["Відкрити Spotify", "Open Spotify"],
+    "Управление приложением Spotify на этом компьютере: что играет, пауза, переключение и перемотка. Работает с бесплатным аккаунтом, входить в лаунчере не нужно.": ["Керування застосунком Spotify на цьому комп'ютері: що грає, пауза, перемикання й перемотування. Працює з безкоштовним акаунтом, входити в лаунчері не потрібно.", "Control the Spotify app on this computer: what's playing, pause, skip and seek. Works with a free account, no sign-in in the launcher needed."],
+    "Музыка лаунчера на паузе — играет Spotify": ["Музику лаунчера на паузі — грає Spotify", "Launcher music paused — Spotify is playing"],
+    "Управление Spotify работает на Windows и macOS.": ["Керування Spotify працює на Windows і macOS.", "Spotify control works on Windows and macOS."],
+    "Spotify не запущен или ничего не играет. Откройте Spotify и включите музыку — трек появится здесь.": ["Spotify не запущено або нічого не грає. Відкрийте Spotify і ввімкніть музику — трек з'явиться тут.", "Spotify isn't running or nothing is playing. Open Spotify and start music — the track appears here."],
+    "Ищу Spotify…": ["Шукаю Spotify…", "Looking for Spotify…"],
+    "Spotify не даёт перематывать отсюда": ["Spotify не дає перемотувати звідси", "Spotify doesn't allow seeking from here"],
+    "Вставьте ссылку Spotify (open.spotify.com/…)": ["Вставте посилання Spotify (open.spotify.com/…)", "Paste a Spotify link (open.spotify.com/…)"],
+    "Неизвестная команда": ["Невідома команда", "Unknown command"],
+    // ---- логотип и мини-плеер ----
+    "Красная": ["Червона", "Red"],
+    "Логотип:": ["Логотип:", "Logo:"],
+    "Зелёный": ["Зелений", "Green"],
+    "Красный": ["Червоний", "Red"],
+    "Серый": ["Сірий", "Gray"],
+    "Меняется вместе с темой": ["Змінюється разом із темою", "Changes with the theme"],
+    "Серый, на светлых цветах — чёрный": ["Сірий, на світлих кольорах — чорний", "Gray, black on light colors"],
+    "Не меняется при выборе своего цвета": ["Не змінюється, коли вибираєте свій колір", "Stays the same when you pick your own color"],
+    "На паузе": ["На паузі", "Paused"],
+    "Играет": ["Грає", "Playing"],
+    "Открыть «Музыку»": ["Відкрити «Музику»", "Open “Music”"],
+    "Громкость Spotify": ["Гучність Spotify", "Spotify volume"],
+    "Spotify · на паузе": ["Spotify · на паузі", "Spotify · paused"],
+    "Зелёный логотип — не меняется при выборе своего цвета": ["Зелений логотип — не змінюється, коли вибираєте свій колір", "Green logo — stays when you pick your own color"],
+    "Красный логотип — не меняется при выборе своего цвета": ["Червоний логотип — не змінюється, коли вибираєте свій колір", "Red logo — stays when you pick your own color"],
+    "Серый логотип, на светлых цветах — чёрный": ["Сірий логотип, на світлих кольорах — чорний", "Gray logo, black on light colors"],
   };
 
   // [регулярное выражение, українська, English]
   const PATTERNS = [
+    [/^Трек (\d+) из (\d+)$/, "Трек $1 з $2", "Track $1 of $2"],
     // ---- 2.0.4 (идут первыми: точнее общих шаблонов вроде «Сервер …») ----
     [/^Сервер показывает только часть списка \((\d+) из (\d+)\)$/, "Сервер показує лише частину списку ($1 з $2)", "The server shows only part of the list ($1 of $2)"],
     [/^Сервер и друзья$/, "Сервер і друзі", "Server & friends"],

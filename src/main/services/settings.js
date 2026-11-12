@@ -34,6 +34,7 @@ function defaults() {
     // затемнения своей картинки 0..1.
     theme: "green",
     accent_color: "#7de6b8", // для theme: "custom"
+    logo: "auto", // логотип: auto (по теме), green, red, neutral (серый, на светлом — чёрный)
     background: "theme",
     bg_dim: 0.7,
     // Друзья: ники; когда кто-то из них заходит на сервер — уведомление.
@@ -80,6 +81,7 @@ function update(patch) {
   if (next.game_dir === "") next.game_dir = null;
   if (!["green", "red", "custom"].includes(next.theme)) next.theme = "green";
   if (!/^#[0-9a-f]{6}$/i.test(String(next.accent_color || ""))) next.accent_color = "#7de6b8";
+  if (!["auto", "green", "red", "neutral"].includes(next.logo)) next.logo = "auto";
   if (!["theme", "custom"].includes(next.background)) next.background = "theme";
   next.bg_dim = Math.max(0, Math.min(1, Number(next.bg_dim) || 0));
   next.friends = Array.isArray(next.friends)

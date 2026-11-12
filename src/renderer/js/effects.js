@@ -544,6 +544,17 @@
       });
       player.addEventListener("play", notify);
       player.addEventListener("pause", notify);
+      // позиция трека для полосы перемотки
+      let lastTick = 0;
+      const tick = () => {
+        const now = Date.now();
+        if (now - lastTick < 250) return;
+        lastTick = now;
+        IB.emit("music:time", progress());
+      };
+      player.addEventListener("timeupdate", tick);
+      player.addEventListener("loadedmetadata", () => IB.emit("music:time", progress()));
+      player.addEventListener("seeked", () => IB.emit("music:time", progress()));
     }
     tracks = (await api.music.list().catch(() => [])) || [];
     if (!tracks.length) return startAmbient(); // своих треков нет — играет встроенная
@@ -578,6 +589,26 @@
       player.dataset.src = "";
       player.load();
     }
+  }
+
+  /** Позиция и длина текущего своего трека (для перемотки). */
+  function progress() {
+    if (!player || !player.dataset.src) return null;
+    const d = player.duration;
+    return { current: player.currentTime || 0, duration: Number.isFinite(d) ? d : 0 };
+  }
+
+  function seek(seconds) {
+    if (!player || !Number.isFinite(player.duration)) return;
+    player.currentTime = Math.max(0, Math.min(player.duration - 0.25, Number(seconds) || 0));
+    IB.emit("music:time", progress());
+  }
+
+  /** Пауза своей музыки, если включили Spotify. */
+  function pauseForSpotify() {
+    if (userPaused || !settings().music_enabled) return false;
+    IB.effects.togglePause();
+    return true;
   }
 
   function nowPlaying() {
@@ -667,6 +698,9 @@
     },
     release,
     nowPlaying,
+    progress,
+    seek,
+    pauseForSpotify,
     /** Включить трек по номеру (клик по треку в списке). */
     playAt(i) {
       trackIndex = i;

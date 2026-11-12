@@ -18,16 +18,11 @@
     linear-gradient(180deg, rgba(var(--c-070d0b), 0.18) 0%, rgba(var(--c-070d0b), 0.85) 100%);
 }
 
-/* Красная тема IGROBAR: фон — заставка сервера, затемнение мягче, чтобы
-   надпись IGROBAR было видно. */
-:root[data-theme="red"] {
-  --app-bg-image: url("../../../assets/ui/background-igrobar.jpg");
-}
-
-:root[data-theme="red"]:not([data-custom-bg]) .app-bg::after {
-  background:
-    linear-gradient(90deg, rgba(var(--c-070d0b), 0.82) 0%, rgba(var(--c-070d0b), 0.35) 40%, rgba(var(--c-070d0b), 0.1) 100%),
-    linear-gradient(180deg, rgba(var(--c-070d0b), 0.1) 0%, rgba(var(--c-070d0b), 0.75) 100%);
+/* Тема IGROBAR (красная): та же картинка, что у зелёной, перекрашенная в
+   красный — так же, как «Свой цвет». */
+:root[data-theme="red"]:not([data-custom-bg]) .app-bg {
+  background-color: rgb(var(--c-7de6b8));
+  background-blend-mode: luminosity;
 }
 
 /* «Свой цвет»: картинка темы (лес) перекрашивается в выбранный оттенок —

@@ -240,6 +240,14 @@
       root.removeAttribute("data-custom-bg");
       root.style.removeProperty("--bg-dim");
     }
+    // Логотип можно закрепить: зелёный, красный или нейтральный — тогда он
+    // не меняется вместе со своим цветом.
+    const LOGOS = { green: "../../assets/ui/logo.png", red: "../../assets/ui/logo-red.png" };
+    if (LOGOS[a.logo]) logoSrc = LOGOS[a.logo];
+    else if (a.logo === "neutral") {
+      const light = theme === "custom" ? customPalette(a.accent_color).light : false;
+      logoSrc = light ? "../../assets/ui/logo-black.png" : "../../assets/ui/logo-gray.png";
+    }
     const logo = document.querySelector(".sidebar__logo");
     if (logo) logo.src = logoSrc;
     if (!opts.silent) IB.emit("appearance");

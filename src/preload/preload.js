@@ -131,6 +131,10 @@ contextBridge.exposeInMainWorld("ib", {
   info: {
     get: (force) => call("info:get", force),
   },
+  spotify: {
+    command: (command, value) => call("spotify:command", { command, value }),
+    open: (link) => call("spotify:open", link),
+  },
   friends: {
     toggle: (name) => call("friends:toggle", name),
   },

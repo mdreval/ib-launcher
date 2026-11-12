@@ -18,6 +18,7 @@ const game = require("./services/game");
 const modpack = require("./services/modpack");
 const news = require("./services/news");
 const info = require("./services/info");
+const spotify = require("./services/spotify");
 const presence = require("./services/presence");
 const instanceData = require("./services/instanceData");
 const stats = require("./services/stats");
@@ -367,7 +368,7 @@ function register() {
   handle("appearance:get", () => appearance.get());
   handle("appearance:set", (patch) => {
     const allowed = {};
-    for (const key of ["theme", "accent_color", "background", "bg_dim", "live_effects", "live_effect", "seasonal_effects"]) if (patch && key in patch) allowed[key] = patch[key];
+    for (const key of ["theme", "accent_color", "logo", "background", "bg_dim", "live_effects", "live_effect", "seasonal_effects"]) if (patch && key in patch) allowed[key] = patch[key];
     settings.update(allowed);
     return appearance.get();
   });
@@ -503,6 +504,9 @@ function register() {
     return music.add(res.filePaths);
   });
   handle("music:remove", (file) => music.remove(file));
+  handle("spotify:command", ({ command, value } = {}) => spotify.command(command, value));
+  handle("spotify:open", (link) => spotify.open(link));
+  app.on("will-quit", () => spotify.stop());
 
   // ----- обновления лаунчера -----
   updater.setup((event) => broadcast("update:event", event));

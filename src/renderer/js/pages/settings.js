@@ -47,16 +47,18 @@
           };
 
           // темы
+          const neutralFor = (hex) => (IB.theme.customPalette(hex).light ? "../../assets/ui/logo-black.png" : "../../assets/ui/logo-gray.png");
+          const fixedLogo = a.logo === "green" ? "../../assets/ui/logo.png" : a.logo === "red" ? "../../assets/ui/logo-red.png" : a.logo === "neutral" ? neutralFor(accent) : null;
           const themes = [
-            { id: "green", title: "Зелёная", sub: "Ночной лес", img: "../../assets/ui/background.jpg", logo: "../../assets/ui/logo.png" },
-            { id: "red", title: "Красная IGROBAR", sub: "Цвета сервера", img: "../../assets/ui/background-igrobar.jpg", logo: "../../assets/ui/logo-red.png" },
+            { id: "red", title: "IGROBAR", sub: "Цвета сервера", img: "../../assets/ui/background.jpg", logo: fixedLogo || "../../assets/ui/logo-red.png", swatch: "#e2262c" },
+            { id: "green", title: "Зелёная", sub: "Ночной лес", img: "../../assets/ui/background.jpg", logo: fixedLogo || "../../assets/ui/logo.png" },
             {
               id: "custom",
               title: "Свой цвет",
               sub: "Любой оттенок — ниже",
               img: "../../assets/ui/background.jpg",
-              logo: IB.theme.customPalette(accent).light ? "../../assets/ui/logo-black.png" : "../../assets/ui/logo-gray.png",
-              custom: true,
+              logo: fixedLogo || neutralFor(accent),
+              swatch: accent,
             },
           ];
           const themeRow = h("div", { class: "theme-options" });
@@ -73,8 +75,8 @@
                 h(
                   "span",
                   {
-                    class: `theme-option__preview${t.custom ? " theme-option__preview--custom" : ""}`,
-                    style: t.custom ? { backgroundImage: `url("${t.img}")`, "--swatch": accent } : { backgroundImage: `url("${t.img}")` },
+                    class: `theme-option__preview${t.swatch ? " theme-option__preview--custom" : ""}`,
+                    style: t.swatch ? { backgroundImage: `url("${t.img}")`, "--swatch": t.swatch } : { backgroundImage: `url("${t.img}")` },
                   },
                   h("img", { src: t.logo, alt: "" })
                 ),
@@ -112,6 +114,34 @@
             ),
             h("label", { class: "color-picker", title: "Любой цвет" }, picker),
             hexLabel
+          );
+
+          // логотип: по теме или закреплённый
+          const LOGO_OPTIONS = [
+            { id: "auto", title: "По теме", img: null, tip: "Меняется вместе с темой" },
+            { id: "green", img: "../../assets/ui/logo.png", tip: "Зелёный логотип — не меняется при выборе своего цвета" },
+            { id: "red", img: "../../assets/ui/logo-red.png", tip: "Красный логотип — не меняется при выборе своего цвета" },
+            { id: "neutral", img: neutralFor(accent), tip: "Серый логотип, на светлых цветах — чёрный" },
+          ];
+          const logoRow = h(
+            "div",
+            { class: "logo-row" },
+            h("span", { class: "color-row__label", text: "Логотип:" }),
+            ...LOGO_OPTIONS.map((o) =>
+              h(
+                "button",
+                {
+                  class: `logo-option${o.img ? " logo-option--icon" : ""}`,
+                  type: "button",
+                  "aria-pressed": String((a.logo || "auto") === o.id),
+                  "aria-label": o.tip,
+                  title: o.tip,
+                  onClick: async () => apply(await run(() => api.appearance.set({ logo: o.id }))),
+                },
+                o.img ? h("img", { src: o.img, alt: "" }) : h("span", { class: "logo-option__auto", html: IB.icon("sparkles") }),
+                o.title ? h("span", { text: o.title }) : null
+              )
+            )
           );
 
           // фон
@@ -162,6 +192,7 @@
             h("p", { text: "Цвет лаунчера и фон. Свою картинку или видео (MP4, WebM) можно выбрать с компьютера, картинку — ещё и по ссылке из интернета." }),
             themeRow,
             colorRow,
+            logoRow,
             h("div", { class: "row", style: { marginTop: "14px", gap: "10px", flexWrap: "wrap" } }, bgSeg, pickBtn, urlBtn, delBtn)
           );
           if (dimRow) card.append(dimRow);
