@@ -355,7 +355,7 @@ function register() {
   handle("appearance:get", () => appearance.get());
   handle("appearance:set", (patch) => {
     const allowed = {};
-    for (const key of ["theme", "background", "bg_dim"]) if (patch && key in patch) allowed[key] = patch[key];
+    for (const key of ["theme", "accent_color", "background", "bg_dim"]) if (patch && key in patch) allowed[key] = patch[key];
     settings.update(allowed);
     return appearance.get();
   });

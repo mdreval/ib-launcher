@@ -33,6 +33,7 @@ function defaults() {
     // "theme" (картинка темы) или "custom" (своя картинка); bg_dim — сила
     // затемнения своей картинки 0..1.
     theme: "green",
+    accent_color: "#7de6b8", // для theme: "custom"
     background: "theme",
     bg_dim: 0.7,
     skin_mod: true,
@@ -58,7 +59,8 @@ function update(patch) {
   if (typeof next.ram_mb !== "number" || !Number.isFinite(next.ram_mb)) next.ram_mb = current.ram_mb;
   next.ram_mb = Math.max(1024, Math.round(next.ram_mb));
   if (next.game_dir === "") next.game_dir = null;
-  if (!["green", "red"].includes(next.theme)) next.theme = "green";
+  if (!["green", "red", "custom"].includes(next.theme)) next.theme = "green";
+  if (!/^#[0-9a-f]{6}$/i.test(String(next.accent_color || ""))) next.accent_color = "#7de6b8";
   if (!["theme", "custom"].includes(next.background)) next.background = "theme";
   next.bg_dim = Math.max(0, Math.min(1, Number(next.bg_dim) || 0));
   cache = next;

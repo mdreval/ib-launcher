@@ -38,7 +38,8 @@
       function renderAppearance() {
         const card = h("div", { class: "card" });
         const draw = () => {
-          const a = S.appearance || { theme: "green", background: "theme", bg_dim: 0.7 };
+          const a = S.appearance || { theme: "green", background: "theme", bg_dim: 0.7, accent_color: "#7de6b8" };
+          const accent = a.accent_color || "#7de6b8";
           card.textContent = "";
           const apply = (res) => {
             if (res) IB.applyAppearance(res);
@@ -49,6 +50,14 @@
           const themes = [
             { id: "green", title: "Зелёная", sub: "Ночной лес", img: "../../assets/ui/background.jpg", logo: "../../assets/ui/logo.png" },
             { id: "red", title: "Красная IGROBAR", sub: "Цвета сервера", img: "../../assets/ui/background-igrobar.jpg", logo: "../../assets/ui/logo-red.png" },
+            {
+              id: "custom",
+              title: "Свой цвет",
+              sub: "Любой оттенок — ниже",
+              img: "../../assets/ui/background.jpg",
+              logo: IB.theme.customPalette(accent).light ? "../../assets/ui/logo-black.png" : "../../assets/ui/logo-gray.png",
+              custom: true,
+            },
           ];
           const themeRow = h("div", { class: "theme-options" });
           for (const t of themes) {
@@ -61,11 +70,49 @@
                   "aria-pressed": String(a.theme === t.id),
                   onClick: async () => apply(await run(() => api.appearance.set({ theme: t.id }))),
                 },
-                h("span", { class: "theme-option__preview", style: { backgroundImage: `url("${t.img}")` } }, h("img", { src: t.logo, alt: "" })),
+                h(
+                  "span",
+                  {
+                    class: `theme-option__preview${t.custom ? " theme-option__preview--custom" : ""}`,
+                    style: t.custom ? { backgroundImage: `url("${t.img}")`, "--swatch": accent } : { backgroundImage: `url("${t.img}")` },
+                  },
+                  h("img", { src: t.logo, alt: "" })
+                ),
                 h("span", { class: "theme-option__text" }, h("b", { text: t.title }), h("small", { text: t.sub }))
               )
             );
           }
+
+          // свой цвет: готовые цвета + любой цвет (радужный круг)
+          const SWATCHES = ["#ff5252", "#ff9f43", "#ffd43b", "#a9e34b", "#7de6b8", "#38d9a9", "#4dabf7", "#5c7cfa", "#b197fc", "#f783ac", "#f1f3f5", "#868e96", "#25262b"];
+          const setColor = async (hex) => apply(await run(() => api.appearance.set({ theme: "custom", accent_color: hex })));
+          // Предпросмотр «тихий»: карточка не перерисовывается, иначе окно
+          // выбора цвета закрывается при первом же движении.
+          const preview = (hex) => IB.applyAppearance({ ...a, theme: "custom", accent_color: hex }, { silent: true });
+          const hexLabel = h("span", { class: "color-hex", text: a.theme === "custom" ? accent.toUpperCase() : "" });
+          const picker = h("input", { type: "color", value: accent, title: "Любой цвет" });
+          picker.addEventListener("input", () => {
+            hexLabel.textContent = picker.value.toUpperCase();
+            preview(picker.value); // видно сразу, сохраняется при отпускании
+          });
+          picker.addEventListener("change", () => setColor(picker.value));
+          const colorRow = h(
+            "div",
+            { class: "color-row" },
+            h("span", { class: "color-row__label", text: "Свой цвет:" }),
+            ...SWATCHES.map((hex) =>
+              h("button", {
+                class: "color-swatch",
+                type: "button",
+                title: hex.toUpperCase(),
+                "aria-pressed": String(a.theme === "custom" && accent.toLowerCase() === hex),
+                style: { background: hex, "--swatch-glow": hex },
+                onClick: () => setColor(hex),
+              })
+            ),
+            h("label", { class: "color-picker", title: "Любой цвет" }, picker),
+            hexLabel
+          );
 
           // фон
           const bgSeg = h(
@@ -105,6 +152,7 @@
             h("h3", { text: "Оформление" }),
             h("p", { text: "Цвет лаунчера и картинка на фоне. Свою картинку можно выбрать с компьютера или вставить ссылку на неё из интернета." }),
             themeRow,
+            colorRow,
             h("div", { class: "row", style: { marginTop: "14px", gap: "10px", flexWrap: "wrap" } }, bgSeg, pickBtn, urlBtn, delBtn)
           );
           if (dimRow) card.append(dimRow);

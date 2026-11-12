@@ -71,7 +71,7 @@ function resetCustom() {
 function get() {
   const s = settings.get();
   const dataUrl = s.background === "custom" ? customDataUrl() : null;
-  return { theme: s.theme, background: dataUrl ? "custom" : "theme", bg_dim: s.bg_dim, customDataUrl: dataUrl, hasCustom: !!currentFile() };
+  return { theme: s.theme, accent_color: s.accent_color, background: dataUrl ? "custom" : "theme", bg_dim: s.bg_dim, customDataUrl: dataUrl, hasCustom: !!currentFile() };
 }
 
 module.exports = { get, fromPath, fromUrl, resetCustom };

@@ -76,11 +76,159 @@
 
   // ---------- оформление ----------
   /** Тема (зелёная / красная IGROBAR) и своя картинка фона. */
-  IB.applyAppearance = (a) => {
+  // ---------- свой цвет лаунчера ----------
+  //
+  // Все цвета интерфейса — переменные --c-xxxxxx в base.css (значения
+  // зелёной темы). Для «своего цвета» каждый из них пересчитывается: оттенок
+  // берётся выбранный, насыщенность — пропорционально выбранной, яркость
+  // остаётся прежней (тёмное остаётся тёмным, светлое — светлым). Акцентные
+  // цвета (кнопки, ползунки, выделение) — сам выбранный цвет; текст на них
+  // чёрный или белый — смотря что лучше читается.
+
+  const ACCENT_KEYS = {
+    "--c-a8f0d0": 0, // основной акцент
+    "--c-7de6b8": -0.08, // акцент поярче/потемнее
+    "--c-93ecc6": -0.04,
+    "--c-c3f7e0": 0.06, // светлые оттенки (градиент кнопок)
+    "--c-d6fbea": 0.1,
+  };
+  const ON_ACCENT_KEY = "--c-0a1411";
+  const BASE_ACCENT_SAT = 0.73; // насыщенность мятного акцента зелёной темы
+
+  function hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    const n = m ? parseInt(m[1], 16) : 0x7de6b8;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function rgbToHsl([r, g, b]) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+
+  function hslToRgb([h, s, l]) {
+    const k = (n) => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [f(0), f(8), f(4)].map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255));
+  }
+
+  const luminance = ([r, g, b]) => {
+    const c = [r, g, b].map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+
+  // Цвета зелёной темы (как в начале base.css). Читать их из CSS на лету
+  // нельзя: для file:// Chromium не даёт доступ к правилам стилей.
+  const BASE_COLORS = {
+    "--c-030706": "3, 7, 6",
+    "--c-060c0a": "6, 12, 10",
+    "--c-070d0b": "7, 13, 11",
+    "--c-080e0c": "8, 14, 12",
+    "--c-0a1210": "10, 18, 16",
+    "--c-0a1411": "10, 20, 17",
+    "--c-0b1311": "11, 19, 17",
+    "--c-0c1513": "12, 21, 19",
+    "--c-0d1714": "13, 23, 20",
+    "--c-0e1815": "14, 24, 21",
+    "--c-0f1916": "15, 25, 22",
+    "--c-101a17": "16, 26, 23",
+    "--c-14221e": "20, 34, 30",
+    "--c-162420": "22, 36, 32",
+    "--c-1a2c27": "26, 44, 39",
+    "--c-1c2a26": "28, 42, 38",
+    "--c-1e302a": "30, 48, 42",
+    "--c-2d4b42": "45, 75, 66",
+    "--c-6f8880": "111, 136, 128",
+    "--c-7de6b8": "125, 230, 184",
+    "--c-93ecc6": "147, 236, 198",
+    "--c-a8f0d0": "168, 240, 208",
+    "--c-a9beb5": "169, 190, 181",
+    "--c-c3f7e0": "195, 247, 224",
+    "--c-c7d6cf": "199, 214, 207",
+    "--c-c9d6d0": "201, 214, 208",
+    "--c-d6fbea": "214, 251, 234",
+    "--c-eef6f2": "238, 246, 242",
+  };
+
+  /** Значения --c-* зелёной темы. */
+  function baseThemeColors() {
+    return BASE_COLORS;
+  }
+
+  /** Все цвета темы под выбранный цвет: { "--c-xxxxxx": "r, g, b" }. */
+  function customPalette(hex) {
+    const picked = hexToRgb(hex);
+    const [h, s, l] = rgbToHsl(picked);
+    const satFactor = Math.min(1.25, s / BASE_ACCENT_SAT);
+    const accentL = Math.max(0.5, Math.min(0.82, l));
+    const out = {};
+    for (const [name, value] of Object.entries(baseThemeColors())) {
+      const rgb = value.split(",").map((x) => parseInt(x, 10));
+      let next;
+      if (name in ACCENT_KEYS) {
+        next = hslToRgb([h, Math.min(1, s), Math.max(0.3, Math.min(0.95, accentL + ACCENT_KEYS[name]))]);
+      } else {
+        const [, bs, bl] = rgbToHsl(rgb);
+        next = hslToRgb([h, Math.min(1, bs * satFactor), bl]);
+      }
+      out[name] = next.join(", ");
+    }
+    // Текст на кнопках: чёрный на светлом акценте, белый на тёмном.
+    const accentRgb = hslToRgb([h, Math.min(1, s), accentL]);
+    out[ON_ACCENT_KEY] = luminance(accentRgb) > 0.36 ? hslToRgb([h, Math.min(0.35, s), 0.07]).join(", ") : "255, 255, 255";
+    return { vars: out, light: luminance(picked) > 0.62, accentRgb };
+  }
+
+  let appliedVars = [];
+  function applyPalette(palette) {
+    const root = document.documentElement;
+    for (const name of appliedVars) root.style.removeProperty(name);
+    appliedVars = [];
+    if (!palette) return;
+    for (const [name, value] of Object.entries(palette.vars)) {
+      root.style.setProperty(name, value);
+      appliedVars.push(name);
+    }
+  }
+
+  IB.theme = { customPalette, hexToRgb };
+
+  /** Тема (зелёная / красная IGROBAR / свой цвет) и своя картинка фона. */
+  /** opts.silent — только перекрасить, не сообщая страницам (предпросмотр
+   * при выборе цвета: иначе настройки перерисуются и окно выбора закроется). */
+  IB.applyAppearance = (a, opts = {}) => {
     if (!a) return;
     S.appearance = a;
     const root = document.documentElement;
-    root.dataset.theme = a.theme === "red" ? "red" : "green";
+    const theme = ["red", "custom"].includes(a.theme) ? a.theme : "green";
+    root.dataset.theme = theme;
+    let logoSrc = "../../assets/ui/logo.png";
+    if (theme === "custom") {
+      const palette = customPalette(a.accent_color);
+      applyPalette(palette);
+      // Логотип на своём цвете — нейтральный: серый, а на очень светлых
+      // цветах — чёрный.
+      logoSrc = palette.light ? "../../assets/ui/logo-black.png" : "../../assets/ui/logo-gray.png";
+    } else {
+      applyPalette(null);
+      if (theme === "red") logoSrc = "../../assets/ui/logo-red.png";
+    }
     if (a.background === "custom" && a.customDataUrl) {
       root.style.setProperty("--app-bg-image", `url("${a.customDataUrl}")`);
       root.setAttribute("data-custom-bg", "");
@@ -91,8 +239,8 @@
       root.style.removeProperty("--bg-dim");
     }
     const logo = document.querySelector(".sidebar__logo");
-    if (logo) logo.src = a.theme === "red" ? "../../assets/ui/logo-red.png" : "../../assets/ui/logo.png";
-    IB.emit("appearance");
+    if (logo) logo.src = logoSrc;
+    if (!opts.silent) IB.emit("appearance");
   };
 
   // ---------- действия ----------

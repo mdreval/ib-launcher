@@ -1,6 +1,6 @@
 {
-  "_help": "Главный файл настроек лаунчера. launcher_version — версия самого лаунчера (при отправке на GitHub с новой версией соберётся и выйдет обновление). servers — параметры сервера: версия Minecraft, загрузчик, адрес. Изменения servers применяются у игроков сразу, без нового релиза. server_address — адрес, который попадёт в «Сетевую игру»; status_address — адреса для проверки онлайна на главной (через запятую, берётся первый ответивший).",
-  "launcher_version": "2.0.2",
+  "_help": "Главный файл настроек лаунчера. launcher_version — версия самого лаунчера (при отправке на GitHub с новой версией соберётся и выйдет обновление). servers — параметры сервера: версия Minecraft, загрузчик, адрес. Изменения servers применяются у игроков сразу, без нового релиза. server_address — адрес, который попадёт в «Сетевую игру»; status_address — адреса для проверки онлайна на главной (через запятую, берётся первый ответивший). dynmap_url и mtr_map_url — карты на вкладке «Карта сервера» (обычная и карта МТР).",
+  "launcher_version": "2.0.3",
   "servers": [
     {
       "id": "igrobar",
@@ -13,6 +13,7 @@
         "asset": "modpack.zip"
       },
       "dynmap_url": "https://igrobar.dynmap.xyz/",
+      "mtr_map_url": "http://d11.joinserver.xyz:25986/",
       "server_address": "igrobar.aboba.host",
       "status_address": "igrobar.aboba.host, igrobar2.aboba.host, d11.joinserver.xyz:25970, 135.181.237.56:25970",
       "telegram": "https://t.me/igrobar",

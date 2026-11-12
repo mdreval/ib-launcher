@@ -1254,3 +1254,83 @@
 .theme-option__text small {
   color: var(--text-muted);
 }
+
+/* ---- настройки: свой цвет ---- */
+.theme-option__preview--custom {
+  background-color: var(--swatch, #7de6b8);
+  background-blend-mode: luminosity;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.color-row__label {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.color-swatch,
+.color-picker {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: transform 160ms var(--spring), border-color 150ms, box-shadow 150ms;
+}
+
+.color-swatch:hover,
+.color-picker:hover {
+  transform: scale(1.12);
+}
+
+.color-swatch[aria-pressed="true"] {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 14px var(--swatch-glow, transparent);
+}
+
+/* Кнопка «любой цвет» — радужный круг, внутри скрытый input[type=color]. */
+.color-picker {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(red, #ff0, lime, cyan, blue, #f0f, red);
+}
+
+.color-picker input {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-hex {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  min-width: 64px;
+}
+
+/* ---- карта: две карты (мир и МТР) лежат друг на друге ---- */
+.map-frame {
+  position: relative;
+}
+
+.map-frame webview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-frame webview.map-frame__hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
