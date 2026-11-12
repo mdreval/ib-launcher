@@ -5,3 +5,4 @@ dev-data/
 *.log
 .DS_Store
 Thumbs.db
+Claude outputs/
