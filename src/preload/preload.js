@@ -28,6 +28,7 @@ const EVENTS = [
   "server:status",
   "modpack:background",
   "import:progress",
+  "usage:changed",
 ];
 
 function on(event, callback) {
@@ -163,6 +164,9 @@ contextBridge.exposeInMainWorld("ib", {
   },
   stats: {
     get: () => call("stats:get"),
+  },
+  usage: {
+    get: (force) => call("usage:get", force),
   },
   capes: {
     get: (accountId) => call("capes:get", accountId),

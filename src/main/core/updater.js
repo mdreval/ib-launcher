@@ -5,7 +5,9 @@
  *          перезапуске.
  * macOS:   приложение не подписано сертификатом Apple, поэтому
  *          автообновление там невозможно — лаунчер только сообщает о новой
- *          версии и даёт ссылку на .dmg в релизе.
+ *          версии и даёт ссылку на .dmg в релизе. Релизы собираются только
+ *          для Apple Silicon (M1 и новее): Mac на Intel получает ссылку на
+ *          страницу релиза и пометку, что его сборки больше нет.
  */
 
 const { app } = require("electron");
@@ -60,9 +62,15 @@ async function checkManual() {
     return { available: false };
   }
   const dmgs = (release.assets || []).filter((a) => a.name.endsWith(".dmg"));
-  const archMatch = dmgs.find((a) => (process.arch === "arm64" ? /arm64/i.test(a.name) : !/arm64/i.test(a.name)));
-  const asset = archMatch || dmgs[0] || null;
-  emit({ type: "manual", version: latest, url: release.html_url, download: asset ? asset.browser_download_url : release.html_url });
+  // Только .dmg под свой процессор: arm64 на Intel не запустится.
+  const asset = dmgs.find((a) => (process.arch === "arm64" ? /arm64/i.test(a.name) : !/arm64/i.test(a.name))) || null;
+  emit({
+    type: "manual",
+    version: latest,
+    url: release.html_url,
+    download: asset ? asset.browser_download_url : release.html_url,
+    unsupported: !asset && process.arch !== "arm64" && dmgs.length > 0,
+  });
   return { available: true, version: latest };
 }
 

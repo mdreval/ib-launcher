@@ -16,6 +16,7 @@
     page: null,
     lastLogBuild: null,
     serverStatus: null,
+    usage: null,
   });
 
   // ---------- шина событий ----------
@@ -350,7 +351,7 @@
   };
 
   // события состояния передаём текущей странице
-  for (const name of ["builds", "accounts", "skin", "settings", "game", "log", "server"]) {
+  for (const name of ["builds", "accounts", "skin", "settings", "game", "log", "server", "usage"]) {
     IB.on(name, (detail) => {
       if (current && current.update) current.update(name, detail);
     });
@@ -427,6 +428,10 @@
       S.serverStatus = st;
       IB.emit("server", st);
     });
+    api.on("usage:changed", (usage) => {
+      S.usage = usage;
+      IB.emit("usage", usage);
+    });
     api.on("modpack:background", ({ release }) => {
       toast(`Модпак сервера тихо обновлён${release ? ` до ${release}` : ""} — можно играть`, "success");
     });
@@ -438,14 +443,7 @@
         toast(`Доступна новая версия лаунчера ${event.version} — загружаю…`, "info");
         api.updates.download().catch(() => {});
       }
-      if (event.type === "manual") {
-        IB.confirmDialog({
-          title: "Доступна новая версия",
-          text: `Вышла версия лаунчера ${event.version}. На macOS обновление ставится вручную: скачайте новый .dmg и перетащите приложение в «Программы».`,
-          confirmText: "Скачать",
-          danger: false,
-        }).then((yes) => yes && api.app.openExternal(event.download || event.url));
-      }
+      if (event.type === "manual") macUpdateDialog(event);
       if (event.type === "downloaded") {
         IB.confirmDialog({
           title: "Обновление готово",
@@ -454,6 +452,36 @@
           danger: false,
         }).then((yes) => yes && api.updates.install());
       }
+    });
+  }
+
+  /** macOS: обновление вручную — «Скачать» или «Копировать ссылку». */
+  function macUpdateDialog(event) {
+    const link = event.download || event.url;
+    const text = event.unsupported
+      ? `Вышла версия лаунчера ${event.version}. Новые версии выходят только для Mac на Apple Silicon (M1 и новее) — на Mac с процессором Intel они не запустятся.`
+      : `Вышла версия лаунчера ${event.version}. На macOS обновление ставится вручную: скачайте новый .dmg и перетащите приложение в «Программы».`;
+    const later = h("button", { class: "btn btn--ghost", text: "Позже" });
+    const copy = h("button", { class: "btn", text: "Копировать ссылку" });
+    const download = h("button", { class: "btn btn--primary", text: event.unsupported ? "Открыть страницу релиза" : "Скачать" });
+    const m = IB.modal({
+      title: "Доступна новая версия",
+      content: h("p", { class: "soft", style: { margin: 0 }, text }),
+      footer: event.unsupported ? [later, download] : [later, copy, download],
+    });
+    later.addEventListener("click", () => m.close());
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(link);
+        toast("Ссылка скопирована — откройте её в браузере, когда будет удобно", "success");
+        copy.textContent = "Скопировано";
+      } catch (err) {
+        toast("Не удалось скопировать ссылку", "error");
+      }
+    });
+    download.addEventListener("click", () => {
+      m.close();
+      api.app.openExternal(event.download || event.url);
     });
   }
 
@@ -474,6 +502,15 @@
       IB.applyAppearance(await api.appearance.get().catch(() => null));
       IB.i18n.start(S.settings.language || S.settings.language_effective);
       await Promise.all([loadBuilds(), loadAccounts()]);
+      api.usage
+        .get()
+        .then((usage) => {
+          if (usage) {
+            S.usage = usage;
+            IB.emit("usage", usage);
+          }
+        })
+        .catch(() => {});
     } catch (err) {
       toast(`Ошибка запуска интерфейса: ${err.message}`, "error");
     }

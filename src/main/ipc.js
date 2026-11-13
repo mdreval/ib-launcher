@@ -15,6 +15,7 @@ const versions = require("./services/versions");
 const accounts = require("./services/accounts");
 const skins = require("./services/skins");
 const skinCloud = require("./services/skinCloud");
+const usage = require("./services/usage");
 const game = require("./services/game");
 const modpack = require("./services/modpack");
 const news = require("./services/news");
@@ -466,6 +467,8 @@ function register() {
 
   // ----- профиль и статистика -----
   handle("stats:get", () => stats.get());
+  handle("usage:get", (force) => usage.get(force));
+  usage.start();
   handle("game:crash-info", (buildId) => game.crashInfo(buildId));
 
   // ----- плащи -----

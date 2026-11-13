@@ -223,6 +223,98 @@
   color: var(--text-soft);
 }
 
+/* Статистика лаунчера (страница «Настройки») */
+.usage-card__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.usage-card__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--r-md, 10px);
+  border: 1px solid var(--border);
+  background: rgba(var(--c-080e0c), 0.45);
+  text-align: center;
+}
+
+.usage-card__stat strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-card__stat span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.usage-group + .usage-group {
+  margin-top: 4px;
+}
+
+.usage-group__title {
+  margin: 14px 0 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.usage-group:first-child .usage-group__title {
+  margin-top: 0;
+}
+
+.usage-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.usage-versions__row {
+  display: grid;
+  grid-template-columns: minmax(90px, 220px) 1fr 90px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+
+.usage-versions__name {
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-versions__row.is-current .usage-versions__name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.usage-versions__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(var(--c-080e0c), 0.6);
+  overflow: hidden;
+}
+
+.usage-versions__bar > div {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.usage-versions__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
 .launch-bar {
   position: relative;
   display: flex;

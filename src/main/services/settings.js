@@ -62,6 +62,8 @@ function defaults() {
     // CustomSkinLoader у всех берёт скины оттуда (services/skinCloud.js).
     skin_cloud: true,
     skin_cloud_url: "",
+    // Статистика лаунчера (services/usage.js): отмечаться ли при запуске.
+    usage_stats: true,
   };
 }
 

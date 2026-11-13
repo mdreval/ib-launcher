@@ -1,11 +1,12 @@
 /**
- * Igrobar Skins — сервер скинов для Igrobar Launcher (Cloudflare Worker).
+ * Igrobar Skins — сервер скинов и статистики для Igrobar Launcher (Cloudflare Worker).
  *
  * Лаунчер загружает сюда скин и плащ игрока, а CustomSkinLoader в игре
  * берёт их отсюда по нику — так все игроки лаунчера видят скины друг друга.
  *
  * Нужно в настройках Worker'а:
  *   - Binding  KV namespace, имя переменной: SKINS
+ *   - Binding  D1 database, имя переменной: DB   (статистика лаунчера)
  *   - Secret   ADMIN_KEY — длинный секретный ключ админа (сброс ников)
  *
  * Для игры (формат CustomSkinAPI, источник в CustomSkinLoader.json):
@@ -21,6 +22,20 @@
  *          дальше менять скин этого ника можно только с тем же ключом.
  *   DELETE /api/skin/<ник>        — удалить скин (владелец или админ).
  *          Админ с ?reset_owner=1 — ещё и «освобождает» ник (игрок потерял ключ).
+ *
+ * Статистика лаунчера (D1, таблица создаётся сама):
+ *   POST /api/usage/ping   — { "id": "<32 hex>", "version": "2.0.6", "os": "win"|"mac"|"linux" }
+ *                            лаунчер отмечается при запуске; в ответ — статистика
+ *   POST /api/usage/launch — { "id": "<32 hex>", "mc": "1.21.1", "loader": "neoforge", "igrobar": true }
+ *                            лаунчер сообщает о запуске игры (без названий сборок)
+ *   GET  /api/usage/stats  — {
+ *          installs, today, week,           — лаунчер: установки и сколько людей открывали
+ *                                             его сегодня (по Москве/Киеву, UTC+3) и за 7 дней;
+ *          versions: [{ version, count }],  — версии лаунчера у тех, кто открывал его за 30 дней;
+ *          games: { today, week, total },   — сколько раз запускали игру;
+ *          top: [{ mc, loader, igrobar, count }], top_total — топ-5 версий игры за 30 дней
+ *        }
+ *   Хранится только случайный номер установки, версия и система — без ников и IP.
  */
 
 const NAME_RE = /^[A-Za-z0-9_]{1,16}$/;
@@ -31,7 +46,7 @@ const MIN_PLAYER_KEY = 32;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 
@@ -206,20 +221,162 @@ async function handleDelete(env, request, name, url) {
   return json({ ok: true, owner_reset: resetOwner }, 200, { "Cache-Control": "no-store" });
 }
 
+// ---------- статистика лаунчера ----------
+
+const INSTALL_ID_RE = /^[0-9a-f]{32}$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // «сегодня» считаем по UTC+3
+const STATS_TTL_MS = 60 * 1000;
+
+let schemaReady = false;
+
+function compareVersions(a, b) {
+  const pa = String(a).split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const pb = String(b).split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
+}
+let statsCache = null; // { at, data } — в памяти Worker'а, чтобы не считать на каждый запрос
+
+async function ensureSchema(env) {
+  if (schemaReady) return;
+  await env.DB.batch([
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS installs (id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, version TEXT, os TEXT)"
+    ),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS installs_last_seen ON installs (last_seen)"),
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS launches (n INTEGER PRIMARY KEY AUTOINCREMENT, install_id TEXT NOT NULL, ts INTEGER NOT NULL, mc TEXT NOT NULL, loader TEXT NOT NULL, igrobar INTEGER NOT NULL DEFAULT 0)"
+    ),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS launches_ts ON launches (ts)"),
+    // Общие счётчики — чтобы «запусков всего» не пересчитывать по всей таблице.
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INTEGER NOT NULL)"),
+  ]);
+  schemaReady = true;
+}
+
+async function readStats(env, fresh = false) {
+  const now = Date.now();
+  if (!fresh && statsCache && now - statsCache.at < STATS_TTL_MS) return statsCache.data;
+  const dayStart = Math.floor((now + TZ_OFFSET_MS) / DAY_MS) * DAY_MS - TZ_OFFSET_MS;
+  const weekStart = now - 7 * DAY_MS;
+  const row = await env.DB.prepare(
+    "SELECT COUNT(*) AS installs, COALESCE(SUM(last_seen >= ?1), 0) AS today, COALESCE(SUM(last_seen >= ?2), 0) AS week FROM installs"
+  )
+    .bind(dayStart, weekStart)
+    .first();
+  const { results } = await env.DB.prepare(
+    "SELECT COALESCE(version, '?') AS version, COUNT(*) AS count FROM installs WHERE last_seen >= ?1 GROUP BY version"
+  )
+    .bind(now - 30 * DAY_MS)
+    .all();
+  const versions = (results || [])
+    .map((r) => ({ version: r.version, count: r.count }))
+    .sort((a, b) => compareVersions(b.version, a.version));
+  const games = await env.DB.prepare(
+    "SELECT COALESCE(SUM(ts >= ?1), 0) AS today, COUNT(*) AS week FROM launches WHERE ts >= ?2"
+  )
+    .bind(dayStart, weekStart)
+    .first();
+  const total = await env.DB.prepare("SELECT value FROM counters WHERE name = 'launches'").first();
+  const monthStart = now - 30 * DAY_MS;
+  const topRows = await env.DB.prepare(
+    "SELECT mc, loader, igrobar, COUNT(*) AS count FROM launches WHERE ts >= ?1 GROUP BY mc, loader, igrobar ORDER BY count DESC LIMIT 5"
+  )
+    .bind(monthStart)
+    .all();
+  const topTotal = await env.DB.prepare("SELECT COUNT(*) AS c FROM launches WHERE ts >= ?1").bind(monthStart).first();
+  const data = {
+    installs: row.installs || 0,
+    today: row.today || 0,
+    week: row.week || 0,
+    versions,
+    games: { today: games.today || 0, week: games.week || 0, total: (total && total.value) || 0 },
+    top: (topRows.results || []).map((r) => ({ mc: r.mc, loader: r.loader, igrobar: Boolean(r.igrobar), count: r.count })),
+    top_total: (topTotal && topTotal.c) || 0,
+    updated: now,
+  };
+  statsCache = { at: now, data };
+  return data;
+}
+
+async function handleUsagePing(env, request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return fail(400, "Тело запроса должно быть JSON");
+  }
+  const id = String(body.id || "").toLowerCase();
+  if (!INSTALL_ID_RE.test(id)) return fail(400, "Неверный номер установки");
+  const version = /^[0-9A-Za-z.\-]{1,20}$/.test(String(body.version || "")) ? String(body.version) : null;
+  const os = ["win", "mac", "linux"].includes(body.os) ? body.os : "other";
+  const now = Date.now();
+  await env.DB.prepare(
+    "INSERT INTO installs (id, first_seen, last_seen, version, os) VALUES (?1, ?2, ?2, ?3, ?4) " +
+      "ON CONFLICT(id) DO UPDATE SET last_seen = excluded.last_seen, version = excluded.version, os = excluded.os"
+  )
+    .bind(id, now, version, os)
+    .run();
+  return json(await readStats(env, true), 200, { "Cache-Control": "no-store" });
+}
+
+const LOADERS = ["vanilla", "fabric", "forge", "neoforge", "quilt"];
+
+async function handleUsageLaunch(env, request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return fail(400, "Тело запроса должно быть JSON");
+  }
+  const id = String(body.id || "").toLowerCase();
+  if (!INSTALL_ID_RE.test(id)) return fail(400, "Неверный номер установки");
+  const mc = String(body.mc || "");
+  if (!/^[0-9A-Za-z.\-_]{1,24}$/.test(mc)) return fail(400, "Неверная версия Minecraft");
+  const loader = LOADERS.includes(body.loader) ? body.loader : "other";
+  // Запуск засчитываем только от известной установки — чтобы цифры нельзя было накрутить пустыми запросами.
+  const known = await env.DB.prepare("SELECT 1 AS ok FROM installs WHERE id = ?1").bind(id).first();
+  if (!known) return fail(403, "Неизвестная установка");
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO launches (install_id, ts, mc, loader, igrobar) VALUES (?1, ?2, ?3, ?4, ?5)").bind(id, now, mc, loader, body.igrobar ? 1 : 0),
+    env.DB.prepare("INSERT INTO counters (name, value) VALUES ('launches', 1) ON CONFLICT(name) DO UPDATE SET value = value + 1"),
+    env.DB.prepare("UPDATE installs SET last_seen = ?2 WHERE id = ?1").bind(id, now),
+  ]);
+  statsCache = null;
+  return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+}
+
+async function handleUsage(env, request, path) {
+  if (!env.DB) return fail(503, "Не подключена база статистики: добавьте D1 binding с именем DB");
+  await ensureSchema(env);
+  if (path === "/api/usage/ping" && request.method === "POST") return handleUsagePing(env, request);
+  if (path === "/api/usage/launch" && request.method === "POST") return handleUsageLaunch(env, request);
+  if (path === "/api/usage/stats" && request.method === "GET") {
+    return json(await readStats(env), 200, { "Cache-Control": "public, max-age=60" });
+  }
+  return fail(404, "Not found");
+}
+
 // ---------- маршруты ----------
 
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
-    if (!env.SKINS) return fail(500, "Не подключено хранилище: добавьте KV binding с именем SKINS");
 
     const url = new URL(request.url);
     const path = decodeURIComponent(url.pathname);
     let m;
 
     try {
+      if (path.startsWith("/api/usage/")) return await handleUsage(env, request, path);
+      if (!env.SKINS) return fail(500, "Не подключено хранилище: добавьте KV binding с именем SKINS");
+
       if (request.method === "GET") {
-        if (path === "/" || path === "") return json({ name: "Igrobar Skins", ok: true });
+        if (path === "/" || path === "") return json({ name: "Igrobar Skins", ok: true, stats: Boolean(env.DB) });
         if ((m = /^\/textures\/([0-9a-f]{64})$/.exec(path)) && HASH_RE.test(m[1])) return handleTexture(env, m[1]);
         if ((m = /^\/skins\/([^/]+)\.png$/.exec(path)) && NAME_RE.test(m[1])) return handleNamedPng(env, m[1], "skin");
         if ((m = /^\/capes\/([^/]+)\.png$/.exec(path)) && NAME_RE.test(m[1])) return handleNamedPng(env, m[1], "cape");

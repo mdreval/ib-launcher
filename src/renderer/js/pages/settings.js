@@ -1,4 +1,4 @@
-/* Настройки: память, модпак IGROBAR, папка игры, поведение, аргументы JVM, обновления, данные */
+/* Настройки: память, модпак IGROBAR, папка игры, поведение, аргументы JVM, обновления, статистика, данные */
 (function () {
   const IB = window.IB;
   const { h, run, toast } = IB;
@@ -517,6 +517,19 @@
         });
         wrap.append(h("div", { class: "card" }, h("div", { class: "setting-line" }, h("div", {}, h("h3", { text: "Обновления лаунчера" }), updText), updBtn)));
 
+        // ---- статистика лаунчера ----
+        usageBox = h("div", {});
+        fillUsage();
+        wrap.append(
+          h(
+            "div",
+            { class: "card" },
+            h("h3", { text: "Статистика лаунчера" }),
+            h("p", { style: { marginBottom: "12px" }, text: "Сколько людей пользуется лаунчером IGROBAR. Учитывается анонимно: только номер установки, версия и система." }),
+            usageBox
+          )
+        );
+
         // ---- данные ----
         wrap.append(
           h(
@@ -547,9 +560,100 @@
         );
       }
 
+      // Статистика лаунчера (services/usage.js): ряд «Лаунчер» (люди), ряд «Игра»
+      // (запуски), топ-5 версий игры и версии лаунчера.
+      let usageBox = null;
+      const LOADER_NAMES = { vanilla: "ванилла", fabric: "Fabric", forge: "Forge", neoforge: "NeoForge", quilt: "Quilt" };
+      function fillUsage() {
+        if (!usageBox) return;
+        usageBox.textContent = "";
+        const u = S.usage;
+        if (!u) {
+          usageBox.append(h("p", { class: "muted", text: "Загрузка статистики…" }));
+          return;
+        }
+        const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
+        const pct = (n, total) => Math.round(((n || 0) / (total || 1)) * 100);
+        const stat = (value, label, title) => h("div", { class: "usage-card__stat", title }, h("strong", { text: fmt(value) }), h("span", { text: label }));
+        const group = (title, ...stats) => h("div", { class: "usage-group" }, h("h4", { class: "usage-group__title", text: title }), h("div", { class: "usage-card__grid" }, ...stats));
+        const bars = (title, rows) =>
+          h(
+            "div",
+            {},
+            h("h4", { class: "usage-group__title", text: title }),
+            h(
+              "div",
+              { class: "usage-versions" },
+              ...rows.map((r) =>
+                h(
+                  "div",
+                  { class: `usage-versions__row${r.current ? " is-current" : ""}` },
+                  h("span", { class: "usage-versions__name", text: r.name, title: r.name }),
+                  h("div", { class: "usage-versions__bar" }, h("div", { style: { width: `${Math.max(3, r.percent)}%` } })),
+                  h("span", { class: "usage-versions__count", text: `${fmt(r.count)} · ${r.percent}%` })
+                )
+              )
+            )
+          );
+        const games = u.games || {};
+        usageBox.append(
+          group(
+            "Лаунчер",
+            stat(u.installs, "Установок", "Сколько всего разных компьютеров установили лаунчер"),
+            stat(u.today, "Открывали сегодня", "Сколько человек открывали лаунчер сегодня"),
+            stat(u.week, "Открывали за неделю", "Сколько человек открывали лаунчер за последние 7 дней")
+          ),
+          group(
+            "Игра",
+            stat(games.today, "Запусков сегодня", "Сколько раз запускали игру сегодня"),
+            stat(games.week, "Запусков за неделю", "Сколько раз запускали игру за последние 7 дней"),
+            stat(games.total, "Запусков всего", "Сколько раз запускали игру за всё время")
+          )
+        );
+        const top = u.top || [];
+        if (top.length) {
+          usageBox.append(
+            bars(
+              "Топ-5 версий игры за 30 дней",
+              top.map((t) => ({
+                name: `${t.mc} · ${LOADER_NAMES[t.loader] || t.loader}${t.igrobar ? " (IGROBAR)" : ""}`,
+                count: t.count,
+                percent: pct(t.count, u.top_total),
+              }))
+            )
+          );
+        }
+        const versions = u.versions || [];
+        if (versions.length) {
+          const total = versions.reduce((sum, v) => sum + (v.count || 0), 0);
+          const current = S.info ? S.info.version : "";
+          usageBox.append(
+            bars(
+              "Версии лаунчера у тех, кто открывал его за 30 дней",
+              versions.map((v) => ({
+                name: v.version === "?" ? "неизвестно" : `v${v.version}`,
+                count: v.count,
+                percent: pct(v.count, total),
+                current: v.version === current,
+              }))
+            )
+          );
+        }
+      }
+      api.usage
+        .get(true)
+        .then((u) => {
+          if (u) {
+            S.usage = u;
+            fillUsage();
+          }
+        })
+        .catch(() => {});
+
       render();
       return {
         update(kind) {
+          if (kind === "usage") fillUsage();
           const typing = document.activeElement && wrap.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA";
           if ((kind === "settings" || kind === "builds") && !typing) render();
         },

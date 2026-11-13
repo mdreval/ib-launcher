@@ -28,6 +28,7 @@ const serverList = require("./serverList");
 const skinMod = require("./skinMod");
 const serverStatus = require("../core/serverStatus");
 const stats = require("./stats");
+const usage = require("./usage");
 const crash = require("./crash");
 const discordRpc = require("./discordRpc");
 const { broadcast } = require("../core/broadcast");
@@ -500,6 +501,7 @@ async function launch(buildId) {
         setStatus(buildId, "running");
         launcherLine(buildId, "Игра запущена");
         stats.gameStarted(buildId, auth.account && auth.account.id);
+        usage.gameLaunched(build);
         discordRpc.playing(build);
         windowHooks.onGameStart(buildId);
         resolve();
