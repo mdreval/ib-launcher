@@ -479,7 +479,10 @@
         api.updates.download().catch(() => {});
       }
       if (event.type === "manual") macUpdateDialog(event);
-      if (event.type === "manual-error" && event.http) macUpdateDialog(event);
+      // Окно «не удалось проверить» — только если игрок сам нажал
+      // «Проверить обновления», а не при каждом запуске лаунчера.
+      if (event.type === "manual-error" && event.http && IB.updateCheckByUser) macUpdateDialog(event);
+      if (["manual", "manual-error", "not-available", "error"].includes(event.type)) IB.updateCheckByUser = false;
       if (event.type === "downloaded") {
         IB.confirmDialog({
           title: "Обновление готово",
