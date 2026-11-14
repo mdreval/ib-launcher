@@ -13,7 +13,7 @@
 const { app } = require("electron");
 const log = require("electron-log");
 const pkg = require("../../../package.json");
-const { fetchJson } = require("./http");
+const { fetchJson, request, HttpError } = require("./http");
 
 let autoUpdater = null;
 let emit = () => {};
@@ -51,26 +51,83 @@ function setup(onEvent) {
   autoUpdater.on("update-downloaded", (info) => emit({ type: "downloaded", version: info.version }));
 }
 
+/** Только .dmg под свой процессор: arm64 на Intel не запустится. */
+function pickDmg(names) {
+  const dmgs = names.filter((n) => n.endsWith(".dmg"));
+  const name = dmgs.find((n) => (process.arch === "arm64" ? /arm64/i.test(n) : !/arm64/i.test(n))) || null;
+  return { name, unsupported: !name && process.arch !== "arm64" && dmgs.length > 0 };
+}
+
+/** Основной способ: GitHub API → последний релиз со списком файлов. */
+async function latestFromApi(owner, name) {
+  const release = await fetchJson(`https://api.github.com/repos/${owner}/${name}/releases/latest`);
+  const version = String(release.tag_name || "").replace(/^v/, "");
+  const assets = release.assets || [];
+  const { name: dmg, unsupported } = pickDmg(assets.map((a) => a.name));
+  const asset = dmg ? assets.find((a) => a.name === dmg) : null;
+  return {
+    version,
+    url: release.html_url,
+    download: asset ? asset.browser_download_url : release.html_url,
+    unsupported,
+  };
+}
+
+/**
+ * Запасной способ, если api.github.com не отвечает: latest-mac.yml из
+ * последнего релиза на обычном github.com — тот же путь, которым обновляется
+ * Windows (latest.yml).
+ */
+async function latestFromYml(owner, name) {
+  const base = `https://github.com/${owner}/${name}/releases`;
+  const res = await request(`${base}/latest/download/latest-mac.yml`, { timeout: 20000 });
+  const text = await res.text();
+  const m = text.match(/^version:\s*['"]?([^\s'"]+)/m);
+  if (!m) throw new Error("В latest-mac.yml нет версии");
+  const version = m[1].replace(/^v/, "");
+  const files = [...text.matchAll(/^\s*-?\s*url:\s*['"]?([^\s'"]+)/gm)].map((x) => x[1]);
+  const { name: dmg, unsupported } = pickDmg(files);
+  const url = `${base}/tag/v${version}`;
+  return {
+    version,
+    url,
+    download: dmg ? `${base}/download/v${version}/${encodeURIComponent(dmg)}` : url,
+    unsupported,
+  };
+}
+
 /** macOS (и прочие): смотрим последний релиз и даём ссылку на .dmg. */
 async function checkManual() {
   emit({ type: "checking" });
   const { owner, repo: name } = repo();
-  const release = await fetchJson(`https://api.github.com/repos/${owner}/${name}/releases/latest`);
-  const latest = String(release.tag_name || "").replace(/^v/, "");
+  let info = null;
+  let apiErr = null;
+  try {
+    info = await latestFromApi(owner, name);
+  } catch (err) {
+    apiErr = err;
+    log.warn(`Проверка обновлений через api.github.com не удалась: ${err.message} — пробую latest-mac.yml`);
+    try {
+      info = await latestFromYml(owner, name);
+    } catch (ymlErr) {
+      log.warn(`latest-mac.yml тоже не получен: ${ymlErr.message}`);
+      // Сервер ответил, но не то (404 и т.п.) — даём игроку ссылку на релизы,
+      // чтобы он мог обновиться сам. Без интернета окно не показываем.
+      emit({
+        type: "manual-error",
+        message: apiErr.message,
+        url: `https://github.com/${owner}/${name}/releases/latest`,
+        http: apiErr instanceof HttpError || ymlErr instanceof HttpError,
+      });
+      return { error: apiErr.message };
+    }
+  }
+  const latest = info.version;
   if (!latest || compareVersions(latest, app.getVersion()) <= 0) {
     emit({ type: "not-available" });
     return { available: false };
   }
-  const dmgs = (release.assets || []).filter((a) => a.name.endsWith(".dmg"));
-  // Только .dmg под свой процессор: arm64 на Intel не запустится.
-  const asset = dmgs.find((a) => (process.arch === "arm64" ? /arm64/i.test(a.name) : !/arm64/i.test(a.name))) || null;
-  emit({
-    type: "manual",
-    version: latest,
-    url: release.html_url,
-    download: asset ? asset.browser_download_url : release.html_url,
-    unsupported: !asset && process.arch !== "arm64" && dmgs.length > 0,
-  });
+  emit({ type: "manual", ...info });
   return { available: true, version: latest };
 }
 

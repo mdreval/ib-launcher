@@ -479,6 +479,7 @@
         api.updates.download().catch(() => {});
       }
       if (event.type === "manual") macUpdateDialog(event);
+      if (event.type === "manual-error" && event.http) macUpdateDialog(event);
       if (event.type === "downloaded") {
         IB.confirmDialog({
           title: "Обновление готово",
@@ -492,15 +493,21 @@
 
   /** macOS: обновление вручную — «Скачать» или «Копировать ссылку». */
   function macUpdateDialog(event) {
+    const failed = event.type === "manual-error";
     const link = event.download || event.url;
-    const text = event.unsupported
-      ? `Вышла версия лаунчера ${event.version}. Новые версии выходят только для Mac на Apple Silicon (M1 и новее) — на Mac с процессором Intel они не запустятся.`
-      : `Вышла версия лаунчера ${event.version}. На macOS обновление ставится вручную: скачайте новый .dmg и перетащите приложение в «Программы».`;
+    const text = failed
+      ? "Не получилось автоматически проверить обновления лаунчера. Откройте страницу релизов: если там версия новее вашей — скачайте .dmg и перетащите приложение в «Программы»."
+      : event.unsupported
+        ? `Вышла версия лаунчера ${event.version}. Новые версии выходят только для Mac на Apple Silicon (M1 и новее) — на Mac с процессором Intel они не запустятся.`
+        : `Вышла версия лаунчера ${event.version}. На macOS обновление ставится вручную: скачайте новый .dmg и перетащите приложение в «Программы».`;
     const later = h("button", { class: "btn btn--ghost", text: "Позже" });
     const copy = h("button", { class: "btn", text: "Копировать ссылку" });
-    const download = h("button", { class: "btn btn--primary", text: event.unsupported ? "Открыть страницу релиза" : "Скачать" });
+    const download = h("button", {
+      class: "btn btn--primary",
+      text: failed ? "Открыть страницу релизов" : event.unsupported ? "Открыть страницу релиза" : "Скачать",
+    });
     const m = IB.modal({
-      title: "Доступна новая версия",
+      title: failed ? "Проверка обновлений" : "Доступна новая версия",
       content: h("p", { class: "soft", style: { margin: 0 }, text }),
       footer: event.unsupported ? [later, download] : [later, copy, download],
     });
