@@ -18,9 +18,16 @@ const { fetchJson, request, HttpError } = require("./http");
 let autoUpdater = null;
 let emit = () => {};
 
+// Репозиторий с релизами. Записан прямо здесь, потому что electron-builder
+// при сборке вырезает раздел "build" из package.json — в установленном
+// лаунчере pkg.build нет, и запрос уходил на /repos/undefined/undefined (404).
+// Если поменяете репозиторий — поправьте и здесь, и в package.json → build.publish.
+const RELEASES_REPO = { owner: "mdreval", repo: "ib-launcher" };
+
 function repo() {
   const pub = ((pkg.build && pkg.build.publish) || [])[0] || {};
-  return { owner: pub.owner, repo: pub.repo };
+  if (pub.owner && pub.repo) return { owner: pub.owner, repo: pub.repo };
+  return RELEASES_REPO;
 }
 
 function compareVersions(a, b) {
@@ -107,11 +114,11 @@ async function checkManual() {
     info = await latestFromApi(owner, name);
   } catch (err) {
     apiErr = err;
-    log.warn(`Проверка обновлений через api.github.com не удалась: ${err.message} — пробую latest-mac.yml`);
+    log.warn(`Проверка обновлений через api.github.com не удалась: ${err.message}${err.url ? ` [${err.url}]` : ""} — пробую latest-mac.yml`);
     try {
       info = await latestFromYml(owner, name);
     } catch (ymlErr) {
-      log.warn(`latest-mac.yml тоже не получен: ${ymlErr.message}`);
+      log.warn(`latest-mac.yml тоже не получен: ${ymlErr.message}${ymlErr.url ? ` [${ymlErr.url}]` : ""}`);
       // Сервер ответил, но не то (404 и т.п.) — даём игроку ссылку на релизы,
       // чтобы он мог обновиться сам. Без интернета окно не показываем.
       emit({
