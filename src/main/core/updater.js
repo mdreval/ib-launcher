@@ -81,7 +81,8 @@ async function latestFromApi(owner, name) {
 async function latestFromYml(owner, name) {
   const base = `https://github.com/${owner}/${name}/releases`;
   const res = await request(`${base}/latest/download/latest-mac.yml`, { timeout: 20000 });
-  const text = await res.text();
+  // releaseNotes (текст из RELEASE_NOTES.md) идёт в конце — его не разбираем.
+  const text = (await res.text()).split(/^releaseNotes:/m)[0];
   const m = text.match(/^version:\s*['"]?([^\s'"]+)/m);
   if (!m) throw new Error("В latest-mac.yml нет версии");
   const version = m[1].replace(/^v/, "");

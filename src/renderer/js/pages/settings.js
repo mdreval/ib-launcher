@@ -567,6 +567,7 @@
         const updBtn = h("button", { class: "btn btn--sm", html: `${IB.icon("refresh")}Проверить обновления` });
         updBtn.addEventListener("click", () => {
           updText.textContent = "Проверка…";
+          IB.updateCheckByUser = true;
           api.updates.check().catch((err) => (updText.textContent = err.message));
         });
         wrap.append(h("div", { class: "card" }, h("div", { class: "setting-line" }, h("div", {}, h("h3", { text: "Обновления лаунчера" }), updText), updBtn)));
