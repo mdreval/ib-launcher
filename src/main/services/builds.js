@@ -371,8 +371,80 @@ function instanceDir(buildOrId) {
   return path.join(instancesRoot(), instanceName(buildOrId));
 }
 
-/** Удаляет только саму сборку и её папку instances/<id>. Общие версии,
- * библиотеки и другие сборки не трогаются. */
+// ---------- уборка неиспользуемых версий ----------
+//
+// Файлы версии Minecraft (versions/<версия>: .jar, .json, natives) и
+// загрузчика (loader/versions/<id>) общие для всех сборок одной версии.
+// После удаления сборки убираем те из них, что больше не нужны ни одной
+// оставшейся сборке (включая сборку сервера). Библиотеки и ассеты не
+// трогаем: они общие для многих версий и будут переиспользованы.
+
+const LOADER_MARKS = { fabric: "fabric", quilt: "quilt", forge: "forge", neoforge: "neoforge" };
+
+function readVersionJson(dir, name) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dir, name, `${name}.json`), "utf-8"));
+  } catch (err) {
+    return null;
+  }
+}
+
+/** Версия загрузчика без приставки версии Minecraft (1.20.1-47.2.0 → 47.2.0). */
+function loaderCore(build) {
+  const v = String(build.loader_version || "");
+  const prefix = `${build.mc_version}-`;
+  return v.startsWith(prefix) ? v.slice(prefix.length) : v;
+}
+
+function loaderDirMatches(id, json, build) {
+  if (build.loader_type === "vanilla") return false;
+  const lower = id.toLowerCase();
+  const mark = LOADER_MARKS[build.loader_type];
+  if (!mark || !lower.includes(mark)) return false;
+  if (build.loader_type === "forge" && lower.includes("neoforge")) return false;
+  const base = json && json.inheritsFrom;
+  // NeoForge пишет в id только свою версию (neoforge-21.1.265), остальные — и версию Minecraft.
+  if (base ? base !== build.mc_version : !lower.includes(build.mc_version.toLowerCase()) && build.loader_type !== "neoforge") return false;
+  const core = loaderCore(build).toLowerCase();
+  if (!core || core === "latest") return true; // версия загрузчика неизвестна — не трогаем
+  return lower.includes(core);
+}
+
+function pruneUnusedVersions() {
+  const all = list();
+  const gameDir = settings.gameDir();
+  const roots = [path.join(gameDir, "versions"), path.join(gameDir, "loader", "versions")];
+  const removed = [];
+  for (const root of roots) {
+    let names = [];
+    try {
+      names = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+    } catch (err) {
+      continue;
+    }
+    for (const name of names) {
+      const json = readVersionJson(root, name);
+      if (!json) continue; // непонятная папка — не трогаем
+      const isLoader = !!json.inheritsFrom || Object.values(LOADER_MARKS).some((m) => name.toLowerCase().includes(m));
+      const needed = isLoader
+        ? all.some((b) => loaderDirMatches(name, json, b)) ||
+          // загрузчик без понятной версии у оставшейся сборки того же типа/версии — оставляем
+          all.some((b) => b.loader_type !== "vanilla" && json.inheritsFrom === b.mc_version && !loaderCore(b))
+        : all.some((b) => b.mc_version === name);
+      if (needed) continue;
+      try {
+        fs.rmSync(path.join(root, name), { recursive: true, force: true, maxRetries: 3, retryDelay: 300 });
+        removed.push(name);
+      } catch (err) {
+        /* занято (например, игра запущена) — уберётся в следующий раз */
+      }
+    }
+  }
+  return removed;
+}
+
+/** Удаляет сборку, её папку instances/<id> и файлы версий, которые больше
+ * не нужны ни одной сборке. Библиотеки, ассеты и другие сборки не трогаются. */
 function remove(id) {
   if (serverProfiles().some((p) => p.id === id)) throw new Error("Сборку сервера удалить нельзя");
   const dir = instanceDir(id);
@@ -385,6 +457,11 @@ function remove(id) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
   if (settings.get().selected_build === id) settings.update({ selected_build: serverProfiles()[0]?.id || "igrobar" });
+  try {
+    pruneUnusedVersions();
+  } catch (err) {
+    /* уборка не обязательна */
+  }
   return true;
 }
 
@@ -425,6 +502,7 @@ module.exports = {
   create,
   update,
   remove,
+  pruneUnusedVersions,
   markInstalled,
   instanceDir,
   instanceName,

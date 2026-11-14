@@ -292,7 +292,14 @@ function register() {
     return true;
   });
   handle("builds:install", async (id) => {
-    const build = await game.install(id);
+    let build;
+    try {
+      build = await game.install(id);
+    } catch (err) {
+      // После отмены новая сборка удаляется — обновляем списки.
+      if (err && err.code === "CANCELLED") notifyBuilds();
+      throw err;
+    }
     notifyBuilds();
     return buildView(build);
   });
@@ -303,6 +310,7 @@ function register() {
     return state;
   });
   handle("builds:stop", (id) => game.stop(id));
+  handle("builds:cancel", (id) => game.cancel(id));
   handle("builds:open-folder", async (id) => {
     const dir = builds.instanceDir(id);
     fs.mkdirSync(dir, { recursive: true });
@@ -340,7 +348,7 @@ function register() {
   });
 
   // ----- моды, ресурспаки, шейдеры -----
-  handle("content:list", ({ buildId, kind, refresh }) => content.list(buildId, kind, { refreshUpdates: !!refresh }));
+  handle("content:list", ({ buildId, kind, refresh, mode }) => content.list(buildId, kind, { refreshUpdates: !!refresh, mode: mode || "full" }));
   handle("content:toggle", ({ buildId, kind, file, enabled }) => content.setEnabled(buildId, kind, file, enabled));
   handle("content:remove", ({ buildId, kind, file }) => content.remove(buildId, kind, file));
   handle("content:add-files", async ({ buildId, kind }) => {

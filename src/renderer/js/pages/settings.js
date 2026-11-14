@@ -246,6 +246,73 @@
         input.addEventListener("keydown", (e) => e.key === "Enter" && go());
       }
 
+      // ---- оперативная память (постоянный блок) ----
+      let ramBlock = null;
+      let ramSlider = null;
+      let ramDragging = false;
+      let ramSaving = 0; // сколько сохранений ещё не завершилось
+      let ramPaint = null;
+      let pendingRender = false;
+      let ramKnown = null; // значение памяти, которое показывает ползунок «по нашим данным»
+
+      function ramCard() {
+        if (!ramBlock) {
+          const total = (S.settings && S.settings.total_ram_mb) || 8192;
+          const max = Math.max(2048, Math.floor((total - 1024) / 512) * 512);
+          const ramValue = h("strong", {});
+          const ramText = h("p", {});
+          const ram = h("input", { class: "range", type: "range", min: "1024", max: String(max), step: "512" });
+          ramSlider = ram;
+          ramPaint = () => {
+            const v = +ram.value;
+            ramValue.textContent = `${(v / 1024).toFixed(v % 1024 ? 1 : 0).replace(".", ",")} ГБ`;
+            ram.style.setProperty("--fill", `${((v - ram.min) / (ram.max - ram.min)) * 100}%`);
+            ramText.textContent = `Выделено ${v} МБ из ${total} МБ установленной памяти. Рекомендуется 4–8 ГБ.`;
+          };
+          ram.addEventListener("pointerdown", () => (ramDragging = true));
+          const endDrag = () => {
+            ramDragging = false;
+            if (pendingRender) {
+              pendingRender = false;
+              setTimeout(render, 0);
+            }
+          };
+          ram.addEventListener("pointerup", endDrag);
+          ram.addEventListener("pointercancel", endDrag);
+          ram.addEventListener("input", ramPaint);
+          ram.addEventListener("change", () => {
+            endDrag();
+            const v = +ram.value;
+            ramKnown = v;
+            S.settings = { ...S.settings, ram_mb: v };
+            ramSaving += 1;
+            run(() => api.settings.update({ ram_mb: v }))
+              .then((x) => {
+                if (x && +ram.value === v) S.settings = x;
+              })
+              .finally(() => (ramSaving -= 1));
+          });
+          ramBlock = h(
+            "div",
+            { class: "card" },
+            h("h3", { text: "Оперативная память" }),
+            h("p", { text: "Сколько памяти получит Minecraft. Свою память для отдельной сборки можно задать в её настройках (значок шестерёнки)." }),
+            h("div", { class: "ram-row" }, ram, ramValue),
+            ramText
+          );
+          ramKnown = (S.settings && S.settings.ram_mb) || 4096;
+          ram.value = String(Math.min(ramKnown, max));
+          ramPaint();
+        } else if (!ramDragging && !ramSaving && S.settings && S.settings.ram_mb !== ramKnown) {
+          // Память поменяли где-то ещё (например, «Сбросить настройки») —
+          // подтягиваем. Своё же недавнее изменение не трогаем.
+          ramKnown = S.settings.ram_mb;
+          ramSlider.value = String(Math.min(ramKnown, +ramSlider.max));
+          ramPaint();
+        }
+        return ramBlock;
+      }
+
       function render() {
         const s = S.settings;
         if (!s) return;
@@ -265,30 +332,11 @@
         wrap.append(renderAppearance());
 
         // ---- память ----
-        const total = s.total_ram_mb;
-        const max = Math.max(2048, Math.floor((total - 1024) / 512) * 512);
-        const ramValue = h("strong", {});
-        const ramText = h("p", {});
-        const ram = h("input", { class: "range", type: "range", min: "1024", max: String(max), step: "512", value: String(Math.min(s.ram_mb, max)) });
-        const paint = () => {
-          const v = +ram.value;
-          ramValue.textContent = `${(v / 1024).toFixed(v % 1024 ? 1 : 0).replace(".", ",")} ГБ`;
-          ram.style.setProperty("--fill", `${((v - ram.min) / (ram.max - ram.min)) * 100}%`);
-          ramText.textContent = `Выделено ${v} МБ из ${total} МБ установленной памяти. Рекомендуется 4–8 ГБ.`;
-        };
-        ram.addEventListener("input", paint);
-        ram.addEventListener("change", () => run(() => api.settings.update({ ram_mb: +ram.value }).then((x) => (S.settings = x))));
-        paint();
-        wrap.append(
-          h(
-            "div",
-            { class: "card" },
-            h("h3", { text: "Оперативная память" }),
-            h("p", { text: "Сколько памяти получит Minecraft. Свою память для отдельной сборки можно задать в её настройках (значок шестерёнки)." }),
-            h("div", { class: "ram-row" }, ram, ramValue),
-            ramText
-          )
-        );
+        // Блок создаётся один раз и при перерисовке страницы не пересоздаётся:
+        // раньше страница перестраивалась прямо во время перетаскивания
+        // (пришло событие «сборки изменились»), ползунок подменялся новым со
+        // старым значением, и память «отставала на шаг» или прыгала.
+        wrap.append(ramCard());
 
         // ---- модпак IGROBAR ----
         const b = IB.selectedBuild();
@@ -492,7 +540,10 @@
               IB.switchEl({
                 checked: s.hide_on_launch,
                 label: "Прятать в трей",
-                onChange: (on) => run(() => api.settings.update({ hide_on_launch: on }).then((x) => (S.settings = x))),
+                onChange: (on) => {
+                  S.settings = { ...S.settings, hide_on_launch: on };
+                  run(() => api.settings.update({ hide_on_launch: on }).then((x) => (S.settings = x)));
+                },
               })
             )
           )
@@ -503,6 +554,7 @@
         jvm.value = s.jvm_args || "";
         jvm.addEventListener("blur", () => {
           if (jvm.value.trim() !== (S.settings.jvm_args || "")) {
+            S.settings = { ...S.settings, jvm_args: jvm.value.trim() };
             run(() => api.settings.update({ jvm_args: jvm.value.trim() }).then((x) => (S.settings = x)), { success: "Аргументы JVM сохранены" });
           }
         });
@@ -623,22 +675,7 @@
             )
           );
         }
-        const versions = u.versions || [];
-        if (versions.length) {
-          const total = versions.reduce((sum, v) => sum + (v.count || 0), 0);
-          const current = S.info ? S.info.version : "";
-          usageBox.append(
-            bars(
-              "Версии лаунчера у тех, кто открывал его за 30 дней",
-              versions.map((v) => ({
-                name: v.version === "?" ? "неизвестно" : `v${v.version}`,
-                count: v.count,
-                percent: pct(v.count, total),
-                current: v.version === current,
-              }))
-            )
-          );
-        }
+        // Версии лаунчера не показываем: почти у всех и так последняя.
       }
       api.usage
         .get(true)
@@ -655,6 +692,12 @@
         update(kind) {
           if (kind === "usage") fillUsage();
           const typing = document.activeElement && wrap.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA";
+          // Пока тянут ползунок памяти — страницу не трогаем, перерисуем потом.
+          const sliding = ramDragging;
+          if (sliding && (kind === "settings" || kind === "builds")) {
+            pendingRender = true;
+            return;
+          }
           if ((kind === "settings" || kind === "builds") && !typing) render();
         },
         cleanup() {

@@ -22,6 +22,7 @@ class HttpError extends Error {
 
 function friendlyNetworkError(err, url) {
   if (err instanceof HttpError) return err;
+  if (err && err.cancelled) return err; // отмена пользователем — не «нет интернета»
   const host = (() => {
     try {
       return new URL(url).host;
@@ -69,6 +70,7 @@ async function fetchJson(url, opts = {}) {
       return await res.json();
     } catch (err) {
       lastErr = err;
+      if (err && err.cancelled) break;
       // 4xx — повторять бессмысленно; сетевые сбои и 5xx — пробуем ещё раз
       if (err instanceof HttpError && err.status < 500 && err.status !== 429) break;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
@@ -240,7 +242,7 @@ async function downloadFile(url, dest, opts = {}) {
       return dest;
     } catch (err) {
       lastErr = err;
-      if (err.fatal) break;
+      if (err.fatal || err.cancelled) break;
       if (attempt < retries) await sleep(1500 * (attempt + 1));
     }
   }

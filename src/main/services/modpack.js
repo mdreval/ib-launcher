@@ -22,6 +22,7 @@ const path = require("path");
 
 const paths = require("../paths");
 const builds = require("./builds");
+const cancel = require("../core/cancel");
 const { fetchJson, downloadFile, removeFile, moveFile, sha256OfFile } = require("../core/http");
 const { readJson, writeJson } = require("../core/jsonFile");
 
@@ -320,6 +321,7 @@ async function sync(buildId, { force = false, onProgress } = {}) {
       }
       extracted = await extract(zipPath);
     } catch (firstErr) {
+      if (firstErr && firstErr.cancelled) throw firstErr; // пользователь отменил установку
       // Архив мог повредиться, а старый файл — быть занят антивирусом,
       // поэтому второй раз качаем под НОВЫМ именем, не трогая старый.
       console.warn("[modpack] первая попытка не удалась:", firstErr);
@@ -334,6 +336,9 @@ async function sync(buildId, { force = false, onProgress } = {}) {
     }
     if (!extracted.length) throw new Error("в modpack.zip нет ни одного мода (.jar)");
 
+    // Последний момент, когда установку можно отменить без «половинок»:
+    // дальше моды переносятся в сборку.
+    cancel.throwIfCancelled();
     report(98, "Установка модов…");
     const newFiles = [];
     for (const rel of extracted) {

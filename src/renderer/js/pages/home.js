@@ -8,6 +8,9 @@
   function statusInfo(build) {
     const st = IB.gameState(build.id);
     if (st.status === "running") return { dot: "var(--accent)", text: "Игра запущена", busy: false, running: true };
+    if (st.status === "cancelling") {
+      return { dot: "var(--warning)", text: (st.progress && st.progress.text) || "Отмена…", busy: true, cancelling: true, percent: null };
+    }
     if (st.status === "installing" || st.status === "preparing" || st.status === "modpack") {
       const p = st.progress || {};
       const pct = Number.isFinite(p.percent) ? ` ${p.percent}%` : "";
@@ -370,7 +373,8 @@
         if (!b) return IB.modals.newBuild();
         const st = statusInfo(b);
         if (st.running) IB.actions.stop(b.id);
-        else if (st.busy) return;
+        else if (st.cancelling) return;
+        else if (st.busy) IB.actions.cancel(b.id);
         else if (!b.installed) IB.actions.install(b.id);
         else IB.actions.play(b.id);
       });
@@ -458,14 +462,22 @@
         progress.style.display = st.busy ? "" : "none";
         progress.classList.toggle("progress--indeterminate", st.busy && !(st.percent > 0));
         progress.firstChild.style.width = `${st.percent || 0}%`;
+        playBtn.title = "";
         if (st.running) {
           playBtn.className = "btn btn--danger btn--lg";
           playBtn.innerHTML = `${IB.icon("stop")}Остановить`;
           playBtn.disabled = false;
-        } else if (st.busy) {
-          playBtn.className = "btn btn--primary btn--lg";
-          playBtn.innerHTML = `<span class="spinner"></span>${Number.isFinite(st.percent) ? `Загрузка ${st.percent}%` : "Подготовка…"}`;
+        } else if (st.cancelling) {
+          playBtn.className = "btn btn--lg";
+          playBtn.innerHTML = '<span class="spinner"></span>Отмена…';
           playBtn.disabled = true;
+        } else if (st.busy) {
+          // Во время установки/подготовки кнопка — «Отмена», а проценты
+          // видны в строке состояния и на полоске.
+          playBtn.className = "btn btn--lg";
+          playBtn.innerHTML = `${IB.icon("close")}Отмена`;
+          playBtn.title = "Отменить и удалить уже скачанное";
+          playBtn.disabled = false;
         } else if (!b.installed) {
           playBtn.className = "btn btn--primary btn--lg";
           playBtn.innerHTML = `${IB.icon("download")}Установить`;

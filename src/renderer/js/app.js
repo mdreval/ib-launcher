@@ -276,9 +276,21 @@
     stop(buildId) {
       return run(() => api.builds.stop(buildId));
     },
-    install(buildId) {
+    async install(buildId) {
       S.lastLogBuild = buildId;
-      return run(() => api.builds.install(buildId), { success: "Сборка установлена" });
+      try {
+        const res = await api.builds.install(buildId);
+        toast("Сборка установлена", "success");
+        return res;
+      } catch (err) {
+        if (err && err.code === "CANCELLED") {
+          toast("Установка отменена, скачанные файлы удалены", "info");
+        } else toast(err && err.message ? err.message : String(err), "error");
+        return undefined;
+      }
+    },
+    cancel(buildId) {
+      return run(() => api.builds.cancel(buildId));
     },
     select(buildId) {
       S.selected = buildId;
@@ -396,13 +408,36 @@
   }
 
   // лёгкий параллакс фона
+  // Фон сдвигается не чаще раза за кадр и замирает, пока тянут ползунок:
+  // иначе при каждом движении мыши заново размывались все карточки
+  // (backdrop-filter), и ползунок памяти в «Настройках» двигался рывками.
   function parallax() {
     const bg = document.querySelector(".app-bg");
+    let dragging = false;
+    let frame = 0;
+    let x = 0;
+    let y = 0;
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.target && e.target.matches && e.target.matches('input[type="range"]')) dragging = true;
+      },
+      true
+    );
+    const stopDrag = () => (dragging = false);
+    window.addEventListener("pointerup", stopDrag, true);
+    window.addEventListener("pointercancel", stopDrag, true);
+    window.addEventListener("blur", stopDrag);
     window.addEventListener("mousemove", (e) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * -18;
-      const y = (e.clientY / window.innerHeight - 0.5) * -12;
-      bg.style.setProperty("--px", `${x}px`);
-      bg.style.setProperty("--py", `${y}px`);
+      if (dragging) return;
+      x = (e.clientX / window.innerWidth - 0.5) * -18;
+      y = (e.clientY / window.innerHeight - 0.5) * -12;
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        bg.style.setProperty("--px", `${x}px`);
+        bg.style.setProperty("--py", `${y}px`);
+      });
     });
   }
 

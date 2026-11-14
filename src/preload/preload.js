@@ -93,6 +93,7 @@ contextBridge.exposeInMainWorld("ib", {
     install: (id) => call("builds:install", id),
     launch: (id) => call("builds:launch", id),
     stop: (id) => call("builds:stop", id),
+    cancel: (id) => call("builds:cancel", id),
     openFolder: (id) => call("builds:open-folder", id),
     refreshServer: () => call("builds:refresh-server"),
   },
@@ -102,7 +103,7 @@ contextBridge.exposeInMainWorld("ib", {
     sync: (id) => call("modpack:sync", id),
   },
   content: {
-    list: (buildId, kind, refresh) => call("content:list", { buildId, kind, refresh }),
+    list: (buildId, kind, refresh, mode) => call("content:list", { buildId, kind, refresh, mode }),
     toggle: (buildId, kind, file, enabled) => call("content:toggle", { buildId, kind, file, enabled }),
     remove: (buildId, kind, file) => call("content:remove", { buildId, kind, file }),
     addFiles: (buildId, kind) => call("content:add-files", { buildId, kind }),

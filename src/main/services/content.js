@@ -11,10 +11,12 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+const paths = require("../paths");
 const builds = require("./builds");
 const modpack = require("./modpack");
 const modrinth = require("./modrinth");
 const { downloadFile } = require("../core/http");
+const { readJson, writeJson } = require("../core/jsonFile");
 
 const KINDS = {
   mods: { dir: "mods", exts: [".jar"] },
@@ -24,10 +26,53 @@ const KINDS = {
 
 const DISABLED = ".disabled";
 
-const metaCache = new Map(); // путь|размер|время -> { sha1, meta }
-const versionCache = new Map(); // sha1 -> версия Modrinth или null
-const projectCache = new Map(); // projectId -> проект Modrinth
-const updateCache = new Map(); // buildId|kind -> { at, map }
+// ---------- кэш (на диске) ----------
+//
+// Раньше при каждом открытии вкладки лаунчер заново читал КАЖДЫЙ мод целиком
+// (sha1 + распаковка иконки), а после перезапуска заново спрашивал Modrinth
+// про все файлы. Теперь всё это хранится в cache/content-cache.json:
+//  - local    — sha1, название, версия и уменьшенная иконка файла (ключ —
+//               путь + размер + время изменения, то есть файл не менялся);
+//  - versions — что Modrinth знает о файле по sha1 (это не меняется);
+//  - projects — названия и иконки проектов;
+//  - updates  — результат проверки обновлений.
+// Вкладка сначала показывается из кэша мгновенно, а сеть проверяется фоном.
+
+const CACHE_FILE = path.join(paths.CACHE_DIR, "content-cache.json");
+const UPDATES_TTL = 30 * 60 * 1000; // проверка обновлений — раз в 30 минут
+const UNKNOWN_TTL = 3 * 24 * 3600 * 1000; // «свой файл» — переспросить через 3 дня
+const PROJECT_TTL = 7 * 24 * 3600 * 1000;
+const UNUSED_TTL = 30 * 24 * 3600 * 1000; // забытые записи чистятся через месяц
+
+let cache = null;
+let saveTimer = null;
+
+function loadCache() {
+  if (cache) return cache;
+  const data = readJson(CACHE_FILE, null);
+  cache = {
+    local: (data && data.local) || {},
+    versions: (data && data.versions) || {},
+    projects: (data && data.projects) || {},
+    updates: (data && data.updates) || {},
+  };
+  return cache;
+}
+
+function saveCacheSoon() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const now = Date.now();
+      const c = loadCache();
+      for (const [key, entry] of Object.entries(c.local)) if (now - (entry.used || 0) > UNUSED_TTL) delete c.local[key];
+      for (const [key, entry] of Object.entries(c.updates)) if (now - (entry.at || 0) > UNUSED_TTL) delete c.updates[key];
+      writeJson(CACHE_FILE, c);
+    } catch (err) {
+      /* кэш не обязателен */
+    }
+  }, 1500);
+}
 
 function kindInfo(kind) {
   const info = KINDS[kind];
@@ -51,10 +96,6 @@ function baseName(file) {
   return file.endsWith(DISABLED) ? file.slice(0, -DISABLED.length) : file;
 }
 
-function sha1File(file) {
-  return crypto.createHash("sha1").update(fs.readFileSync(file)).digest("hex");
-}
-
 // ---------- чтение метаданных из файла ----------
 
 function parseLooseJson(text) {
@@ -66,17 +107,30 @@ function tomlValue(block, key) {
   return m ? m[1] ?? m[2] : null;
 }
 
+/** Иконка как data URL, уменьшенная до 64×64: большие логотипы (по
+ * 200–400 КБ) раньше целиком гонялись в интерфейс при каждом открытии. */
 function iconDataUrl(zip, iconPath) {
   if (!iconPath) return null;
   const entry = zip.getEntry(String(iconPath).replace(/^\/+/, ""));
-  if (!entry || entry.header.size > 400 * 1024) return null;
+  if (!entry || entry.header.size > 2 * 1024 * 1024) return null;
+  const data = entry.getData();
+  try {
+    const { nativeImage } = require("electron");
+    let img = nativeImage.createFromBuffer(data);
+    if (!img.isEmpty()) {
+      const { width, height } = img.getSize();
+      if (width > 64 || height > 64) img = img.resize(width >= height ? { width: 64 } : { height: 64 });
+      return img.toDataURL();
+    }
+  } catch (err) {
+    /* вне Electron — без уменьшения */
+  }
+  if (data.length > 400 * 1024) return null;
   const ext = path.extname(iconPath).toLowerCase() === ".jpg" ? "jpeg" : "png";
-  return `data:image/${ext};base64,${entry.getData().toString("base64")}`;
+  return `data:image/${ext};base64,${data.toString("base64")}`;
 }
 
-function readModMeta(file) {
-  const AdmZip = require("adm-zip");
-  const zip = new AdmZip(file);
+function readModMeta(zip) {
   const text = (name) => {
     const entry = zip.getEntry(name);
     return entry ? entry.getData().toString("utf-8") : null;
@@ -128,47 +182,119 @@ function readModMeta(file) {
   return null;
 }
 
-function readPackMeta(file) {
-  const AdmZip = require("adm-zip");
-  try {
-    const zip = new AdmZip(file);
-    return { icon: iconDataUrl(zip, "pack.png") };
-  } catch (err) {
-    return null;
-  }
+function readPackMeta(zip) {
+  return { icon: iconDataUrl(zip, "pack.png") };
 }
 
-function localInfo(kind, full, stat) {
-  const key = `${full}|${stat.size}|${stat.mtimeMs}`;
-  if (metaCache.has(key)) return metaCache.get(key);
+/** sha1 и данные из файла. Файл читается один раз (асинхронно, не
+ * подвешивая окно) и только если его ещё нет в кэше. */
+async function localInfo(kind, full, stat) {
+  const c = loadCache();
+  // Без «.disabled»: выключение/включение мода — то же переименование,
+  // перечитывать файл ради этого не нужно.
+  const key = `${baseName(full)}|${stat.size}|${stat.mtimeMs}`;
+  const cached = c.local[key];
+  if (cached && cached.sha1) {
+    if (Date.now() - (cached.used || 0) > 24 * 3600 * 1000) {
+      cached.used = Date.now();
+      saveCacheSoon();
+    }
+    return cached;
+  }
+  const data = await fs.promises.readFile(full);
+  const sha1 = crypto.createHash("sha1").update(data).digest("hex");
   let meta = null;
   try {
-    meta = kind === "mods" ? readModMeta(full) : readPackMeta(full);
+    const AdmZip = require("adm-zip");
+    const zip = new AdmZip(data);
+    meta = kind === "mods" ? readModMeta(zip) : readPackMeta(zip);
   } catch (err) {
     meta = null;
   }
-  const info = { sha1: sha1File(full), meta };
-  metaCache.set(key, info);
+  const info = { sha1, meta, used: Date.now() };
+  c.local[key] = info;
+  saveCacheSoon();
   return info;
+}
+
+/** Обрабатывает список по нескольку штук параллельно. */
+async function mapLimit(list, limit, fn) {
+  const out = new Array(list.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < list.length) {
+      const i = next++;
+      out[i] = await fn(list[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+  return out;
 }
 
 // ---------- Modrinth ----------
 
+/** Из ответа Modrinth храним только нужное (без файлов и описаний). */
+function slimVersion(v) {
+  if (!v) return null;
+  return {
+    id: v.id,
+    project_id: v.project_id,
+    version_number: v.version_number,
+    loaders: v.loaders || [],
+    game_versions: v.game_versions || [],
+    dependencies: (v.dependencies || []).map((d) => ({ project_id: d.project_id, dependency_type: d.dependency_type })),
+  };
+}
+
+function cachedVersion(sha1) {
+  const entry = loadCache().versions[sha1];
+  return entry ? entry.v : null;
+}
+
+function rememberVersion(sha1, version) {
+  loadCache().versions[sha1] = { at: Date.now(), v: slimVersion(version) };
+  saveCacheSoon();
+}
+
+function cachedProject(id) {
+  return loadCache().projects[id] || null;
+}
+
+/** Нужно ли спрашивать Modrinth про файл: ещё не спрашивали или он был
+ * «своим файлом» давно (вдруг его выложили). */
+function needsLookup(sha1) {
+  const entry = loadCache().versions[sha1];
+  if (!entry) return true;
+  return !entry.v && Date.now() - (entry.at || 0) > UNKNOWN_TTL;
+}
+
+function needsProject(id) {
+  const entry = loadCache().projects[id];
+  return !entry || Date.now() - (entry.at || 0) > PROJECT_TTL;
+}
+
 async function identify(hashes) {
-  const unknown = hashes.filter((h) => !versionCache.has(h));
+  const c = loadCache();
+  const unknown = [...new Set(hashes.filter(needsLookup))];
   if (unknown.length) {
     try {
       const found = await modrinth.versionsByHashes(unknown);
-      for (const h of unknown) versionCache.set(h, found[h] || null);
+      const now = Date.now();
+      for (const h of unknown) c.versions[h] = { at: now, v: slimVersion(found[h]) };
+      saveCacheSoon();
     } catch (err) {
       return false; // нет сети — показываем только локальные данные
     }
   }
-  const projectIds = [...new Set(hashes.map((h) => versionCache.get(h)).filter(Boolean).map((v) => v.project_id))];
-  const missing = projectIds.filter((id) => !projectCache.has(id));
+  const projectIds = [...new Set(hashes.map(cachedVersion).filter(Boolean).map((v) => v.project_id))];
+  const missing = projectIds.filter(needsProject);
   if (missing.length) {
     try {
-      for (const p of await modrinth.projects(missing)) projectCache.set(p.id, p);
+      const now = Date.now();
+      for (const p of await modrinth.projects(missing)) {
+        c.projects[p.id] = { at: now, title: p.title, slug: p.slug, icon_url: p.icon_url || null };
+      }
+      saveCacheSoon();
     } catch (err) {
       /* без иконок/названий тоже можно */
     }
@@ -176,42 +302,79 @@ async function identify(hashes) {
   return true;
 }
 
+function updatesKey(build, kind) {
+  return `${build.id}|${kind}|${build.mc_version}|${build.loader_type}`;
+}
+
+/** Кэш проверки обновлений. fresh — проверка была недавно. */
+function cachedUpdates(build, kind, hashes) {
+  const entry = loadCache().updates[updatesKey(build, kind)];
+  if (!entry || !hashes.every((h) => h in entry.map)) return { map: entry ? entry.map : {}, fresh: false };
+  return { map: entry.map, fresh: Date.now() - entry.at < UPDATES_TTL };
+}
+
 async function updatesFor(build, kind, hashes, force = false) {
-  const key = `${build.id}|${kind}|${build.mc_version}|${build.loader_type}`;
-  const cached = updateCache.get(key);
-  if (!force && cached && Date.now() - cached.at < 10 * 60 * 1000 && hashes.every((h) => h in cached.map)) return cached.map;
+  const cached = cachedUpdates(build, kind, hashes);
+  if (!force && cached.fresh) return cached.map;
+  if (!hashes.length) return {};
   try {
     const latest = await modrinth.latestByHashes(hashes, { kind, loaderType: build.loader_type, mcVersion: build.mc_version });
     const map = {};
-    for (const h of hashes) map[h] = latest[h] || null;
-    updateCache.set(key, { at: Date.now(), map });
+    for (const h of hashes) {
+      const v = latest[h];
+      map[h] = v ? { id: v.id, version_number: v.version_number } : null;
+    }
+    loadCache().updates[updatesKey(build, kind)] = { at: Date.now(), map };
+    saveCacheSoon();
     return map;
   } catch (err) {
-    return {};
+    return cached.map; // нет сети — последняя известная проверка
   }
+}
+
+function clearUpdates() {
+  loadCache().updates = {};
+  saveCacheSoon();
 }
 
 // ---------- список ----------
 
-async function list(buildId, kind, { refreshUpdates = false } = {}) {
+/**
+ * Список модов/ресурспаков/шейдеров сборки.
+ * mode:
+ *   "fast" — без сети: файлы + всё, что уже есть в кэше (мгновенно);
+ *            pending: true — значит, есть что уточнить в сети;
+ *   "ids"  — определить файлы на Modrinth, но без проверки обновлений;
+ *   "full" — всё, включая проверку обновлений (по умолчанию).
+ */
+async function list(buildId, kind, { refreshUpdates = false, mode = "full" } = {}) {
   const build = requireBuild(buildId);
   const info = kindInfo(kind);
   const dir = contentDir(build, kind);
   const fromModpack = kind === "mods" ? modpack.trackedFiles(build) : new Set();
 
-  const items = [];
-  for (const file of fs.readdirSync(dir)) {
+  const entries = [];
+  for (const file of await fs.promises.readdir(dir)) {
     const name = baseName(file);
     if (!info.exts.some((ext) => name.toLowerCase().endsWith(ext))) continue;
-    const full = path.join(dir, file);
-    let stat;
+    entries.push({ file, name, full: path.join(dir, file) });
+  }
+
+  const loaded = await mapLimit(entries, 4, async ({ file, name, full }) => {
     try {
-      stat = fs.statSync(full);
+      const stat = await fs.promises.stat(full);
+      if (!stat.isFile()) return null;
+      const local = await localInfo(kind, full, stat);
+      return { file, name, stat, local };
     } catch (err) {
-      continue;
+      return null; // файл удалили или он занят — пропускаем
     }
-    if (!stat.isFile()) continue;
-    const local = localInfo(kind, full, stat);
+  });
+
+  const items = [];
+  for (const entry of loaded) {
+    if (!entry) continue;
+    const { file, name, stat, local } = entry;
     items.push({
       file: name,
       enabled: !file.endsWith(DISABLED),
@@ -229,46 +392,57 @@ async function list(buildId, kind, { refreshUpdates = false } = {}) {
     });
   }
 
-  const online = await identify(items.map((i) => i.sha1));
-  if (online) {
-    const allowedLoaders = modrinth.loaderFacets(kind, build.loader_type, build.mc_version);
-    const installedProjects = new Set();
-    for (const item of items) {
-      const version = versionCache.get(item.sha1);
-      if (!version) continue;
-      const project = projectCache.get(version.project_id);
-      item.source = "modrinth";
-      item.projectId = version.project_id;
-      item.versionId = version.id;
-      item.version = version.version_number || item.version;
-      if (project) {
-        item.name = project.title || item.name;
-        item.slug = project.slug;
-        if (!item.icon && project.icon_url) item.icon = project.icon_url;
-      }
-      if (item.enabled) installedProjects.add(version.project_id);
-    }
+  const hashes = items.map((i) => i.sha1);
+  let online = true;
+  let pending = false;
+  if (mode === "fast") pending = hashes.some(needsLookup);
+  else online = await identify(hashes);
 
-    for (const item of items) {
-      const version = versionCache.get(item.sha1);
-      if (!version) continue;
-      if (kind === "mods") {
-        const loaderOk = !allowedLoaders.length || (version.loaders || []).some((l) => allowedLoaders.includes(l));
-        const gameOk = (version.game_versions || []).includes(build.mc_version);
-        if (!loaderOk || !gameOk) {
-          item.issues.push({ type: "incompatible", text: "Не для этой сборки" });
-        }
-        const missing = (version.dependencies || [])
-          .filter((d) => d.dependency_type === "required" && d.project_id && !installedProjects.has(d.project_id))
-          .map((d) => d.project_id);
-        if (missing.length && item.enabled) {
-          item.issues.push({ type: "deps", text: "Не хватает зависимостей", missing: [...new Set(missing)] });
-        }
-      }
-    }
+  const allowedLoaders = modrinth.loaderFacets(kind, build.loader_type, build.mc_version);
+  const installedProjects = new Set();
+  for (const item of items) {
+    const version = cachedVersion(item.sha1);
+    if (!version) continue;
+    const project = cachedProject(version.project_id);
+    item.source = "modrinth";
+    item.projectId = version.project_id;
+    item.versionId = version.id;
+    item.version = version.version_number || item.version;
+    if (project) {
+      item.name = project.title || item.name;
+      item.slug = project.slug;
+      if (!item.icon && project.icon_url) item.icon = project.icon_url;
+    } else if (mode === "fast") pending = true;
+    if (item.enabled) installedProjects.add(version.project_id);
+  }
 
+  for (const item of items) {
+    const version = cachedVersion(item.sha1);
+    if (!version || kind !== "mods") continue;
+    const loaderOk = !allowedLoaders.length || (version.loaders || []).some((l) => allowedLoaders.includes(l));
+    const gameOk = (version.game_versions || []).includes(build.mc_version);
+    if (!loaderOk || !gameOk) {
+      item.issues.push({ type: "incompatible", text: "Не для этой сборки" });
+    }
+    const missing = (version.dependencies || [])
+      .filter((d) => d.dependency_type === "required" && d.project_id && !installedProjects.has(d.project_id))
+      .map((d) => d.project_id);
+    if (missing.length && item.enabled) {
+      item.issues.push({ type: "deps", text: "Не хватает зависимостей", missing: [...new Set(missing)] });
+    }
+  }
+
+  if (mode !== "ids") {
     const identified = items.filter((i) => i.source === "modrinth" && !i.issues.some((x) => x.type === "incompatible"));
-    const latest = await updatesFor(build, kind, identified.map((i) => i.sha1), refreshUpdates);
+    const idHashes = identified.map((i) => i.sha1);
+    let latest;
+    if (mode === "fast") {
+      const cached = cachedUpdates(build, kind, idHashes);
+      latest = cached.map;
+      if (!cached.fresh && idHashes.length) pending = true;
+    } else if (online) {
+      latest = await updatesFor(build, kind, idHashes, refreshUpdates);
+    } else latest = cachedUpdates(build, kind, idHashes).map;
     for (const item of identified) {
       const next = latest[item.sha1];
       if (next && next.id !== item.versionId) {
@@ -278,7 +452,7 @@ async function list(buildId, kind, { refreshUpdates = false } = {}) {
   }
 
   items.sort((a, b) => a.name.localeCompare(b.name, "ru", { sensitivity: "base" }));
-  return { items, online, loader: build.loader_type, mc: build.mc_version };
+  return { items, online, pending, loader: build.loader_type, mc: build.mc_version };
 }
 
 // ---------- действия с файлами ----------
@@ -348,11 +522,11 @@ async function removeOtherFilesOfProject(build, kind, projectId, keepFile) {
     const full = path.join(dir, file);
     let sha1;
     try {
-      sha1 = localInfo(kind, full, fs.statSync(full)).sha1;
+      sha1 = (await localInfo(kind, full, fs.statSync(full))).sha1;
     } catch (err) {
       continue;
     }
-    const version = versionCache.get(sha1);
+    const version = cachedVersion(sha1);
     if (version && version.project_id === projectId) fs.rmSync(full, { force: true });
   }
 }
@@ -363,15 +537,15 @@ async function installVersionFile(build, kind, version, { keepDisabled = false }
   const dir = contentDir(build, kind);
   const target = path.join(dir, path.basename(file.filename));
   await downloadFile(file.url, target, { sha1: file.hashes && file.hashes.sha1 });
-  if (file.hashes && file.hashes.sha1) versionCache.set(file.hashes.sha1, version);
+  if (file.hashes && file.hashes.sha1) rememberVersion(file.hashes.sha1, version);
   await removeOtherFilesOfProject(build, kind, version.project_id, path.basename(file.filename));
   if (keepDisabled) fs.renameSync(target, target + DISABLED);
-  updateCache.clear();
+  clearUpdates();
   return path.basename(file.filename);
 }
 
 async function installedProjectIds(build, kind) {
-  const { items } = await list(build.id, kind);
+  const { items } = await list(build.id, kind, { mode: "ids" });
   return new Set(items.filter((i) => i.projectId).map((i) => i.projectId));
 }
 
@@ -384,7 +558,7 @@ async function installProject(buildId, kind, projectId, { depth = 0, seen = new 
   const versionsList = await modrinth.projectVersions(projectId, { kind, loaderType: build.loader_type, mcVersion: build.mc_version });
   const version = pickVersion(versionsList);
   if (!version) {
-    const project = projectCache.get(projectId);
+    const project = cachedProject(projectId);
     const title = project ? `«${project.title}»` : "этого проекта";
     throw new Error(`Нет версии ${title} для ${build.loader_type === "vanilla" ? "" : build.loader_type + " "}${build.mc_version}`);
   }
@@ -411,7 +585,7 @@ async function updateFile(buildId, kind, file) {
   const { enabledPath, disabledPath } = resolveFile(build, kind, file);
   const full = fs.existsSync(enabledPath) ? enabledPath : disabledPath;
   if (!fs.existsSync(full)) throw new Error("Файл не найден");
-  const sha1 = localInfo(kind, full, fs.statSync(full)).sha1;
+  const sha1 = (await localInfo(kind, full, fs.statSync(full))).sha1;
   const latest = await modrinth.latestByHashes([sha1], { kind, loaderType: build.loader_type, mcVersion: build.mc_version });
   const next = latest[sha1];
   if (!next) throw new Error("Обновление не найдено");
@@ -438,7 +612,7 @@ async function updateAll(buildId, kind) {
  * подходящую для этой сборки. */
 async function fix(buildId, kind, file) {
   const build = requireBuild(buildId);
-  const { items } = await list(buildId, kind);
+  const { items } = await list(buildId, kind, { mode: "ids" });
   const item = items.find((i) => i.file === baseName(file));
   if (!item) throw new Error("Файл не найден");
   const done = [];

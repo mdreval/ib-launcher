@@ -16,17 +16,58 @@
 
   let filter = "installed";
 
+  function progressPercent(st) {
+    if (st.status === "cancelling") return null;
+    return st.progress && Number.isFinite(st.progress.percent) ? st.progress.percent : null;
+  }
+
+  function progressLabel(st, pct) {
+    if (st.status === "cancelling") return (st.progress && st.progress.text) || "Отмена…";
+    return pct === null ? "Подготовка…" : `${pct}%`;
+  }
+
+  /** «Отмена» во время установки / подготовки запуска. */
+  function cancelButton(buildId, st) {
+    const cancelling = st.status === "cancelling";
+    return h("button", {
+      class: "btn btn--sm build-cancel",
+      title: cancelling ? "Отменяется…" : "Отменить и удалить уже скачанное",
+      disabled: cancelling,
+      html: cancelling ? '<span class="spinner"></span>Отмена…' : `${IB.icon("close")}Отмена`,
+      onClick: (e) => {
+        e.stopPropagation();
+        IB.actions.cancel(buildId);
+      },
+    });
+  }
+
+  /** Обновляет строку сборки без пересоздания, если это просто новый
+   * процент загрузки — иначе строка «моргала» при каждом событии. */
+  function patchRow(row, b) {
+    const st = IB.gameState(b.id);
+    const busyNow = ["installing", "preparing", "modpack"].includes(st.status);
+    const bar = row.querySelector(".list-row__actions .progress__bar");
+    const label = row.querySelector(".build-progress__label");
+    const cancelBtn = row.querySelector(".build-cancel");
+    if (!busyNow || !bar || !label || !cancelBtn || cancelBtn.disabled) return false;
+    const pct = progressPercent(st);
+    bar.parentElement.classList.toggle("progress--indeterminate", pct === null);
+    bar.style.width = `${pct || 0}%`;
+    label.textContent = progressLabel(st, pct);
+    return true;
+  }
+
   function buildRow(b) {
     const st = IB.gameState(b.id);
     const running = st.status === "running";
-    const busy = st.status === "installing" || st.status === "preparing" || st.status === "modpack";
+    const busy = st.status === "installing" || st.status === "preparing" || st.status === "modpack" || st.status === "cancelling";
     const selected = b.id === S.selected;
 
     const actions = h("div", { class: "list-row__actions" });
     if (busy) {
-      const pct = st.progress && Number.isFinite(st.progress.percent) ? st.progress.percent : null;
+      const pct = progressPercent(st);
       const bar = h("div", { class: `progress${pct === null ? " progress--indeterminate" : ""}` }, h("div", { class: "progress__bar", style: { width: `${pct || 0}%` } }));
-      actions.append(h("span", { class: "muted", style: { fontSize: "12.5px" }, text: pct === null ? "Подготовка…" : `${pct}%` }), bar);
+      actions.append(h("span", { class: "muted build-progress__label", style: { fontSize: "12.5px" }, text: progressLabel(st, pct) }), bar, cancelButton(b.id, st));
     } else if (running) {
       actions.append(h("button", { class: "btn btn--danger btn--sm", html: `${IB.icon("stop")}Остановить`, onClick: (e) => (e.stopPropagation(), IB.actions.stop(b.id)) }));
     } else if (!b.installed) {
@@ -78,10 +119,27 @@
     );
   }
 
+  /** Чистая сборка этой версии: сначала установленная, иначе любая. */
+  function vanillaBuildFor(version) {
+    const all = S.builds.filter((b) => b.loader_type === "vanilla" && b.mc_version === version);
+    return all.find((b) => b.installed) || all.find((b) => IB.gameState(b.id).status !== "idle") || all[0] || null;
+  }
+
   function versionRow(v) {
-    const existing = S.builds.find((b) => b.loader_type === "vanilla" && b.mc_version === v.id);
+    const existing = vanillaBuildFor(v.id);
+    const st = existing ? IB.gameState(existing.id) : { status: "idle" };
+    const busy = ["installing", "preparing", "modpack", "cancelling"].includes(st.status);
     const actions = h("div", { class: "list-row__actions" });
-    if (existing) {
+    if (existing && busy) {
+      // Установка идёт прямо здесь — проценты и «Отмена» в этой же строке.
+      const pct = progressPercent(st);
+      const bar = h("div", { class: `progress${pct === null ? " progress--indeterminate" : ""}` }, h("div", { class: "progress__bar", style: { width: `${pct || 0}%` } }));
+      actions.append(h("span", { class: "muted build-progress__label", style: { fontSize: "12.5px" }, text: progressLabel(st, pct) }), bar, cancelButton(existing.id, st));
+    } else if (existing && st.status === "running") {
+      actions.append(h("button", { class: "btn btn--danger btn--sm", html: `${IB.icon("stop")}Остановить`, onClick: () => IB.actions.stop(existing.id) }));
+    } else if (existing && !existing.installed) {
+      actions.append(h("button", { class: "btn btn--sm", html: `${IB.icon("download")}Установить`, onClick: () => IB.actions.install(existing.id) }));
+    } else if (existing) {
       actions.append(
         h("span", { class: "badge badge--accent", text: "Установлено" }),
         h("button", { class: "btn btn--primary btn--sm", html: `${IB.icon("play")}Играть`, onClick: () => IB.actions.play(existing.id) })
@@ -104,7 +162,7 @@
     }
     return h(
       "div",
-      { class: "list-row" },
+      { class: "list-row", dataset: { version: v.id } },
       h("div", { class: "list-row__icon" }, h("img", { src: "../../assets/ui/nav-home.png", alt: "" })),
       h("div", { class: "list-row__main" }, h("div", { class: "list-row__title" }, v.id, h("span", { class: "badge", text: TYPE_BADGE[v.type] || v.type })), h("div", { class: "list-row__sub", text: IB.fmt.longDate(v.releaseTime) })),
       actions
@@ -162,7 +220,7 @@
         }
       }
 
-      async function renderList() {
+      async function renderList(animate = true) {
         const q = search.value.trim().toLowerCase();
         listEl.textContent = "";
         if (filter === "installed") {
@@ -173,7 +231,10 @@
           }
           items.forEach((b, i) => {
             const row = buildRow(b);
-            row.style.animationDelay = `${Math.min(i, 10) * 30}ms`;
+            // Перерисовка из-за смены состояния (запуск, установка) — без
+            // анимации появления, иначе весь список «моргает».
+            if (animate) row.style.animationDelay = `${Math.min(i, 10) * 30}ms`;
+            else row.style.animation = "none";
             listEl.append(row);
           });
           return;
@@ -196,7 +257,8 @@
         }
         items.slice(0, limit).forEach((v, i) => {
           const row = versionRow(v);
-          row.style.animationDelay = `${Math.min(i, 12) * 25}ms`;
+          if (animate) row.style.animationDelay = `${Math.min(i, 12) * 25}ms`;
+          else row.style.animation = "none";
           listEl.append(row);
         });
         if (items.length > limit) {
@@ -240,14 +302,29 @@
         update(kind, detail) {
           if (kind === "builds") {
             renderChips();
-            renderList();
+            renderList(false);
           }
           if (kind === "game" && filter === "installed") {
             const id = detail && detail.buildId;
             const idx = S.builds.findIndex((b) => b.id === id);
             const row = listEl.children[idx];
-            if (row && !search.value) row.replaceWith(buildRow(S.builds[idx]));
-            else renderList();
+            if (row && !search.value) {
+              if (patchRow(row, S.builds[idx])) return;
+              const fresh = buildRow(S.builds[idx]);
+              fresh.style.animation = "none";
+              row.replaceWith(fresh);
+            } else renderList(false);
+          }
+          if (kind === "game" && filter !== "installed" && catalog) {
+            // Установка из «Релизов»: обновляем только строку этой версии.
+            const b = S.builds.find((x) => x.id === (detail && detail.buildId));
+            if (!b || b.loader_type !== "vanilla") return;
+            const row = listEl.querySelector(`[data-version="${CSS.escape(b.mc_version)}"]`);
+            if (!row) return;
+            if (patchRow(row, b)) return;
+            const fresh = versionRow(catalog.find((v) => v.id === b.mc_version) || { id: b.mc_version });
+            fresh.style.animation = "none";
+            row.replaceWith(fresh);
           }
         },
       };

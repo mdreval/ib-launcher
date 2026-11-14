@@ -27,12 +27,37 @@ const versions = require("./versions");
 const serverList = require("./serverList");
 const skinMod = require("./skinMod");
 const serverStatus = require("../core/serverStatus");
+const cancelCtl = require("../core/cancel");
 const stats = require("./stats");
 const usage = require("./usage");
 const crash = require("./crash");
 const discordRpc = require("./discordRpc");
 const { broadcast } = require("../core/broadcast");
 const { tr } = require("../core/i18n");
+
+// ---------- переменные Java из системы ----------
+//
+// Некоторые программы прописывают в Windows переменные _JAVA_OPTIONS,
+// JAVA_TOOL_OPTIONS или JDK_JAVA_OPTIONS (например, «-Xmx8G»). Java берёт их
+// ПОВЕРХ аргументов запуска, и тогда игре всегда достаётся эта память,
+// что бы ни было выставлено в лаунчере. Убираем из них только -Xmx/-Xms —
+// остальное (если там что-то нужное) оставляем.
+
+const JAVA_ENV_VARS = ["_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS"];
+const ENV_MEMORY_ARG = /^-Xm[sx]\d+[kKmMgGtT]?$/;
+const javaEnvNotes = [];
+
+for (const name of JAVA_ENV_VARS) {
+  const value = process.env[name];
+  if (!value) continue;
+  const parts = value.split(/\s+/).filter(Boolean);
+  const kept = parts.filter((a) => !ENV_MEMORY_ARG.test(a));
+  if (kept.length === parts.length) continue;
+  const dropped = parts.filter((a) => ENV_MEMORY_ARG.test(a));
+  javaEnvNotes.push(`В Windows задана переменная ${name} с ${dropped.join(" ")} — она перебивала память игры, лаунчер её не учитывает`);
+  if (kept.length) process.env[name] = kept.join(" ");
+  else delete process.env[name];
+}
 
 // ---------- перехват запуска процесса ----------
 
@@ -41,6 +66,8 @@ const spawnWatchers = new Set();
 
 childProcess.spawn = function patchedSpawn(...args) {
   const child = originalSpawn.apply(this, args);
+  // Процессы установки (например, патчер Forge) убиваются при отмене.
+  cancelCtl.trackChild(child);
   for (const watcher of spawnWatchers) {
     try {
       watcher(child, args);
@@ -68,14 +95,14 @@ const sessions = new Map(); // buildId -> { status, progress, child, lines, logF
 
 function session(buildId) {
   if (!sessions.has(buildId)) {
-    sessions.set(buildId, { status: "idle", progress: null, child: null, lines: [], logStream: null, exitCode: null, crash: [] });
+    sessions.set(buildId, { status: "idle", progress: null, child: null, lines: [], logStream: null, exitCode: null, crash: [], token: null });
   }
   return sessions.get(buildId);
 }
 
 function publicState(buildId) {
   const s = session(buildId);
-  return { buildId, status: s.status, progress: s.progress, exitCode: s.exitCode, pid: s.child ? s.child.pid : null };
+  return { buildId, status: s.status, progress: s.progress, exitCode: s.exitCode, pid: s.child ? s.child.pid : null, cancelable: !!s.token && !s.token.cancelled };
 }
 
 function allStates() {
@@ -98,6 +125,7 @@ function setStatus(buildId, status, progress = null) {
 let lastProgressEmit = 0;
 function setProgress(buildId, percent, text) {
   const s = session(buildId);
+  if (s.status === "cancelling") return; // после «Отмена» прогресс уже не показываем
   s.progress = { percent: Math.max(0, Math.min(100, Math.round(percent))), text: text || "" };
   const now = Date.now();
   if (now - lastProgressEmit > 120 || percent >= 100) {
@@ -165,9 +193,21 @@ function loaderOption(build) {
   return { type: build.loader_type, build: buildValue, enable: true, path: "./loader" };
 }
 
+/** Сколько памяти дать игре: своя память сборки важнее общей из «Настроек». */
+function ramFor(build) {
+  const own = parseInt(build && build.ram_mb, 10);
+  if (Number.isFinite(own) && own >= 512) return { mb: own, own: true };
+  return { mb: parseInt(settings.get().ram_mb, 10) || 4096, own: false };
+}
+
+/** -Xmx/-Xms из общих аргументов JVM перебивали бы память, выбранную для
+ * сборки (Java берёт последнее значение), поэтому их убираем. -Xmx в
+ * аргументах самой сборки оставляем — это её собственный выбор. */
+const MEMORY_ARG = /^-Xm[sx]\d+[kKmMgGtT]?$/;
+
 function baseOptions(build, authenticator, extraJvm = [], extraGame = []) {
   const s = settings.get();
-  const ramMb = build.ram_mb || s.ram_mb;
+  const ramMb = ramFor(build).mb;
   const gameArgs = [...extraGame];
   if (build.fullscreen) gameArgs.push("--fullscreen");
   return {
@@ -178,7 +218,7 @@ function baseOptions(build, authenticator, extraJvm = [], extraGame = []) {
     loader: loaderOption(build),
     java: { path: null, version: null, type: "jre" },
     memory: { min: `${Math.min(1024, ramMb)}M`, max: `${ramMb}M` },
-    JVM_ARGS: [...splitArgs(s.jvm_args), ...splitArgs(build.jvm_args), ...extraJvm],
+    JVM_ARGS: [...splitArgs(s.jvm_args).filter((a) => !MEMORY_ARG.test(a)), ...splitArgs(build.jvm_args), ...extraJvm],
     GAME_ARGS: gameArgs,
     screen: build.window && build.window.width ? { width: build.window.width, height: build.window.height } : {},
     verify: false,
@@ -226,6 +266,7 @@ function isNetworkError(err) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MAX_PASSES = 4;
+const cancelledError = () => new cancelCtl.CancelledError(tr("Установка отменена"));
 
 function wireProgress(launcher, buildId) {
   launcher.on("progress", (done, total) => {
@@ -249,7 +290,7 @@ function wireProgress(launcher, buildId) {
  *    которого раньше всё висело на «Подготовка 0%») превращаются в ошибку;
  *  - mode "install" — только скачать файлы, без запуска игры.
  */
-function makeLauncher(mode, buildId) {
+function makeLauncher(mode, buildId, token = null) {
   const Launch = loadLibrary();
   class IgrobarLaunch extends Launch {
     emit(event, ...args) {
@@ -275,6 +316,10 @@ function makeLauncher(mode, buildId) {
           this.igrobarFatal = err;
         }
         this.igrobarDownloading = false;
+        if (token && token.cancelled) {
+          this.igrobarFailure = cancelledError();
+          return undefined;
+        }
         if (data && !this.igrobarFileErrors.length && !this.igrobarFatal) return data;
         const reason = this.igrobarFatal
           ? errorText(this.igrobarFatal)
@@ -289,7 +334,11 @@ function makeLauncher(mode, buildId) {
           return undefined;
         }
         launcherLine(buildId, `Сбой загрузки (${reason}) — пробую ещё раз (${pass + 1}/${MAX_PASSES})…`);
-        await sleep(2500 * pass);
+        await cancelCtl.sleep(2500 * pass, token);
+        if (token && token.cancelled) {
+          this.igrobarFailure = cancelledError();
+          return undefined;
+        }
       }
       return undefined;
     }
@@ -384,8 +433,8 @@ function placeholderAuth() {
   };
 }
 
-function installFiles(build) {
-  const launcher = makeLauncher("install", build.id);
+function installFiles(build, token) {
+  const launcher = makeLauncher("install", build.id, token);
   return new Promise((resolve, reject) => {
     launcher.on("igrobar:installed", resolve);
     launcher.on("igrobar:failed", (err) => reject(err instanceof Error ? err : new Error(errorText(err))));
@@ -407,6 +456,7 @@ async function syncModpackFor(build, { strict }) {
       launcherLine(build.id, `Модпак обновлён до ${result.release}: ${result.added} файлов`);
     } else if (!result.skipped) launcherLine(build.id, "Модпак актуален");
   } catch (err) {
+    if (cancelCtl.isCancelled(err)) throw err;
     // Без полного модпака на сервер не зайти — игру не запускаем.
     // Если все файлы на месте и не получилось только проверить обновление
     // (например, нет интернета) — можно играть с текущими модами.
@@ -417,24 +467,192 @@ async function syncModpackFor(build, { strict }) {
   }
 }
 
+// ---------- отмена установки и уборка ----------
+
+function otherBusy(buildId) {
+  return [...sessions.entries()].some(([id, st]) => id !== buildId && st.status !== "idle");
+}
+
+const CACHE_ARCHIVE = /^modpack-.*\.zip(?:\.part)?$/;
+function cacheArchives() {
+  try {
+    return fs.readdirSync(paths.CACHE_DIR).filter((f) => CACHE_ARCHIVE.test(f));
+  } catch (err) {
+    return [];
+  }
+}
+
+async function walkFiles(root, rel, out, skip) {
+  let entries;
+  try {
+    entries = await fs.promises.readdir(rel ? path.join(root, rel) : root, { withFileTypes: true });
+  } catch (err) {
+    return;
+  }
+  for (const entry of entries) {
+    const r = rel ? path.join(rel, entry.name) : entry.name;
+    if (skip(r)) continue;
+    if (entry.isDirectory()) {
+      out.dirs.add(r);
+      await walkFiles(root, r, out, skip);
+    } else out.files.add(r);
+  }
+}
+
+/** Какие файлы уже были до установки. Смотрим папку самой сборки и общие
+ * папки игры (версии, библиотеки, ассеты, Java). Папки других сборок не
+ * трогаем никогда. Если параллельно ставится/запущена другая сборка —
+ * общие файлы тоже не трогаем: они могут быть нужны ей. */
+function installSkipper(build, withShared) {
+  const own = builds.instanceName(build).toLowerCase();
+  return (rel) => {
+    const parts = rel.split(path.sep);
+    if (parts[0].toLowerCase() === "instances") return parts.length >= 2 && parts[1].toLowerCase() !== own;
+    return !withShared;
+  };
+}
+
+async function snapshotInstall(build) {
+  const root = settings.gameDir();
+  const snap = { root, build, files: new Set(), dirs: new Set(), cache: new Set(cacheArchives()) };
+  await walkFiles(root, "", snap, installSkipper(build, true));
+  return snap;
+}
+
+/** Удаляет всё, что появилось за время отменённой установки. */
+async function cleanupInstall(snap) {
+  if (!snap) return 0;
+  const withShared = !otherBusy(snap.build.id);
+  const now = { files: new Set(), dirs: new Set() };
+  await walkFiles(snap.root, "", now, installSkipper(snap.build, withShared));
+  let removed = 0;
+  const rm = async (target, opts = {}) => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await fs.promises.rm(target, { force: true, ...opts });
+        return true;
+      } catch (err) {
+        await sleep(400); // файл ещё держит антивирус
+      }
+    }
+    return false;
+  };
+  for (const rel of now.files) {
+    if (snap.files.has(rel)) continue;
+    if (await rm(path.join(snap.root, rel))) removed += 1;
+  }
+  // Новые пустые папки — от самых глубоких к верхним.
+  const depth = (r) => r.split(path.sep).length;
+  const newDirs = [...now.dirs].filter((d) => !snap.dirs.has(d)).sort((a, b) => depth(b) - depth(a));
+  for (const rel of newDirs) {
+    try {
+      fs.rmdirSync(path.join(snap.root, rel));
+    } catch (err) {
+      /* в папке остались чужие/занятые файлы */
+    }
+  }
+  // Скачанный за это время архив модпака (и его недокачанная часть).
+  for (const f of cacheArchives()) {
+    if (!snap.cache.has(f) && (await rm(path.join(paths.CACHE_DIR, f)))) removed += 1;
+  }
+  return removed;
+}
+
+/** Кнопка «Отмена» во время установки или подготовки запуска. */
+function cancel(buildId) {
+  const s = session(buildId);
+  if (!s.token || s.token.cancelled) return false;
+  launcherLine(buildId, "Отмена…");
+  setStatus(buildId, "cancelling", { percent: null, text: "Отмена…" });
+  cancelCtl.cancel(s.token);
+  return true;
+}
+
+/** Ждёт либо окончания работы, либо нажатия «Отмена» (что раньше). */
+function untilDoneOrCancelled(work, token) {
+  return Promise.race([
+    work,
+    token.whenCancelled.then(() => {
+      throw cancelledError();
+    }),
+  ]);
+}
+
+// ---------- установка сборки ----------
+
 async function install(buildId) {
-  if (!builds.get(buildId)) throw new Error("Сборка не найдена");
+  const before = builds.get(buildId);
+  if (!before) throw new Error("Сборка не найдена");
+  // Новая сборка, которая ни разу не ставилась: при отмене убираем её
+  // целиком (и из списка «Установленные»). Сборку сервера и уже
+  // ставившиеся сборки (переустановка) не удаляем — только скачанное.
+  const removeOnCancel = before.kind !== "server" && !before.installed && !before.installed_signature;
   const s = session(buildId);
   if (s.status !== "idle") throw new Error("Сборка уже устанавливается или запущена");
+  const token = cancelCtl.createToken();
+  s.token = token;
   setStatus(buildId, "installing", { percent: 0, text: "Подготовка…" });
-  const build = await freshBuild(buildId);
-  launcherLine(buildId, `Установка ${build.name}: Minecraft ${build.mc_version}${build.loader_type !== "vanilla" ? `, ${build.loader_type} ${versions.loaderLabel(build)}` : ""}`);
-  javaLine(build);
-  try {
-    await installFiles(build);
+  let snap = null;
+  const work = cancelCtl.run(token, async () => {
+    const build = await freshBuild(buildId);
+    cancelCtl.throwIfCancelled(token);
+    snap = await snapshotInstall(build);
+    cancelCtl.throwIfCancelled(token);
+    launcherLine(buildId, `Установка ${build.name}: Minecraft ${build.mc_version}${build.loader_type !== "vanilla" ? `, ${build.loader_type} ${versions.loaderLabel(build)}` : ""}`);
+    javaLine(build);
+    await installFiles(build, token);
+    cancelCtl.throwIfCancelled(token);
     await syncModpackFor(build, { strict: true });
+    cancelCtl.throwIfCancelled(token);
     addServerToList(build);
     await skinMod.prepare(build, accounts.selected(), (line) => launcherLine(buildId, line));
+    cancelCtl.throwIfCancelled(token);
+  });
+  work.then(
+    () => cancelCtl.finish(token),
+    () => cancelCtl.finish(token)
+  );
+  try {
+    await untilDoneOrCancelled(work, token);
+    s.token = null;
     builds.markInstalled(buildId);
     launcherLine(buildId, "Установка завершена");
     setStatus(buildId, "idle");
     return builds.get(buildId);
   } catch (err) {
+    s.token = null;
+    if (token.cancelled) {
+      // Даём загрузкам остановиться (обычно доли секунды), потом убираем
+      // всё, что успело скачаться за эту установку.
+      let settled = false;
+      const settledPromise = work.then(
+        () => (settled = true),
+        () => (settled = true)
+      );
+      await Promise.race([settledPromise, sleep(5000)]);
+      setStatus(buildId, "cancelling", { percent: null, text: "Удаление скачанного…" });
+      let removed = 0;
+      try {
+        removed = await cleanupInstall(snap);
+      } catch (e) {
+        /* что не удалилось — не страшно */
+      }
+      if (removeOnCancel) {
+        try {
+          builds.remove(buildId);
+        } catch (e) {
+          /* уже удалена */
+        }
+      }
+      // Если установщик ещё что-то дописывал (например, распаковка Java),
+      // уберём и это, когда он остановится.
+      if (!settled && snap) settledPromise.then(() => cleanupInstall(snap)).catch(() => {});
+      launcherLine(buildId, removed ? `Установка отменена — удалено скачанных файлов: ${removed}` : "Установка отменена");
+      setStatus(buildId, "idle");
+      const error = cancelledError();
+      error.buildRemoved = removeOnCancel;
+      throw error;
+    }
     launcherLine(buildId, `Ошибка установки: ${errorText(err)}`);
     setStatus(buildId, "idle");
     throw new Error(errorText(err));
@@ -464,9 +682,11 @@ async function launch(buildId) {
   s.crash = [];
   openLogFile(buildId);
   broadcast("game:log-reset", { buildId });
+  const token = cancelCtl.createToken();
+  s.token = token;
   setStatus(buildId, "preparing", { percent: 0, text: "Подготовка…" });
 
-  try {
+  const work = cancelCtl.run(token, async () => {
     const auth = await accounts.launchAuth((line) => launcherLine(buildId, line));
     launcherLine(buildId, `Аккаунт: ${auth.account.name} (${auth.account.type})`);
 
@@ -479,8 +699,12 @@ async function launch(buildId) {
     const connectArgs = await quickConnectArgs(build);
     if (connectArgs.length) launcherLine(buildId, `После загрузки игра сразу подключится к ${build.server_address}`);
     const options = baseOptions(build, auth.authenticator, auth.jvmArgs, connectArgs);
+    for (const note of javaEnvNotes) launcherLine(buildId, note);
+    const ram = ramFor(build);
+    launcherLine(buildId, `Память для игры: ${(ram.mb / 1024).toFixed(ram.mb % 1024 ? 1 : 0)} ГБ (${ram.mb} МБ) — ${ram.own ? "своя для этой сборки" : "как в «Настройках»"}`);
     const expectedCwd = normalizeDir(path.join(options.path, "instances", options.instance));
-    const launcher = makeLauncher("launch", buildId);
+    cancelCtl.throwIfCancelled(token);
+    const launcher = makeLauncher("launch", buildId, token);
 
     setStatus(buildId, "installing", { percent: 0, text: "Проверка файлов игры…" });
 
@@ -488,8 +712,9 @@ async function launch(buildId) {
       let started = false;
       const watcher = (child, args) => {
         const opts = args[2] || {};
-        if (started || normalizeDir(opts.cwd) !== expectedCwd) return;
+        if (started || token.cancelled || normalizeDir(opts.cwd) !== expectedCwd) return;
         started = true;
+        s.token = null; // игра запущена — отменять уже нечего, есть «Остановить»
         launcher.igrobarSpawned = true;
         spawnWatchers.delete(watcher);
         s.child = child;
@@ -510,6 +735,7 @@ async function launch(buildId) {
 
       launcher.on("data", (chunk) => pushLines(buildId, chunk));
       launcher.on("close", (code) => {
+        if (!started) return; // процесс убит отменой до запуска игры
         const exitCode = typeof code === "number" ? code : s.exitCode;
         s.exitCode = exitCode;
         s.child = null;
@@ -539,8 +765,27 @@ async function launch(buildId) {
         reject(err);
       });
     });
+  });
+  work.then(
+    () => cancelCtl.finish(token),
+    () => cancelCtl.finish(token)
+  );
+
+  try {
+    await untilDoneOrCancelled(work, token);
     return publicState(buildId);
   } catch (err) {
+    s.token = null;
+    if (token.cancelled) {
+      launcherLine(buildId, "Запуск отменён");
+      if (s.logStream) {
+        s.logStream.end();
+        s.logStream = null;
+      }
+      setStatus(buildId, "idle");
+      const error = new cancelCtl.CancelledError(tr("Запуск отменён"));
+      throw error;
+    }
     launcherLine(buildId, `Не удалось запустить: ${errorText(err)}`);
     if (s.logStream) {
       s.logStream.end();
@@ -591,7 +836,7 @@ function report(buildId) {
     `Лаунчер: ${app.getVersion()}`,
     `Система: ${os.type()} ${os.release()} (${os.arch()}), ОЗУ ${total} МБ`,
     build ? `Сборка: ${build.name} — Minecraft ${build.mc_version}, ${build.loader_type} ${versions.loaderLabel(build)}` : "",
-    build ? `Память для игры: ${build.ram_mb || settings.get().ram_mb} МБ` : "",
+    build ? `Память для игры: ${ramFor(build).mb} МБ${ramFor(build).own ? " (своя для сборки)" : ""}` : "",
     `Код выхода: ${s.exitCode ?? "—"}`,
     "",
     "=== Последние строки журнала ===",
@@ -604,4 +849,4 @@ function isBusy() {
   return [...sessions.values()].some((s) => s.status !== "idle");
 }
 
-module.exports = { install, launch, stop, logs, crashInfo, clearLogs, report, allStates, publicState, setWindowHooks, anyRunning, isBusy };
+module.exports = { install, cancel, launch, stop, logs, crashInfo, clearLogs, report, allStates, publicState, setWindowHooks, anyRunning, isBusy };

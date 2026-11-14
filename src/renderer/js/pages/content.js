@@ -163,6 +163,23 @@
       }
 
       // ---------- установленное ----------
+      let updateAllBtn = null;
+      /** «Обновить все»: пока идёт фоновая проверка на Modrinth — крутилка. */
+      function paintUpdateBtn() {
+        const btn = updateAllBtn;
+        if (!btn) return;
+        const updates = installed.items.filter((i) => i.update).length;
+        if (installed.pending && !updates) {
+          btn.className = "btn";
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner"></span>Проверяю обновления…';
+          return;
+        }
+        btn.className = `btn ${updates ? "btn--primary" : ""}`;
+        btn.disabled = !updates;
+        btn.innerHTML = `${IB.icon("download")}Обновить все${updates ? ` (${updates})` : ""}`;
+      }
+
       function renderInstalledToolbar() {
         toolbar.textContent = "";
         const search = h("input", { class: "input", placeholder: "Найти среди установленных", value: view.query, spellcheck: "false" });
@@ -173,8 +190,9 @@
             renderInstalled();
           }, 120)
         );
-        const updates = installed.items.filter((i) => i.update).length;
-        const updateAll = h("button", { class: `btn ${updates ? "btn--primary" : ""}`, disabled: !updates, html: `${IB.icon("download")}Обновить все${updates ? ` (${updates})` : ""}` });
+        const updateAll = h("button", { class: "btn" });
+        updateAllBtn = updateAll;
+        paintUpdateBtn();
         updateAll.addEventListener("click", async () => {
           updateAll.disabled = true;
           updateAll.innerHTML = '<span class="spinner"></span>Обновление…';
@@ -265,7 +283,7 @@
         );
       }
 
-      function renderInstalled() {
+      function renderInstalled(animate = true) {
         body.textContent = "";
         const b = build();
         if (view.kind === "mods" && b && b.loader_type === "vanilla") {
@@ -294,7 +312,8 @@
         const list = h("div", { class: "list" });
         items.forEach((item, i) => {
           const row = itemRow(item);
-          row.style.animationDelay = `${Math.min(i, 12) * 20}ms`;
+          if (animate) row.style.animationDelay = `${Math.min(i, 12) * 20}ms`;
+          else row.style.animation = "none";
           list.append(row);
         });
         body.append(list);
@@ -308,8 +327,9 @@
           for (let i = 0; i < 6; i += 1) sk.append(h("div", { class: "skeleton", style: { height: "66px" } }));
           body.append(sk);
         }
+        // 1) Сразу показываем то, что есть на диске и в кэше (без сети).
         try {
-          const res = await api.content.list(view.buildId, view.kind);
+          const res = await api.content.list(view.buildId, view.kind, false, "fast");
           if (my !== loadToken) return;
           installed = res;
         } catch (err) {
@@ -319,7 +339,21 @@
         }
         renderTabs();
         renderInstalledToolbar();
-        renderInstalled();
+        renderInstalled(!quiet);
+        if (!installed.pending) return;
+        // 2) Фоном уточняем на Modrinth (новые файлы, обновления) и тихо
+        // перерисовываем список, не сбрасывая поиск.
+        try {
+          const res = await api.content.list(view.buildId, view.kind, false, "full");
+          if (my !== loadToken) return;
+          installed = res;
+        } catch (err) {
+          if (my !== loadToken) return;
+          installed.pending = false;
+        }
+        renderTabs();
+        paintUpdateBtn();
+        renderInstalled(false);
       }
 
       // ---------- каталог ----------
