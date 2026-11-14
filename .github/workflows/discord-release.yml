@@ -113,13 +113,14 @@ jobs:
           if image_url:
               embed["image"] = {"url": image_url}
 
-          # Добавляем content с @everyone в самое начало сообщения
+          # Упоминаем роль Minecraft News в самом начале сообщения
+          role_id = "1571153562430349382"  # ID роли Minecraft News в Discord
           payload = {
-              "content": "@everyone",
+              "content": f"<@&{role_id}>",
               "username": "GitHub Releases",
               "embeds": [embed],
               "allowed_mentions": {
-                  "parse": ["everyone"]
+                  "roles": [role_id]
               }
           }
 
