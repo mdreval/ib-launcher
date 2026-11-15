@@ -36,8 +36,14 @@
                   onClick: () => l.url && api.app.openExternal(l.url),
                 },
                 h("span", { class: "link-card__icon", html: IB.icon(l.icon) }),
-                h("span", { class: "link-card__main" }, h("b", { text: l.title }), l.text ? h("small", { text: l.text }) : null),
-                l.url ? h("span", { class: "link-card__go", html: IB.icon("external") }) : h("span", { class: "badge", text: "Скоро" })
+                h(
+                  "span",
+                  { class: "link-card__main" },
+                  // «Скоро» — рядом с названием, чтобы описанию хватало места
+                  h("span", { class: "link-card__title" }, h("b", { text: l.title }), l.url ? null : h("span", { class: "badge", text: "Скоро" })),
+                  l.text ? h("small", { text: l.text }) : null
+                ),
+                l.url ? h("span", { class: "link-card__go", html: IB.icon("external") }) : null
               )
             );
           }

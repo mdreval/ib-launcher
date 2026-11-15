@@ -164,6 +164,12 @@ jobs:
           if m:
               image_url = m.group(1)
               body = body.replace(m.group(0), "").strip()
+          # Маленькие картинки-превью (блок <!-- gallery -->) и любые другие картинки —
+          # только для страницы релиза на GitHub; в Discord остаются баннер и текст.
+          body = re.sub(r'<!--\s*gallery\b.*?<!--\s*/gallery\s*-->', '', body, flags=re.S)
+          body = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', body)
+          body = re.sub(r'<img[^>]*>', '', body)
+          body = re.sub(r'\n{3,}', '\n\n', body).strip()
           # Заголовки Markdown Discord показывает плохо — делаем их жирными.
           body = re.sub(r'^#{1,6}\s*(.+)$', r'**\1**', body, flags=re.M)
           if len(body) > 3900:
@@ -185,11 +191,13 @@ jobs:
           if image_url:
               embed["image"] = {"url": image_url}
 
+          # Упоминаем роль Minecraft News (как в discord-release.yml), а не @everyone
+          role_id = "1571153562430349382"  # ID роли Minecraft News в Discord
           payload = {
-              "content": "@everyone",
+              "content": f"<@&{role_id}>",
               "username": "Igrobar Launcher",
               "embeds": [embed],
-              "allowed_mentions": {"parse": ["everyone"]},
+              "allowed_mentions": {"roles": [role_id]},
           }
           req = urllib.request.Request(
               webhook, data=json.dumps(payload).encode("utf-8"),

@@ -15,7 +15,7 @@
 
   /** Полоса перемотки: время слева, длина справа; пока тянут — не дёргается. */
   function seekBar(onSeek) {
-    const range = h("input", { class: "range seek-bar__range", type: "range", min: "0", max: "1", step: "0.1", value: "0" });
+    const range = h("input", { class: "range seek-bar__range", type: "range", min: "0", max: "1", step: "0.1", value: "0", "data-format": "time" });
     const cur = h("span", { class: "seek-bar__time", text: "0:00" });
     const dur = h("span", { class: "seek-bar__time", text: "0:00" });
     const el = h("div", { class: "seek-bar" }, cur, range, dur);

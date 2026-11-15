@@ -164,7 +164,9 @@
       close() {
         if (closed) return;
         closed = true;
-        backdrop.remove();
+        // плавно закрывается (js/motion-ui.js), потом убирается
+        if (IB.motion) IB.motion.modalClose(backdrop, box, () => backdrop.remove());
+        else backdrop.remove();
         const idx = openModals.indexOf(api);
         if (idx >= 0) openModals.splice(idx, 1);
         if (onClose) onClose();
@@ -175,6 +177,7 @@
       if (e.target === backdrop && closable) api.close();
     });
     root.append(backdrop);
+    if (IB.motion) IB.motion.modalOpen(backdrop, box); // плавно открывается
     openModals.push(api);
     const first = box.querySelector("input:not([type=hidden]), select, textarea");
     if (first) setTimeout(() => first.focus(), 60);
@@ -226,6 +229,7 @@
     if (top + hgt > window.innerHeight - 8) top = Math.max(8, r.top - hgt - 10);
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;
+    if (IB.motion) IB.motion.popoverOpen(el, top < r.top); // плавно раскрывается от кнопки
     openPopover = el;
     setTimeout(() => document.addEventListener("mousedown", outside), 0);
     function outside(e) {
@@ -237,9 +241,11 @@
 
   function closePopover() {
     if (openPopover) {
-      document.removeEventListener("mousedown", openPopover._outside);
-      openPopover.remove();
+      const el = openPopover;
+      document.removeEventListener("mousedown", el._outside);
       openPopover = null;
+      if (IB.motion) IB.motion.popoverClose(el, () => el.remove());
+      else el.remove();
     }
   }
 

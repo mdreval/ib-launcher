@@ -482,6 +482,11 @@
   animation: modal-in 320ms var(--spring);
 }
 
+/* Полоса прокрутки окна не заходит в скруглённые углы. */
+.modal::-webkit-scrollbar-track {
+  margin: 24px 0;
+}
+
 .modal--wide {
   width: min(760px, 100%);
 }
@@ -602,6 +607,10 @@
   background: rgba(var(--c-0c1513), 0.98);
   box-shadow: var(--shadow);
   animation: modal-in 240ms var(--spring);
+}
+
+.popover::-webkit-scrollbar-track {
+  margin: 12px 0;
 }
 
 .popover__item {

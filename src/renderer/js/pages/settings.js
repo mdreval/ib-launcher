@@ -263,7 +263,7 @@
           const max = Math.max(2048, Math.floor((total - 1024) / 512) * 512);
           const ramValue = h("strong", {});
           const ramText = h("p", {});
-          const ram = h("input", { class: "range", type: "range", min: "1024", max: String(max), step: "512" });
+          const ram = h("input", { class: "range", type: "range", min: "1024", max: String(max), step: "512", "data-format": "gb", "data-scale": "gb" });
           ramSlider = ram;
           ramPaint = () => {
             const v = +ram.value;

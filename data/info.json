@@ -5,7 +5,7 @@
   "links": [
     {
       "title": "Telegram-канал",
-      "text": "Новости и обновления сервера",
+      "text": "Новости сервера",
       "url": "https://t.me/IGROBAR",
       "icon": "telegram",
       "accent": true
@@ -18,7 +18,7 @@
     },
     {
       "title": "Discord",
-      "text": "Голосовые каналы и поддержка",
+      "text": "Голосовые каналы",
       "url": "https://discord.gg/CxtzR2quvd",
       "icon": "discord"
     },

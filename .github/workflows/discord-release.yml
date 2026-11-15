@@ -81,6 +81,12 @@ jobs:
               image_url = img_match.group(2)
               release_body = release_body.replace(img_match.group(0), "").strip()
 
+          # Маленькие картинки-превью (блок <!-- gallery -->) и другие картинки — только для GitHub
+          release_body = re.sub(r'<!--\s*gallery\b.*?<!--\s*/gallery\s*-->', '', release_body, flags=re.S)
+          release_body = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', release_body)
+          release_body = re.sub(r'<img[^>]*>', '', release_body)
+          release_body = re.sub(r'\n{3,}', '\n\n', release_body).strip()
+
           if len(release_body) > 4000:
               release_body = release_body[:3997] + "..."
 

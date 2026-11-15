@@ -440,7 +440,7 @@
     const ownRam = IB.switchEl({ checked: !!build.ram_mb, label: "Своя память для сборки" });
     const ramValue = h("strong", { style: { fontSize: "22px", minWidth: "80px", textAlign: "right" } });
     const ramHint = h("div", { class: "field__hint" });
-    const ram = h("input", { class: "range", type: "range", min: "1024", max: String(Math.max(2048, Math.floor((total - 1024) / 512) * 512)), step: "512", value: String(build.ram_mb || globalRam) });
+    const ram = h("input", { class: "range", type: "range", min: "1024", max: String(Math.max(2048, Math.floor((total - 1024) / 512) * 512)), step: "512", value: String(build.ram_mb || globalRam), "data-format": "gb", "data-scale": "gb" });
     function paintRam() {
       const own = ownRam.input.checked;
       if (!own) ram.value = String(globalRam);

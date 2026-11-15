@@ -64,16 +64,35 @@
   -webkit-app-region: drag;
 }
 
-.sidebar__logo {
+/* Логотип IB — кнопка: раскрывает и сворачивает меню (js/sidebar.js).
+   Стоит на том же месте, что и раньше: по центру свёрнутой панели. */
+.sidebar__toggle {
+  position: relative;
+  align-self: flex-start;
   width: 46px;
   height: 46px;
-  margin-bottom: 24px;
+  margin: 0 0 24px 22.5px;
+  padding: 0;
+  border: 0;
   border-radius: 12px;
-  transition: transform 560ms var(--spring);
+  background: none;
   -webkit-app-region: no-drag;
 }
 
-.sidebar__logo:hover {
+.sidebar__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.sidebar__logo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  transition: transform 560ms var(--spring);
+}
+
+.sidebar__toggle:hover .sidebar__logo {
   transform: rotate(-8deg) scale(1.08);
 }
 
@@ -83,6 +102,10 @@
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  /* по 13.5px с боков: в свёрнутой панели (92px) кнопки шириной 64px, как раньше,
+     в раскрытой — растягиваются вместе с ней */
+  align-self: stretch;
+  margin: 0 13.5px;
   -webkit-app-region: no-drag;
 }
 
@@ -90,12 +113,12 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 64px;
+  width: 100%;
   height: 56px;
   border-radius: var(--r-md);
   background: linear-gradient(180deg, rgba(var(--c-a8f0d0), 0.16), rgba(var(--c-a8f0d0), 0.05));
   box-shadow: inset 0 0 0 1px rgba(var(--c-a8f0d0), 0.24), var(--glow);
-  transition: transform 420ms var(--spring), opacity 200ms;
+  transition: opacity 200ms; /* переезд — пружиной в js/sidebar.js */
   pointer-events: none;
 }
 
@@ -103,9 +126,10 @@
   position: relative;
   z-index: 1;
   display: grid;
-  place-items: center;
-  width: 64px;
+  place-items: center start;
+  width: 100%;
   height: 56px;
+  padding: 0 0 0 15px; /* иконка на том же месте, что и по центру 64px */
   border: 0;
   border-radius: var(--r-md);
   background: transparent;
@@ -129,7 +153,39 @@
   filter: drop-shadow(0 0 10px rgba(var(--c-a8f0d0), 0.4));
 }
 
-.nav__btn .tip {
+/* Название раздела рядом с иконкой — видно, когда меню раскрыто.
+   Прозрачность и сдвиг задаёт js/sidebar.js (каскадом сверху вниз). */
+.nav__label {
+  position: absolute;
+  left: 61px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: color 250ms;
+  will-change: transform, opacity;
+}
+
+.nav__label > span {
+  flex: none;
+}
+
+.nav__btn:hover .nav__label,
+.nav__btn[aria-current="page"] .nav__label {
+  color: var(--text);
+}
+
+.nav__btn .tip,
+.sidebar__toggle .tip {
   position: absolute;
   left: calc(100% + 12px);
   top: 50%;
@@ -148,17 +204,39 @@
   z-index: 50;
 }
 
-.nav__btn:hover .tip {
+.nav__btn:hover .tip,
+.sidebar__toggle:hover .tip {
   opacity: 1;
   transform: translate(0, -50%);
 }
 
+/* Меню раскрыто — названия и так видны, подсказки при наведении не нужны. */
+.sidebar.is-open .tip {
+  display: none;
+}
+
+/* Telegram и Discord: в свёрнутой панели — столбиком, как раньше, в раскрытой —
+   в ряд по центру панели. Перестраиваются на пружине (js/sidebar.js задаёт
+   свойство translate); ниже — их места в свёрнутой панели. */
 .sidebar__footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  position: relative;
+  align-self: stretch;
+  height: 96px; /* две кнопки по 44px и 8px между ними */
   -webkit-app-region: no-drag;
+}
+
+.sidebar__footer .social-btn {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.sidebar__footer .social-btn:nth-child(1) {
+  translate: 23.5px 0;
+}
+
+.sidebar__footer .social-btn:nth-child(2) {
+  translate: 23.5px 52px;
 }
 
 .social-btn {
@@ -181,14 +259,6 @@
 .social-btn svg {
   width: 20px;
   height: 20px;
-}
-
-.sidebar__caption {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  text-transform: uppercase;
 }
 
 /* ---------- верхняя панель ---------- */
@@ -399,7 +469,7 @@
 
 /* невысокое окно: пункты меню плотнее, чтобы всё помещалось */
 @media (max-height: 780px) {
-  .sidebar__logo {
+  .sidebar__toggle {
     margin-bottom: 14px;
   }
   .nav {
@@ -409,13 +479,28 @@
   .nav__indicator {
     height: 48px;
   }
+  .nav__btn {
+    padding-left: 17px;
+  }
   .nav__btn img {
     width: 30px;
     height: 30px;
   }
+  .nav__label {
+    left: 59px;
+  }
   .social-btn {
     width: 40px;
     height: 40px;
+  }
+  .sidebar__footer {
+    height: 88px;
+  }
+  .sidebar__footer .social-btn:nth-child(1) {
+    translate: 25.5px 0;
+  }
+  .sidebar__footer .social-btn:nth-child(2) {
+    translate: 25.5px 48px;
   }
 }
 

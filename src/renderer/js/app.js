@@ -330,10 +330,13 @@
           "button",
           { class: "nav__btn", dataset: { page: item.id }, "aria-label": item.title, onClick: () => IB.go(item.id) },
           h("img", { src: `../../assets/ui/${item.icon}`, alt: "" }),
+          h("span", { class: "nav__label", "aria-hidden": "true" }, h("span", { text: item.title })),
           h("span", { class: "tip", text: item.title })
         )
       );
     }
+    // раскрытие меню по нажатию на логотип IB (js/sidebar.js)
+    if (IB.sidebar) IB.sidebar.attach();
   }
 
   function updateNav(pageId) {
@@ -343,7 +346,9 @@
     const indicator = document.getElementById("nav-indicator");
     if (idx >= 0) {
       indicator.style.opacity = "1";
-      indicator.style.transform = `translateY(${buttons[idx].offsetTop}px)`;
+      // подсветка переезжает на пружине (js/sidebar.js)
+      if (IB.sidebar) IB.sidebar.highlight(buttons[idx].offsetTop);
+      else indicator.style.transform = `translateY(${buttons[idx].offsetTop}px)`;
     } else indicator.style.opacity = "0";
   }
 
@@ -402,9 +407,10 @@
     const ds = (server && server.discord) || "https://discord.gg/CxtzR2quvd";
     footer.append(
       h("button", { class: "social-btn", title: "Telegram IGROBAR", html: IB.icon("telegram"), onClick: () => api.app.openExternal(tg) }),
-      h("button", { class: "social-btn social-btn--discord", title: "Discord IGROBAR", html: IB.icon("discord"), onClick: () => api.app.openExternal(ds) }),
-      h("span", { class: "sidebar__caption", text: "IGROBAR" })
+      h("button", { class: "social-btn social-btn--discord", title: "Discord IGROBAR", html: IB.icon("discord"), onClick: () => api.app.openExternal(ds) })
     );
+    // в раскрытом меню кнопки встают в ряд (js/sidebar.js)
+    if (IB.sidebar) IB.sidebar.footer();
   }
 
   // лёгкий параллакс фона

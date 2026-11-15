@@ -1,0 +1,205 @@
+/*
+ * Желейный ползунок (js/jelly-slider.js): бегунок тянется от скорости,
+ * при перетаскивании из него поднимается капля со значением.
+ * Одна сетка: дорожка и шкала под ней начинаются и кончаются на одной линии,
+ * бегунок ездит внутри дорожки (по 12px с каждой стороны), подписи шкалы
+ * стоят ровно под центром бегунка для своего значения.
+ * Цвета берутся из темы лаунчера: --accent-strong и --on-accent.
+ */
+.jelly {
+  --jelly: var(--accent-strong);
+  --jelly-on: var(--on-accent);
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.jelly__rail {
+  position: relative;
+  height: 32px;
+  touch-action: none;
+}
+
+.jelly__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 13px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.jelly__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--jelly);
+}
+
+/* жидкий слой: бегунок и капля сливаются в одну форму */
+.jelly__goo {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: -80px;
+  height: 140px;
+  filter: url(#ib-jelly-goo);
+  pointer-events: none;
+}
+
+.jelly__blob {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  background: var(--jelly);
+  will-change: transform;
+}
+
+.jelly__drop {
+  width: 36px;
+  height: 36px;
+}
+
+.jelly__thumb {
+  width: 28px; /* читается как 24: фильтр подрезает край */
+  height: 28px;
+}
+
+.jelly__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  font: 700 12px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--jelly-on);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.jelly__label--long {
+  font-size: 10.5px;
+  letter-spacing: -0.02em;
+}
+
+/* Сам <input>: прозрачный слой поверх дорожки. Он ловит мышь и клавиатуру
+   и хранит значение; видимым его не сделать даже через style.opacity. */
+.jelly > .jelly__rail > input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0 !important;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.jelly > .jelly__rail > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  box-shadow: none;
+}
+
+.jelly > .jelly__rail > input[type="range"]:disabled {
+  cursor: default;
+}
+
+.jelly:has(input[type="range"]:disabled) {
+  opacity: 0.5;
+}
+
+/* Шкала под дорожкой (память): отметка на каждый шаг, крупная — с подписью.
+   Пройденные отметки подсвечиваются, как заливка. */
+.jelly__ticks {
+  margin-top: 8px;
+}
+
+.jelly__marks {
+  position: relative;
+  height: 8px;
+}
+
+.jelly__marks i {
+  position: absolute;
+  top: 0;
+  left: calc(12px + (100% - 24px) * var(--p, 0));
+  width: 1.5px;
+  height: 4px;
+  margin-left: -0.75px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background 0.2s ease, height 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.jelly__marks i.major {
+  height: 8px;
+  background: var(--text-muted);
+}
+
+.jelly__marks i.on {
+  background: var(--text-soft);
+}
+
+.jelly__marks i.major.on {
+  background: var(--text);
+}
+
+.jelly__nums {
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.jelly__nums span {
+  position: absolute;
+  top: 0;
+  left: calc(12px + (100% - 24px) * var(--p, 0));
+  transform: translateX(-50%);
+  transition: color 0.2s ease;
+}
+
+.jelly__nums span.on {
+  color: var(--text-soft);
+}
+
+/* Строка памяти: большое число справа — на уровне дорожки, а не шкалы. */
+.ram-row:has(.jelly__ticks) {
+  align-items: flex-start;
+}
+
+.ram-row:has(.jelly__ticks) > strong {
+  line-height: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jelly__marks i,
+  .jelly__nums span {
+    transition: none;
+  }
+}
