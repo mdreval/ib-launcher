@@ -1,5 +1,5 @@
-/* Карта сервера IGROBAR: обычная карта мира (DynMap) и карта МТР (поезда).
-   Адреса — data/server_profiles.json → dynmap_url и mtr_map_url. */
+/* Карта сервера IGROBAR: обычная карта мира (DynMap), карта Create и карта МТР (поезда).
+   Адреса — data/server_profiles.json → dynmap_url, create_map_url и mtr_map_url. */
 (function () {
   const IB = window.IB;
   const { h } = IB;
@@ -7,6 +7,7 @@
 
   const MAPS = [
     { id: "world", title: "Карта сервера", sub: "Живая карта мира IGROBAR", key: "dynmap_url", fallback: "https://igrobar.dynmap.xyz/", partition: "persist:dynmap" },
+    { id: "create", title: "Карта Create", sub: "Карта поездов Create", key: "create_map_url", fallback: "http://d11.joinserver.xyz:25850/", partition: "persist:createmap" },
     { id: "mtr", title: "Карта МТР", sub: "Карта поездов и линий МТР", key: "mtr_map_url", fallback: "http://d11.joinserver.xyz:25986/", partition: "persist:mtrmap" },
   ];
 
@@ -48,9 +49,9 @@
       page.append(
         h(
           "div",
-          { class: "page-head", style: { marginBottom: "16px" } },
-          h("div", {}, title, subtitle),
-          h("div", { class: "row", style: { flexWrap: "wrap", justifyContent: "flex-end" } }, seg, reload, external)
+          { class: "page-head map-head", style: { marginBottom: "16px" } },
+          h("div", { class: "map-head__text" }, title, subtitle),
+          h("div", { class: "row map-head__actions" }, seg, reload, external)
         )
       );
       const frame = h("div", { class: "map-frame" });
@@ -61,6 +62,7 @@
         saveMap(map.id);
         title.textContent = map.title;
         subtitle.textContent = `${map.sub} — ${map.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+        subtitle.title = subtitle.textContent; // полный текст — во всплывающей подсказке, если строка обрезана
         for (const btn of seg.children) btn.setAttribute("aria-pressed", String(btn.dataset.id === map.id));
         let wv = webviews[map.id];
         if (!wv || wv.getAttribute("src") !== map.url) {

@@ -1033,6 +1033,33 @@
   display: flex;
 }
 
+/* Шапка карты: кнопки всегда в один ряд справа, подпись — в одну строку
+   (длинная обрезается многоточием), чтобы при переключении карт ничего не прыгало. */
+.map-head {
+  align-items: center;
+}
+
+.map-head__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.map-head__text p {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-head__actions {
+  flex: none;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.map-head__actions .segmented button {
+  white-space: nowrap;
+}
+
 /* =================== Настройки =================== */
 .settings {
   max-width: 820px;
