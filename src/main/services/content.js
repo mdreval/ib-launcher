@@ -352,6 +352,8 @@ async function list(buildId, kind, { refreshUpdates = false, mode = "full" } = {
   const info = kindInfo(kind);
   const dir = contentDir(build, kind);
   const fromModpack = kind === "mods" ? modpack.trackedFiles(build) : new Set();
+  // «Обновлять модпак» включено: моды сборки должны совпадать с модпаком.
+  const strict = kind === "mods" && builds.modpackEnabled(build) && fromModpack.size > 0;
 
   const entries = [];
   for (const file of await fs.promises.readdir(dir)) {
@@ -432,6 +434,26 @@ async function list(buildId, kind, { refreshUpdates = false, mode = "full" } = {
     }
   }
 
+  // Названия недостающих зависимостей — чтобы было видно, ЧТО поставит «Исправить».
+  const needIds = [...new Set(items.flatMap((i) => i.issues.filter((x) => x.type === "deps").flatMap((x) => x.missing)))];
+  const unknownIds = needIds.filter(needsProject);
+  if (unknownIds.length && mode !== "fast" && online) {
+    try {
+      const now = Date.now();
+      for (const p of await modrinth.projects(unknownIds)) {
+        loadCache().projects[p.id] = { at: now, title: p.title, slug: p.slug, icon_url: p.icon_url || null };
+      }
+      saveCacheSoon();
+    } catch (err) {
+      /* без названий — покажем, сколько не хватает */
+    }
+  } else if (unknownIds.length && mode === "fast") pending = true;
+  for (const item of items) {
+    for (const issue of item.issues) {
+      if (issue.type === "deps") issue.names = issue.missing.map((id) => (cachedProject(id) || {}).title || null);
+    }
+  }
+
   if (mode !== "ids") {
     const identified = items.filter((i) => i.source === "modrinth" && !i.issues.some((x) => x.type === "incompatible"));
     const idHashes = identified.map((i) => i.sha1);
@@ -451,8 +473,16 @@ async function list(buildId, kind, { refreshUpdates = false, mode = "full" } = {
     }
   }
 
+  if (strict) {
+    for (const item of items) {
+      if (modpack.SKIN_MOD_RE.test(item.file)) item.skinMod = true;
+      else if (item.modpack) item.update = null; // моды модпака обновляет сам модпак с GitHub
+      else item.extra = true; // при запуске уйдёт в «no-modpack»
+    }
+  }
+
   items.sort((a, b) => a.name.localeCompare(b.name, "ru", { sensitivity: "base" }));
-  return { items, online, pending, loader: build.loader_type, mc: build.mc_version };
+  return { items, online, pending, strict, extraDir: modpack.EXTRA_DIR, loader: build.loader_type, mc: build.mc_version };
 }
 
 // ---------- действия с файлами ----------
@@ -513,21 +543,44 @@ function primaryFile(version) {
   return (version.files || []).find((f) => f.primary) || (version.files || [])[0] || null;
 }
 
-/** Удаляет уже установленные файлы того же проекта (при замене версии). */
+/** Удаляет файл; если его держит запущенная игра — понятная ошибка. */
+function removeOld(full) {
+  try {
+    fs.rmSync(full, { force: true });
+  } catch (err) {
+    throw new Error(`Не удалось убрать старую версию ${path.basename(full)} — файл занят. Закройте игру и попробуйте ещё раз`);
+  }
+}
+
+/**
+ * Убирает старые версии того же мода, чтобы после обновления не лежали обе:
+ * тот же проект на Modrinth или тот же modId внутри файла (если Modrinth
+ * файл не знает).
+ */
 async function removeOtherFilesOfProject(build, kind, projectId, keepFile) {
   const dir = contentDir(build, kind);
+  let keepModId = null;
+  try {
+    const keepFull = path.join(dir, keepFile);
+    const keepInfo = await localInfo(kind, keepFull, fs.statSync(keepFull));
+    keepModId = keepInfo.meta && keepInfo.meta.modId;
+  } catch (err) {
+    /* без modId — только по проекту */
+  }
   for (const file of fs.readdirSync(dir)) {
     const name = baseName(file);
     if (name === keepFile) continue;
     const full = path.join(dir, file);
-    let sha1;
+    let local;
     try {
-      sha1 = (await localInfo(kind, full, fs.statSync(full))).sha1;
+      local = await localInfo(kind, full, fs.statSync(full));
     } catch (err) {
       continue;
     }
-    const version = cachedVersion(sha1);
-    if (version && version.project_id === projectId) fs.rmSync(full, { force: true });
+    const version = cachedVersion(local.sha1);
+    const sameProject = version && version.project_id === projectId;
+    const sameMod = kind === "mods" && keepModId && local.meta && local.meta.modId === keepModId;
+    if (sameProject || sameMod) removeOld(full);
   }
 }
 
@@ -590,7 +643,7 @@ async function updateFile(buildId, kind, file) {
   const next = latest[sha1];
   if (!next) throw new Error("Обновление не найдено");
   const newName = await installVersionFile(build, kind, next, { keepDisabled: full === disabledPath });
-  if (path.basename(baseName(full)) !== newName) fs.rmSync(full, { force: true });
+  if (path.basename(baseName(full)) !== newName) removeOld(full); // старая версия не остаётся рядом с новой
   return newName;
 }
 

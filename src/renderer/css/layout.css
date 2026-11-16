@@ -42,7 +42,8 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  /* minmax(0, 1fr): содержимое не может раздвинуть окно и вытолкнуть кнопки окна за край */
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   grid-template-rows: var(--topbar-h) 1fr;
   height: 100vh;
 }
@@ -66,6 +67,11 @@
 
 /* Логотип IB — кнопка: раскрывает и сворачивает меню (js/sidebar.js).
    Стоит на том же месте, что и раньше: по центру свёрнутой панели. */
+/* Узкое окно: раскрытое меню выезжает поверх страницы (js/sidebar.js). */
+.sidebar.is-overlay {
+  box-shadow: 24px 0 60px rgba(0, 0, 0, 0.5);
+}
+
 .sidebar__toggle {
   position: relative;
   align-self: flex-start;
@@ -266,8 +272,15 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
   padding: 0 14px 0 var(--gutter);
   -webkit-app-region: drag;
+}
+
+.topbar > .brand,
+.topbar > .version-pill,
+.topbar__actions {
+  flex: none;
 }
 
 .brand {
@@ -295,7 +308,13 @@
   font-weight: 700;
 }
 
+/* Название раздела — всегда в одну строку. Не помещается целиком — прячется
+   (app.js), оно и так крупно написано на самой странице. */
 .topbar__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   margin-left: 6px;
   font-size: 12.5px;
   font-weight: 700;
@@ -304,8 +323,13 @@
   color: var(--text-muted);
 }
 
+.topbar__title.is-hidden {
+  visibility: hidden;
+}
+
 .topbar__spacer {
   flex: 1;
+  min-width: 0;
 }
 
 .topbar__actions {
@@ -393,6 +417,8 @@
   position: relative;
   overflow: hidden;
   min-height: 0;
+  /* страницы подстраиваются под ширину своей области (@container page в pages.css) */
+  container: page / inline-size;
 }
 
 .page {
@@ -419,7 +445,8 @@
 
 .page-head h1 {
   margin: 0 0 6px;
-  font-size: 34px;
+  font-size: 31px;
+  white-space: nowrap; /* название страницы — всегда одной строкой */
   line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.02em;

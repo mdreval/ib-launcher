@@ -336,8 +336,6 @@
         h("button", { class: "icon-btn home__arrow home__arrow--left", "aria-label": "Повернуть", html: IB.icon("chevronLeft"), onClick: () => player.rotateBy(-45) }),
         h("button", { class: "icon-btn home__arrow home__arrow--right", "aria-label": "Повернуть", html: IB.icon("chevronRight"), onClick: () => player.rotateBy(45) }),
         h("div", { class: "home__name" }, skinChip, nameEl, h("span", { text: "Ваш текущий скин" })),
-        h("div", { class: "home__hint", text: "Потяните, чтобы повернуть" }),
-        h("button", { class: "btn home__skin-btn", html: `${IB.icon("user")}Изменить скин${IB.icon("chevronRight")}`, onClick: () => IB.go("skin") })
       );
       root.append(stage);
       const player = new IB.skin.Player3D(playerBox, { scale: 10, ry: -18, rx: -4 });
@@ -353,6 +351,8 @@
       const playBtn = h("button", { class: "btn btn--primary btn--lg" });
       const progress = h("div", { class: "progress launch-bar__progress" }, h("div", { class: "progress__bar" }));
       const modsBtn = h("button", { class: "icon-btn icon-btn--lg", title: "Моды сборки", html: IB.icon("cube") });
+      // скин — значком в панели запуска, между модами и настройками сборки
+      const skinBtn = h("button", { class: "icon-btn icon-btn--lg", title: "Изменить скин", "aria-label": "Изменить скин", html: IB.icon("user"), onClick: () => IB.go("skin") });
       const gearBtn = h("button", { class: "icon-btn icon-btn--lg", title: "Настройки сборки", html: IB.icon("gear") });
       const folderBtn = h("button", { class: "icon-btn icon-btn--lg", title: "Папка сборки", html: IB.icon("folder") });
       const pickBtn = h("button", { class: "icon-btn icon-btn--lg", title: "Выбрать сборку", html: IB.icon("chevronRight") });
@@ -363,7 +363,7 @@
         h("div", { class: "launch-bar__info" }, bName, bSub),
         h("div", { class: "launch-bar__sep" }),
         h("div", { class: "launch-bar__status" }, statusDot, statusText),
-        h("div", { class: "launch-bar__actions" }, playBtn, modsBtn, gearBtn, folderBtn, pickBtn),
+        h("div", { class: "launch-bar__actions" }, playBtn, modsBtn, skinBtn, gearBtn, folderBtn, pickBtn),
         progress
       );
       root.append(bar);

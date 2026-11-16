@@ -450,11 +450,13 @@ async function syncModpackFor(build, { strict }) {
   }
   try {
     const result = await modpack.sync(build.id, { onProgress: (p, t) => setProgress(build.id, p, t) });
-    if (result.updated && result.reason === "missing") {
-      launcherLine(build.id, `Не хватало файлов модпака (${result.restored}) — модпак поставлен заново`);
+    if (result.updated && (result.reason === "missing" || result.reason === "changed")) {
+      launcherLine(build.id, `Моды модпака не совпадали с сервером (${result.restored}) — модпак поставлен заново`);
     } else if (result.updated) {
       launcherLine(build.id, `Модпак обновлён до ${result.release}: ${result.added} файлов`);
     } else if (!result.skipped) launcherLine(build.id, "Модпак актуален");
+    if (result.enabled) launcherLine(build.id, `Включены выключенные моды модпака: ${result.enabled}`);
+    if (result.moved) launcherLine(build.id, `Моды не из модпака (${result.moved}) перенесены в папку «${result.extraDir}» — с ними сервер не пустит`);
   } catch (err) {
     if (cancelCtl.isCancelled(err)) throw err;
     // Без полного модпака на сервер не зайти — игру не запускаем.
@@ -464,6 +466,14 @@ async function syncModpackFor(build, { strict }) {
       throw new Error(`Модпак сервера не установлен: ${errorText(err)}. Проверьте интернет и нажмите ещё раз — без модпака игра не запустится`);
     }
     launcherLine(build.id, `Не удалось проверить обновление модпака: ${errorText(err)} — запускаю с текущими модами`);
+    // без сети всё равно убираем то, с чем сервер точно не пустит
+    try {
+      const tidy = modpack.tidyLocal(build.id);
+      if (tidy.enabled) launcherLine(build.id, `Включены выключенные моды модпака: ${tidy.enabled}`);
+      if (tidy.moved) launcherLine(build.id, `Моды не из модпака (${tidy.moved}) перенесены в папку «${tidy.extraDir}» — с ними сервер не пустит`);
+    } catch (e) {
+      /* не мешаем запуску */
+    }
   }
 }
 

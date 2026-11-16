@@ -24,7 +24,7 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 1080,
+    minWidth: 1212, // уже нельзя: меньше 1212px по ширине окно не сжимается
     minHeight: 680,
     // Windows: своя шапка без рамки. macOS: родные кнопки окна поверх боковой панели.
     ...(isMac ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 24, y: 20 } } : { frame: false }),

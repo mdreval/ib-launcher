@@ -10,8 +10,21 @@
  *    случайно удалил хоть один мод — модпак ставится заново (из кэша, без
  *    повторного скачивания, если архив не менялся);
  *  - если на GitHub вышел новый modpack.zip — он скачивается и ставится;
- *  - моды, которые игрок добавил сам, не трогаются; выключенный мод модпака
- *    остаётся выключенным;
+ *  - пока включено «Обновлять модпак», папка mods сборки совпадает с модпаком
+ *    на GitHub — иначе сервер может не пустить из-за разницы в модах:
+ *      · пропавшие и подменённые (другой размер) файлы модпака возвращаются;
+ *      · выключенные моды модпака включаются обратно;
+ *      · лишние моды НЕ удаляются, а переносятся в папку «no-modpack»
+ *        рядом с mods — игрок ничего не теряет и может вернуть их, выключив
+ *        «Обновлять модпак»;
+ *      · мод скинов CustomSkinLoader лаунчер ставит сам — его это не касается;
+ *    если «Обновлять модпак» выключено, лаунчер в моды не вмешивается;
+ *  - модпак проверяется ТОЛЬКО по кнопке «Играть» (и при установке) сборки
+ *    IGROBAR — при запуске лаунчера в сеть за модпаком никто не ходит; это один
+ *    небольшой запрос к GitHub, архив качается, только если он поменялся или
+ *    чего-то не хватает;
+ *  - нет интернета — папка всё равно приводится в порядок тем, что есть на
+ *    компьютере (лишние моды переносятся, выключенные включаются);
  *  - если модпак поставить не удалось и его файлов не хватает — игра НЕ
  *    запускается (без модов на сервер всё равно не зайти). Если файлы на месте,
  *    а нет только интернета — запускается с текущими модами.
@@ -27,6 +40,9 @@ const { fetchJson, downloadFile, removeFile, moveFile, sha256OfFile } = require(
 const { readJson, writeJson } = require("../core/jsonFile");
 
 const STATE_FILE = ".igrobar-modpack.json";
+const EXTRA_DIR = "no-modpack"; // сюда переносятся лишние моды
+const OLD_EXTRA_DIR = "моды-не-из-модпака"; // так папка называлась в тестовых сборках
+const SKIN_MOD_RE = /customskinloader/i; // мод скинов ставит сам лаунчер (skinMod.js)
 const TMP_PREFIX = ".igrobar-modpack-tmp";
 const STALL_MS = 120000; // распаковка «встала» — столько ждём без прогресса
 
@@ -77,6 +93,102 @@ function missingFiles(instanceDir, state) {
   });
 }
 
+const isJar = (name) => name.toLowerCase().endsWith(".jar");
+const plainName = (name) => (name.endsWith(".disabled") ? name.slice(0, -".disabled".length) : name);
+
+/**
+ * Насколько папка сборки совпадает с модпаком:
+ *  missing  — файлов модпака нет совсем;
+ *  changed  — мод модпака подменён (другой размер, например обновили вручную);
+ *  disabled — мод модпака выключен;
+ *  extra    — моды, которых нет в модпаке (кроме мода скинов).
+ * Конфиги (config/) по размеру не сверяются — их меняет сама игра.
+ */
+function folderReport(instanceDir, state) {
+  const files = state.files || [];
+  const sizes = state.sizes || {};
+  const packMods = new Set(files.filter((rel) => rel.startsWith("mods/")).map((rel) => path.posix.basename(rel)));
+  const changed = files.filter((rel) => {
+    if (!rel.startsWith("mods/") || sizes[rel] == null) return false;
+    const full = path.join(instanceDir, rel);
+    const size = sizeOf(fs.existsSync(full) ? full : `${full}.disabled`);
+    return size >= 0 && size !== sizes[rel];
+  });
+  const disabled = files.filter((rel) => {
+    const full = path.join(instanceDir, rel);
+    return rel.startsWith("mods/") && !fs.existsSync(full) && fs.existsSync(`${full}.disabled`);
+  });
+  let extra = [];
+  if (packMods.size) {
+    try {
+      const modsDir = path.join(instanceDir, "mods");
+      extra = fs.readdirSync(modsDir).filter((f) => {
+        const base = plainName(f);
+        if (!isJar(base) || SKIN_MOD_RE.test(base) || packMods.has(base)) return false;
+        try {
+          return fs.statSync(path.join(modsDir, f)).isFile();
+        } catch (err) {
+          return false;
+        }
+      });
+    } catch (err) {
+      /* папки mods нет */
+    }
+  }
+  return { missing: missingFiles(instanceDir, state), changed, disabled, extra };
+}
+
+/** Приводит папку mods к модпаку: включает выключенные моды модпака и
+ * переносит лишние моды в «no-modpack». */
+function tidyFolder(instanceDir, rep) {
+  let enabled = 0;
+  let moved = 0;
+  for (const rel of rep.disabled) {
+    const full = path.join(instanceDir, rel);
+    try {
+      fs.renameSync(`${full}.disabled`, full);
+      enabled += 1;
+    } catch (err) {
+      /* файл занят — в следующий раз */
+    }
+  }
+  if (rep.extra.length) {
+    const modsDir = path.join(instanceDir, "mods");
+    const extraDir = path.join(instanceDir, EXTRA_DIR);
+    const oldDir = path.join(instanceDir, OLD_EXTRA_DIR);
+    if (fs.existsSync(oldDir) && !fs.existsSync(extraDir)) {
+      try {
+        fs.renameSync(oldDir, extraDir);
+      } catch (err) {
+        /* занята — останется как есть */
+      }
+    }
+    fs.mkdirSync(extraDir, { recursive: true });
+    for (const f of rep.extra) {
+      let target = path.join(extraDir, plainName(f));
+      if (fs.existsSync(target)) target = path.join(extraDir, `${Date.now()}-${plainName(f)}`);
+      try {
+        fs.renameSync(path.join(modsDir, f), target);
+        moved += 1;
+      } catch (err) {
+        /* файл занят — в следующий раз */
+      }
+    }
+  }
+  return { enabled, moved, extraDir: EXTRA_DIR };
+}
+
+/** Без сети: только то, что можно сделать на месте (лишние моды и
+ * выключенные моды модпака). Пропавшие файлы так не вернуть. */
+function tidyLocal(buildId) {
+  const build = builds.get(buildId);
+  if (!build || !builds.modpackProfileFor(build) || !builds.modpackEnabled(build)) return { enabled: 0, moved: 0, extraDir: EXTRA_DIR };
+  const dir = builds.instanceDir(build);
+  const state = loadState(dir);
+  if (!(state.files || []).length) return { enabled: 0, moved: 0, extraDir: EXTRA_DIR };
+  return tidyFolder(dir, folderReport(dir, state));
+}
+
 /** Модпак установлен полностью: есть запись об установке и все файлы на месте. */
 function isComplete(buildOrId) {
   const build = typeof buildOrId === "string" ? builds.get(buildOrId) : buildOrId;
@@ -99,6 +211,7 @@ function status(buildId) {
     synced_at: state ? state.checked_at || state.synced_at || null : null,
     files: state ? (state.files || []).length : 0,
     missing: state ? missingFiles(dir, state).length : 0,
+    extra: state ? folderReport(dir, state).extra.length : 0,
   };
 }
 
@@ -269,16 +382,18 @@ async function sync(buildId, { force = false, onProgress } = {}) {
 
   const asset = await findAsset(profile.modpack);
   const state = loadState(instanceDir);
-  const missing = missingFiles(instanceDir, state);
+  const before = folderReport(instanceDir, state);
+  const missing = before.missing;
   const sameAsset = state.asset_id === asset.id && state.size === asset.size && state.updated_at === asset.updated_at;
-  const upToDate = sameAsset && (state.files || []).length > 0 && missing.length === 0;
+  const upToDate = sameAsset && (state.files || []).length > 0 && missing.length === 0 && before.changed.length === 0;
 
   if (upToDate && !force) {
+    const tidy = tidyFolder(instanceDir, before);
     writeJson(stateFile(instanceDir), { ...state, checked_at: Date.now() });
     report(100, "Модпак актуален");
-    return { skipped: false, updated: false, release: asset.release };
+    return { skipped: false, updated: false, release: asset.release, ...tidy };
   }
-  const reason = !sameAsset ? "new" : missing.length ? "missing" : "force";
+  const reason = !sameAsset ? "new" : missing.length ? "missing" : before.changed.length ? "changed" : "force";
 
   const download = (target) =>
     downloadFile(asset.url, target, {
@@ -341,15 +456,16 @@ async function sync(buildId, { force = false, onProgress } = {}) {
     cancel.throwIfCancelled();
     report(98, "Установка модов…");
     const newFiles = [];
+    const sizes = {};
     for (const rel of extracted) {
       const target = path.join(instanceDir, rel);
-      const disabledCopy = `${target}.disabled`;
-      const keepDisabled = (state.files || []).includes(rel) && fs.existsSync(disabledCopy) && !fs.existsSync(target);
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      const finalPath = keepDisabled ? disabledCopy : target;
-      await removeFile(finalPath);
-      await moveFile(path.join(tmpDir, rel), finalPath);
+      // мод модпака всегда включён: выключенная копия убирается
+      await removeFile(`${target}.disabled`);
+      await removeFile(target);
+      await moveFile(path.join(tmpDir, rel), target);
       newFiles.push(rel);
+      if (rel.startsWith("mods/")) sizes[rel] = sizeOf(target);
     }
 
     let removed = 0;
@@ -367,7 +483,7 @@ async function sync(buildId, { force = false, onProgress } = {}) {
       }
     }
 
-    writeJson(stateFile(instanceDir), {
+    const newState = {
       asset_id: asset.id,
       size: asset.size,
       updated_at: asset.updated_at,
@@ -375,7 +491,10 @@ async function sync(buildId, { force = false, onProgress } = {}) {
       synced_at: Date.now(),
       checked_at: Date.now(),
       files: newFiles,
-    });
+      sizes,
+    };
+    writeJson(stateFile(instanceDir), newState);
+    const tidy = tidyFolder(instanceDir, folderReport(instanceDir, newState));
 
     // Старые архивы модпака больше не нужны. Занятые — удалятся в следующий раз.
     for (const f of fs.readdirSync(paths.CACHE_DIR)) {
@@ -387,8 +506,8 @@ async function sync(buildId, { force = false, onProgress } = {}) {
       }
     }
 
-    report(100, reason === "missing" ? "Пропавшие моды восстановлены" : "Модпак обновлён");
-    return { skipped: false, updated: true, reason, restored: missing.length, release: asset.release, added: newFiles.length, removed };
+    report(100, reason === "missing" || reason === "changed" ? "Моды модпака восстановлены" : "Модпак обновлён");
+    return { skipped: false, updated: true, reason, restored: missing.length + before.changed.length, release: asset.release, added: newFiles.length, removed, ...tidy };
   } finally {
     if (tmpDir) removeDirQuiet(tmpDir);
   }
@@ -405,4 +524,4 @@ function cleanupTmpDirs(instanceDir) {
   }
 }
 
-module.exports = { status, sync, trackedFiles, isComplete };
+module.exports = { status, sync, tidyLocal, trackedFiles, isComplete, EXTRA_DIR, SKIN_MOD_RE };

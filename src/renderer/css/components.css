@@ -482,9 +482,13 @@
   animation: modal-in 320ms var(--spring);
 }
 
-/* Полоса прокрутки окна не заходит в скруглённые углы. */
+/* Полоса прокрутки окна и панелей не заходит в скруглённые углы. */
 .modal::-webkit-scrollbar-track {
   margin: 24px 0;
+}
+
+.panel::-webkit-scrollbar-track {
+  margin: var(--r-lg) 0;
 }
 
 .modal--wide {

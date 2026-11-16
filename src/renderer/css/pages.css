@@ -79,7 +79,7 @@
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: 300px;
+  width: min(300px, 100%);
   height: 64px;
   transform: translateX(-50%);
   border-radius: 50%;
@@ -159,20 +159,6 @@
 .home__name span {
   font-size: 12.5px;
   color: var(--text-muted);
-}
-
-.home__hint {
-  position: absolute;
-  left: 0;
-  bottom: 10px;
-  font-size: 12.5px;
-  color: var(--text-muted);
-}
-
-.home__skin-btn {
-  position: absolute;
-  right: 0;
-  bottom: 4px;
 }
 
 .skin-chip {
@@ -410,6 +396,36 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 18px;
+}
+
+/* поиск сначала получает место под подсказку целиком, потом уже пустой промежуток */
+.toolbar > .search {
+  flex: 1 1 300px;
+}
+
+/* «Нужны: …» — каких зависимостей не хватает моду */
+.list-row__need {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--danger);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* «С GitHub» в «Модах»: то же, что «Обновлять модпак сервера» в настройках */
+.github-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(var(--c-0a1210), 0.6);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .list {
@@ -686,7 +702,8 @@
 
 .skin-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 300px;
+  /* minmax(0, 1fr): центр сжимается, а не выталкивает правую панель за край */
+  grid-template-columns: 220px minmax(0, 1fr) 300px;
   gap: 16px;
   flex: 1;
   min-height: 0;
@@ -847,6 +864,7 @@
 }
 
 .editor-panel {
+  container-type: inline-size; /* узкая панель прячет подсказку в подвале (ниже) */
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -912,6 +930,38 @@
   border-top: 1px solid var(--border);
   font-size: 12.5px;
   color: var(--text-muted);
+}
+
+.editor-panel__foot > .btn,
+.zoom {
+  flex: none;
+}
+
+/* подсказка в подвале — одной строкой; не помещается — прячется,
+   «Скачать PNG» и масштаб остаются целиком */
+.editor-panel__foot > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+@container (max-width: 560px) {
+  .editor-panel__foot > span {
+    display: none;
+  }
+}
+
+/* совсем узкая панель (минимальное окно): строки инструментов чуть плотнее */
+@container (max-width: 440px) {
+  .editor-panel__bar {
+    padding: 10px;
+    gap: 8px;
+  }
+  .editor-panel__bar .segmented button {
+    padding: 0 12px;
+  }
 }
 
 .zoom {
@@ -1276,6 +1326,12 @@
 
 .preview-panel > .row--between > div:first-child {
   min-width: 0;
+}
+
+.preview-panel > .row--between > div:first-child > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .live-badge {
@@ -2870,3 +2926,20 @@
 .sp-vol {
   margin-top: 6px;
 }
+
+/* ============ Узкая область страницы (минимальное окно) ============
+   Лаунчер рассчитан на область от 988px (окно 1080 и свёрнутое меню). */
+@container page (max-width: 1100px) {
+  /* Редактор скина: правая колонка чуть уже — центру больше места */
+  .skin-layout {
+    grid-template-columns: 220px minmax(0, 1fr) 280px;
+    gap: 12px;
+  }
+
+  /* Моды: вкладки и «Установлено / Каталог» помещаются в одну строку */
+  .content-page .chip,
+  .content-page .segmented button {
+    padding: 0 12px;
+  }
+}
+

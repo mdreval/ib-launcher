@@ -12,6 +12,12 @@
  * Кнопки Telegram и Discord внизу: в свёрнутой панели стоят столбиком,
  * в раскрытой перестраиваются в ряд по центру — на той же пружине, что и панель.
  * Состояние запоминается: каким меню закрыли, таким оно и откроется.
+ *
+ * Узкое окно. Лаунчер рассчитан на основную область не уже 988px (окно
+ * не уже 1212 — minWidth в src/main/window.js). Если раскрытое
+ * меню оставило бы меньше, оно не раздвигает страницу, а выезжает поверх неё
+ * (с тенью) и закрывается, когда выбрали раздел или нажали мимо. Так страница
+ * и кнопки окна (свернуть, закрыть) никогда не уезжают за край.
  */
 (function () {
   const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -25,6 +31,8 @@
   const CASCADE_START = 0.06; // с: первая подпись
   const CASCADE_STEP = 0.04; // с: каждая следующая
   const KEY = "ib.sidebarOpen";
+  const MIN_MAIN = 988; // минимальная ширина основной области, px
+  const ROOM_SLACK = 16; // запас, чтобы меню не прыгало туда-сюда на самой границе
 
   const S = (x, [k, c]) => ({ x, v: 0, t: x, k, c: reduce ? 2 * Math.sqrt(k) : c });
   const step = (s, dt) => {
@@ -47,7 +55,9 @@
   const SOCIAL_GAP_Y = 8; // между кнопками столбиком (как в layout.css)
   const SOCIAL_GAP_X = 12; // между кнопками в ряд
   let closedW = 92;
-  let open = false;
+  let open = false; // раскрыто ли меню сейчас
+  let pref = false; // как оставил игрок (запоминается)
+  let overlay = false; // меню поверх страницы (узкое окно)
   let ySet = false;
 
   const W = S(92, SPRING.width);
@@ -85,13 +95,21 @@
       s.x = s.t;
       s.v = 0;
     }
+    if (!open && overlay) setOverlay(false); // меню поверх страницы закрылось
     render();
     return true;
   }
 
   function render() {
     if (!shell) return;
-    shell.style.setProperty("--sidebar-w", `${W.x.toFixed(2)}px`);
+    if (overlay) {
+      // поверх страницы: колонка остаётся узкой, панель шире неё
+      shell.style.setProperty("--sidebar-w", `${closedW}px`);
+      side.style.width = `${W.x.toFixed(2)}px`;
+    } else {
+      shell.style.setProperty("--sidebar-w", `${W.x.toFixed(2)}px`);
+      side.style.width = "";
+    }
     for (const l of labels) {
       const o = clamp(l.s.x, 0, 1);
       l.el.style.opacity = o.toFixed(3);
@@ -126,6 +144,48 @@
     return Math.round(clamp(navGap + left + text + 22 + 1, 190, 320));
   }
 
+  // Хватит ли места, чтобы раскрытое меню раздвинуло страницу.
+  const roomy = (w, slack = 0) => window.innerWidth - w >= MIN_MAIN + slack;
+
+  function setOverlay(on) {
+    overlay = on;
+    side.classList.toggle("is-overlay", on);
+  }
+
+  function savePref(on) {
+    pref = on;
+    try {
+      localStorage.setItem(KEY, on ? "1" : "0");
+    } catch {}
+  }
+
+  // Нажатие на логотип.
+  function toggleMenu() {
+    if (open) {
+      if (!overlay) savePref(false);
+      setOpen(false);
+      return;
+    }
+    if (roomy(openWidth())) {
+      setOverlay(false);
+      savePref(true);
+    } else setOverlay(true); // узкое окно: поверх страницы, ненадолго
+    setOpen(true);
+  }
+
+  // Окно поменяло размер: меню, которое раздвигает страницу, должно помещаться.
+  function fitWindow() {
+    if (!side) return;
+    if (open && !overlay && !roomy(W.t)) setOpen(false); // стало тесно — свернуть (выбор игрока помним)
+    else if (open && overlay && roomy(W.t, ROOM_SLACK)) {
+      setOverlay(false); // окно расширили — меню снова раздвигает страницу
+      render();
+    } else if (!open && pref && roomy(openWidth(), ROOM_SLACK)) {
+      setOverlay(false);
+      setOpen(true);
+    }
+  }
+
   function setOpen(next, animate = true) {
     open = next;
     side.classList.toggle("is-open", open);
@@ -133,9 +193,6 @@
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-label", text);
     if (tip) tip.textContent = text;
-    try {
-      localStorage.setItem(KEY, open ? "1" : "0");
-    } catch {}
 
     W.t = open ? openWidth() : closedW;
     timers = [];
@@ -159,9 +216,24 @@
   }
 
   window.addEventListener("resize", () => {
-    if (!socials.length) return;
-    socialSize = socials[0].el.offsetWidth || socialSize;
+    if (socials.length) socialSize = socials[0].el.offsetWidth || socialSize;
     render();
+    fitWindow();
+  });
+
+  // Меню поверх страницы закрывается нажатием мимо него, выбором раздела и Esc.
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (open && overlay && side && !side.contains(e.target)) setOpen(false);
+    },
+    true
+  );
+  document.addEventListener("click", (e) => {
+    if (open && overlay && e.target.closest && e.target.closest(".nav__btn")) setOpen(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && open && overlay && !document.querySelector(".modal-backdrop:not([inert])")) setOpen(false);
   });
 
   const IB = (window.IB = window.IB || {});
@@ -185,21 +257,23 @@
 
       if (!toggle.__sidebar) {
         toggle.__sidebar = true;
-        toggle.addEventListener("click", () => setOpen(!open));
+        toggle.addEventListener("click", toggleMenu);
         // Подписи перевели на другой язык — подогнать ширину раскрытой панели.
         new MutationObserver(() => {
           if (open) {
             W.t = openWidth();
             wake();
+            fitWindow();
           }
         }).observe(nav, { subtree: true, characterData: true, childList: true });
       }
 
-      let saved = false;
       try {
-        saved = localStorage.getItem(KEY) === "1";
+        pref = localStorage.getItem(KEY) === "1";
       } catch {}
-      setOpen(saved, false);
+      // в узком окне при запуске меню свёрнуто (раскроется само, когда окно расширят)
+      setOverlay(false);
+      setOpen(pref && roomy(openWidth()), false);
     },
     /** Вызывается после того, как нарисованы кнопки Telegram и Discord (app.js). */
     footer() {

@@ -493,7 +493,7 @@
       modpackBlock = h(
         "div",
         { class: "setting-line", style: { marginBottom: "4px" } },
-        h("div", {}, h("div", { class: "field__label", text: "Обновлять модпак сервера" }), h("div", { class: "field__hint", text: "Перед запуском проверять GitHub и скачивать изменения модпака IGROBAR." })),
+        h("div", {}, h("div", { class: "field__label", text: "Обновлять модпак сервера" }), h("div", { class: "field__hint", text: "Перед запуском приводить моды к модпаку IGROBAR с GitHub (лишние переносятся в отдельную папку)." })),
         sw
       );
     }

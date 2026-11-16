@@ -61,7 +61,7 @@
       if (params.buildId) view.buildId = params.buildId;
       if (!view.buildId || !IB.buildById(view.buildId)) view.buildId = S.selected;
 
-      const page = h("section", { class: "page" });
+      const page = h("section", { class: "page content-page" });
       host.append(page);
 
       const buildSelect = h("select", { class: "select" });
@@ -203,9 +203,10 @@
           }
           refresh();
         });
+        toolbar.append(h("div", { class: "search" }, IB.iconEl("search"), search), h("span", { class: "grow" }));
+        const b = build();
+        if (view.kind === "mods" && b && b.modpack_capable) toolbar.append(githubSwitch(b));
         toolbar.append(
-          h("div", { class: "search" }, IB.iconEl("search"), search),
-          h("span", { class: "grow" }),
           updateAll,
           h("button", {
             class: "btn",
@@ -220,18 +221,84 @@
         );
       }
 
+      /** «Обновление с GitHub» — то же, что «Обновлять модпак сервера» в
+       * настройках (одна и та же настройка): переключили здесь — поменялось и там. */
+      function githubSwitch(b) {
+        const sw = IB.switchEl({
+          checked: !!b.modpack_enabled,
+          label: "Обновление модпака с GitHub",
+          onChange: async (on, input) => {
+            const res = await run(() => api.modpack.setEnabled(b.id, on), {
+              success: on ? "Моды сборки будут совпадать с модпаком сервера" : "Обновление модпака выключено — моды можно менять как угодно",
+            });
+            if (!res) {
+              input.checked = !on;
+              return;
+            }
+            b.modpack_enabled = on;
+            lastSyncOn = on;
+            refresh(true);
+          },
+        });
+        return h(
+          "div",
+          {
+            class: "github-sync",
+            title: "То же, что «Обновлять модпак сервера» в настройках. Включено — моды этой сборки при запуске приводятся к модпаку сервера с GitHub.",
+          },
+          h("span", { text: "С GitHub" }),
+          sw
+        );
+      }
+
+      /** Названия недостающих зависимостей (если Modrinth их ещё не назвал — сколько их). */
+      function depNames(issue) {
+        const names = (issue.names || []).filter(Boolean);
+        const unknown = (issue.missing || []).length - names.length;
+        if (!names.length) {
+          const n = issue.missing.length;
+          const word = n % 10 === 1 && n % 100 !== 11 ? "мод" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "мода" : "модов";
+          return `${n} ${word} с Modrinth`;
+        }
+        return names.join(", ") + (unknown > 0 ? ` и ещё ${unknown}` : "");
+      }
+      function issueHint(issue) {
+        if (issue.type === "deps") return `Для работы этого мода нужны: ${depNames(issue)}`;
+        if (issue.type === "incompatible") return "Эта версия сделана для другой версии Minecraft или другого загрузчика";
+        return issue.text;
+      }
+      /** Что сделает «Исправить» — человеческими словами. */
+      function fixPlan(item) {
+        const b = build();
+        const parts = [];
+        for (const issue of item.issues) {
+          if (issue.type === "deps") parts.push(`С Modrinth будут скачаны недостающие моды: ${depNames(issue)}.`);
+          if (issue.type === "incompatible") parts.push(`«${item.name}» будет заменён версией для ${b ? `${IB.LOADERS[b.loader_type].short} ${b.mc_version}` : "этой сборки"}.`);
+        }
+        return parts.join(" ");
+      }
+
       function itemRow(item) {
         const kind = view.kind;
         const badges = [];
         if (item.modpack) badges.push(h("span", { class: "badge badge--accent", title: "Этот мод ставит и обновляет модпак сервера", text: "Модпак" }));
         if (item.source === "local") badges.push(h("span", { class: "badge", title: "Файл не найден на Modrinth — добавлен вручную", text: "Свой файл" }));
-        for (const issue of item.issues) badges.push(h("span", { class: "badge badge--danger", text: issue.text }));
+        for (const issue of item.issues) badges.push(h("span", { class: "badge badge--danger", title: issueHint(issue), text: issue.text }));
         if (item.update) badges.push(h("span", { class: "badge badge--accent", text: `Обновление ${item.update.versionNumber || ""}`.trim() }));
+        if (item.extra) badges.push(h("span", { class: "badge badge--warning", title: `Этого мода нет в модпаке сервера. При запуске он перенесётся в папку «${installed.extraDir}» рядом с mods`, text: "Не из модпака" }));
 
         const actions = h("div", { class: "list-row__actions" });
         if (item.issues.length && item.projectId) {
-          const fixBtn = h("button", { class: "btn btn--primary btn--sm", text: "Исправить" });
+          const fixBtn = h("button", { class: "btn btn--primary btn--sm", text: "Исправить", title: item.issues.map(issueHint).join("\n") });
           fixBtn.addEventListener("click", async () => {
+            // сначала показать, что именно будет сделано — решать игроку
+            const yes = await IB.confirmDialog({
+              title: `Исправить «${item.name}»?`,
+              text: `${fixPlan(item)} Можно и не исправлять — но тогда мод, скорее всего, не загрузится, а игра может не запуститься.`,
+              confirmText: "Исправить",
+              danger: false,
+            });
+            if (!yes) return;
             fixBtn.disabled = true;
             fixBtn.innerHTML = '<span class="spinner"></span>Исправляю…';
             await run(() => api.content.fix(view.buildId, kind, item.file), { success: "Готово" });
@@ -264,7 +331,11 @@
             onClick: async () => {
               const yes = await IB.confirmDialog({
                 title: `Удалить ${KINDS.find((k) => k.id === kind).one}?`,
-                text: item.modpack ? `${item.name} входит в модпак сервера — при следующем обновлении модпака он вернётся. Чтобы он не загружался, лучше просто выключить его.` : `Файл ${item.file} будет удалён из сборки.`,
+                text: item.modpack
+                  ? installed.strict
+                    ? `${item.name} входит в модпак сервера — пока включено обновление с GitHub, он вернётся при следующем запуске.`
+                    : `${item.name} входит в модпак сервера — при следующем обновлении модпака он вернётся. Чтобы он не загружался, лучше просто выключить его.`
+                  : `Файл ${item.file} будет удалён из сборки.`,
               });
               if (!yes) return;
               await run(() => api.content.remove(view.buildId, kind, item.file));
@@ -274,11 +345,18 @@
         );
 
         const sub = [item.version, item.file, fmt.bytes(item.size)].filter(Boolean).join(" · ");
+        const deps = item.issues.find((x) => x.type === "deps");
         return h(
           "div",
           { class: `list-row mod-row${item.enabled ? "" : " is-disabled"}` },
           letterTile(item.name, item.icon),
-          h("div", { class: "list-row__main" }, h("div", { class: "list-row__title" }, item.name, badges), h("div", { class: "list-row__sub", text: sub })),
+          h(
+            "div",
+            { class: "list-row__main" },
+            h("div", { class: "list-row__title" }, item.name, badges),
+            h("div", { class: "list-row__sub", text: sub }),
+            deps ? h("div", { class: "list-row__need", text: `Нужны: ${depNames(deps)}` }) : null
+          ),
           actions
         );
       }
@@ -291,6 +369,15 @@
         }
         if (view.kind === "shaderpacks" && b && !["fabric", "quilt", "neoforge", "forge"].includes(b.loader_type)) {
           body.append(h("div", { class: "notice notice--info", style: { marginBottom: "14px" }, html: `${IB.icon("info")}<div>Для шейдеров нужен мод Iris (Fabric/NeoForge) или OptiFine — поставьте его во вкладке «Моды».</div>` }));
+        }
+        if (installed.strict && view.kind === "mods") {
+          body.append(
+            h("div", {
+              class: "notice notice--info",
+              style: { marginBottom: "14px" },
+              html: `${IB.icon("info")}<div>Включено обновление модпака с GitHub. Лишние моды перенесутся в папку «${installed.extraDir}». Чтобы ставить свои моды, выключите «С GitHub».</div>`,
+            })
+          );
         }
         if (!installed.online) {
           body.append(h("div", { class: "notice notice--info", style: { marginBottom: "14px" }, html: `${IB.icon("info")}<div>Нет связи с Modrinth — показаны данные из самих файлов, обновления не проверяются.</div>` }));
@@ -531,10 +618,21 @@
       renderBuildSelect();
       renderTabs();
       refresh();
+      let lastSyncOn = !!(build() && build().modpack_enabled);
 
       return {
         update(kind) {
-          if (kind === "builds") renderBuildSelect();
+          if (kind === "builds") {
+            renderBuildSelect();
+            // «Обновлять модпак» переключили в настройках — обновить переключатель и пометки
+            const b = build();
+            const syncOn = !!(b && b.modpack_enabled);
+            if (syncOn !== lastSyncOn && view.mode === "installed" && !isExtra(view.kind)) {
+              renderInstalledToolbar();
+              refresh(true);
+            }
+            lastSyncOn = syncOn;
+          }
         },
       };
     },

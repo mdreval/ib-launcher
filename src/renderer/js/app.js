@@ -364,8 +364,20 @@
     S.page = pageId;
     current = page.mount(host, params) || {};
     document.getElementById("topbar-title").textContent = (NAV.find((n) => n.id === pageId) || {}).title || "";
+    fitTitle();
     updateNav(pageId);
   };
+
+  // Название раздела в шапке не переносится на вторую строку: если не помещается
+  // целиком, прячется — оно и так крупно написано на самой странице.
+  function fitTitle() {
+    const t = document.getElementById("topbar-title");
+    if (!t) return;
+    t.classList.remove("is-hidden");
+    if (t.scrollWidth > t.clientWidth + 1) t.classList.add("is-hidden");
+  }
+  new ResizeObserver(fitTitle).observe(document.querySelector(".topbar"));
+  new MutationObserver(fitTitle).observe(document.getElementById("topbar-title"), { childList: true, characterData: true, subtree: true });
 
   // события состояния передаём текущей странице
   for (const name of ["builds", "accounts", "skin", "settings", "game", "log", "server", "usage"]) {
